@@ -1,0 +1,24 @@
+{
+  "$schema": "https://github.com/dyoshikawa/rulesync/releases/latest/download/config-schema.json",
+  "targets": [
+    "claudecode",
+    "codexcli",
+    "opencode",
+    "zed",
+    "warp"
+  ],
+  "features": [
+    "rules",
+    "commands",
+    "subagents",
+    "skills"
+  ],
+  "delete": false,
+  "verbose": false,
+  "silent": false,
+  "global": false,
+  "simulateCommands": false,
+  "simulateSubagents": false,
+  "simulateSkills": false,
+  "gitignoreTargetsOnly": true
+}
