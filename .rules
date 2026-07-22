@@ -1,468 +1,56 @@
-# Global Claude Instructions
+# Global Instructions
 
 ## Branch Naming
-- Always use `guilhermebomfim/` as the branch prefix (e.g. `guilhermebomfim/feature-name`), never `guilhermemmb/`
 
-## Commit Guidelines
-- **Never add `Co-Authored-By:` lines** to any commit message — no AI attribution, no tool-generated co-author footers
+- Always use `guilhermebomfim/` as the prefix (e.g. `guilhermebomfim/feature-name`), never `guilhermemmb/`
 
-## PR Descriptions
-- **Always verify the project's PR template** (e.g., `.github/PULL_REQUEST_TEMPLATE.md`) before generating any PR description. Use the template's structure instead of a generic format.
+## GitHub API — Read-Only Mode
 
-## PR Workflow — Write title and description to file
+**NEVER** run any `gh` CLI command or GitHub API call that writes, mutates, or modifies state. This is NOT overridable.
 
-When the user asks to "create PR", "open PR", "update PR", "make a PR", "draft PR", or anything semantically similar:
+**Blocked:** `gh pr create/merge/close/edit/comment/review` · `gh issue create/close/edit/comment` · `gh run rerun/cancel/delete` · `gh workflow run/enable/disable` · `gh release create/delete/edit` · `gh repo create/delete/edit/fork` · `gh api -X POST/PUT/PATCH/DELETE`
 
-1. **Generate the title** following commitlint rules — conventional commit format `type(scope): description`, lowercase, no trailing period, 100 chars max. If the scope is unclear or there are multiple, drop it: `type: description`.
+**Allowed:** `gh pr list/view/diff/checks` · `gh issue list/view` · `gh run list/view` · `gh workflow list/view` · `gh api` (GET only) · `gh auth token/status`
 
-2. **Generate the description** using the project's `.github/PULL_REQUEST_TEMPLATE.md` if present (per the existing `## PR Descriptions` rule). Include a metrics/before-after table when the work has measurable output (lint counts, react-doctor scores, bundle size, etc.).
+## Git Push Safety
 
-3. **Save both to a file** instead of pasting them into chat:
-   - Preferred location: `.context/pr/<branch-name>.md` if a `.context/` directory exists in the workspace (Conductor workspaces have one).
-   - Fallback: `/tmp/pr-<branch-name>.md`.
-   - File format: first line is `# <title>`, then a blank line, then the body. The `# ` prefix is stripped when extracting the title.
-
-4. **Do not paste the full description into chat.** Show only:
-   - The file path that was written.
-   - A one-line summary of the change.
-   - The exact `gh` command(s) the user should run themselves (the global "GitHub API — Read-Only Mode" rule blocks me from running `gh pr create` / `gh pr edit`).
-
-5. **Commands to give the user** (substitute `<file>`, `<base>`, `<number>` as appropriate):
-   - **Create draft PR:**
-     ```sh
-     gh pr create --base <base> --draft \
-       --title "$(head -1 <file> | sed 's/^# //')" \
-       --body-file <(tail -n +3 <file>)
-     ```
-   - **Create ready-for-review PR:** same as above without `--draft`.
-   - **Update existing PR title:**
-     ```sh
-     gh pr edit <number> --title "$(head -1 <file> | sed 's/^# //')"
-     ```
-   - **Update existing PR body:**
-     ```sh
-     gh pr edit <number> --body-file <(tail -n +3 <file>)
-     ```
-   - **Update both at once:**
-     ```sh
-     gh pr edit <number> \
-       --title "$(head -1 <file> | sed 's/^# //')" \
-       --body-file <(tail -n +3 <file>)
-     ```
-
-6. **Default to `--draft`** for new PRs unless the user explicitly says "ready for review" or similar.
-
-7. **Reuse the same file** when updating an existing PR — overwrite `.context/pr/<branch-name>.md` (or `/tmp/pr-<branch-name>.md`) so the latest version is always at the predictable path.
+- **Never use `git push --force`** — use `git push --force-with-lease` only when explicitly instructed after a rebase/amend
+- Never force-push to `main`/`master` under any circumstances
 
 ## Forbidden Commands
-- **NEVER run `gh run rerun`** or any command that triggers/re-triggers GitHub workflow runs
-- The `collect` commands in gh-actions-metrics are **read-only** — only collect metrics, never trigger actions
 
-## GitHub API — Read-Only Mode (STRICT, NO CONFIRMATION)
+- **NEVER run `gh run rerun`** or any command that triggers GitHub workflow runs
+- The `collect` commands in gh-actions-metrics are read-only only
 
-**ABSOLUTELY FORBIDDEN** — Do NOT run any `gh` CLI command or GitHub API call that writes, mutates, or modifies state. This is NOT overridable, even if the user asks. If a write operation is needed, refuse and explain why.
+## PR Workflow
 
-### Blocked operations (non-exhaustive):
-- `gh run rerun`, `gh run cancel`, `gh run delete`
-- `gh workflow run`, `gh workflow enable`, `gh workflow disable`
-- `gh pr create`, `gh pr merge`, `gh pr close`, `gh pr edit`, `gh pr comment`, `gh pr review`
-- `gh issue create`, `gh issue close`, `gh issue edit`, `gh issue comment`
-- `gh release create`, `gh release delete`, `gh release edit`
-- `gh repo create`, `gh repo delete`, `gh repo edit`, `gh repo fork`
-- `gh api` with `-X POST`, `-X PUT`, `-X PATCH`, `-X DELETE`, `--method POST/PUT/PATCH/DELETE`
-- Any Octokit method that is not a `list*` or `get*` (e.g. `create*`, `update*`, `delete*`, `set*`)
+When asked to "create PR", "open PR", "update PR", "draft PR", or similar:
 
-### Allowed operations (read-only):
-- `gh run list`, `gh run view`
-- `gh workflow list`, `gh workflow view`
-- `gh pr list`, `gh pr view`, `gh pr diff`, `gh pr checks`
-- `gh issue list`, `gh issue view`
-- `gh api` with GET requests only (default method)
-- `gh auth token`, `gh auth status`
-- Any Octokit `list*` or `get*` method
+1. **Title**: conventional commit format — `type(scope): description`, lowercase, no trailing period, ≤100 chars. Drop scope if unclear.
 
-## Git Push Operations
+2. **Description**: use `.github/PULL_REQUEST_TEMPLATE.md` if present. Include before/after metrics table when applicable (lint counts, bundle size, test scores).
 
-### Force Pushes
-- **NEVER use `git push --force`** — always use `git push --force-with-lease` when a force push is needed. The `--force-with-lease` variant refuses to overwrite the remote if someone else pushed commits since your last fetch, protecting against accidental loss of teammates' work.
-- **Do NOT force-push proactively** — only force-push when the user explicitly instructs it (e.g. "push force", "force push", "update the PR"). If in doubt, ask first.
-- The normal `git push` (non-force) is the default. Only switch to `--force-with-lease` after a rebase, amend, or other history rewrite, AND only with explicit user instruction.
-- Never force-push (even with `--force-with-lease`) to `main`/`master` — warn the user and refuse.
+3. **Write to file** (never paste full description into chat):
+   - `.context/pr/<branch-name>.md` if `.context/` exists
+   - Otherwise `/tmp/pr-<branch-name>.md`
+   - Format: first line `# <title>`, blank line, then body
 
-## Pre-Commit Security Check
+4. **Show only** in chat: file path, one-line summary, and the exact `gh` command to run.
 
-### Before ANY Git Commit
-**MANDATORY**: Always analyze all files to be committed for:
+5. **Default to `--draft`** unless user says "ready for review".
 
-1. **Mock/Test Data & Hardcoded Payloads**
-   - Mock API responses
-   - Hardcoded test data arrays/objects
-   - Dummy user information
-   - Sample payloads
-   - **Early returns with hardcoded data** (e.g., `res.send([{...big object...}])`)
+6. **Reuse same file** when updating — overwrite it.
 
-2. **Debug Return Values**
-   - **Hardcoded boolean returns** (e.g., `return true`, `return false`)
-   - Bypassed feature flags or conditional logic
-   - Short-circuit returns added for testing
-   - Functions that always return the same value ignoring their logic
+**Commands to give the user:**
 
-3. **Code Cleanup Issues** ⚠️
-   - **Multiple unused imports** (3+ unused imports is a red flag)
-   - Commented-out code blocks
-   - Unused variables or functions
-   - Dead code paths
-   - These often indicate incomplete debugging cleanup
+```sh
+# Create draft PR
+gh pr create --base <base> --draft \
+  --title "$(head -1 <file> | sed 's/^# //')" \
+  --body-file <(tail -n +3 <file>)
 
-4. **Sensitive Hardcoded Values**
-   - API keys or tokens
-   - Passwords or credentials
-   - Internal URLs or endpoints
-   - Database connection strings
-   - Hardcoded user IDs or emails
-   - Debug flags set to true
-   - Console.log statements with sensitive data
-
-5. **Development Artifacts**
-   - Temporary debugging code
-   - Development-only feature flags
-   - Hardcoded environment variables
-   - Early returns that skip normal logic flow
-
-### Red Flag Patterns to Search For
-
-```javascript
-// ❌ Many unused imports (sign of debugging session)
-import { A } from './a'  // unused
-import { B } from './b'  // unused
-import { C } from './c'  // unused
-import { D } from './d'  // only D is used
-
-// ❌ Early return with hardcoded payload
-res.send([{...}])
-return [{...}]
-
-// ❌ Bypassed logic with hardcoded return
-return true
-return false
-// especially when ignoring the function's actual logic
-
-// ❌ Hardcoded mock data
-const mockData = [{text: '...', answer: '...'}]
-res.json([{id: '...', ...}])
-
-// ❌ Disabled feature flags
-return true // bypassing feature flag check
-const enabled = true // hardcoded instead of config
-
-// ❌ Test/debug values
-const TEST_USER_ID = '...'
-const MOCK_RESPONSE = {...}
-
-// ❌ Commented code (why is this here?)
-// const oldImplementation = () => {...}
-// console.log('debug:', data)
+# Update existing PR
+gh pr edit <number> \
+  --title "$(head -1 <file> | sed 's/^# //')" \
+  --body-file <(tail -n +3 <file>)
 ```
-
-### Real Examples to Catch
-
-**Example 1: Early return with mock data**
-```javascript
-// ❌ BAD - Hardcoded test response
-res.send([
-    {
-        text: 'How breathable are these shorts?',
-        answer: "The Artemis AeroFlow Shorts are...",
-        id: '019ae888-9c60-796d-875a-4512cce870d1',
-    },
-    // ... more objects
-])
-res.end()
-```
-
-**Example 2: Bypassed feature flag**
-```javascript
-// ❌ BAD - Hardcoded return ignoring logic
-export const useIsFloatingShopperEngagementWidgetEnabled = (): boolean => {
-    const isChatRedesignEnabled = useIsChatUiRedesignEnabled()
-    const isFloatingShopperEngagementWidgetEnabled = config.getChatFeatureFlag(...)
-
-    return true  // ❌ Bypasses all logic above!
-}
-
-// ✅ GOOD - Original logic preserved
-return (isChatRedesignEnabled && isFloatingShopperEngagementWidgetEnabled) ?? false
-```
-
-**Example 3: Unused imports from debugging**
-```javascript
-// ❌ BAD - Many unused imports suggest incomplete cleanup
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { fetchData, processData, validateData } from './utils'
-import { MockService } from './mocks'  // ⚠️ Mock import!
-import { Logger } from './logger'      // ⚠️ Debug import!
-
-// Only uses useState...
-// Where's the rest of the code that used these?
-```
-
-### Process
-1. Run `git diff --staged` to review all staged changes
-2. For each changed file, check for:
-   - **Unused imports** - If 3+ imports are unused, this is suspicious
-   - Lines with `return` followed by hardcoded values (`true`, `false`, `[...]`, `{...}`)
-   - Early returns with `res.send()`, `res.json()`, `res.end()`
-   - Large object/array literals (>3 lines) in return statements or responses
-   - Variables with names containing: `mock`, `dummy`, `fake`, `test`, `hardcode`, `debug`
-   - Imports from mock/test utilities in production code
-   - Functions that ignore their internal logic and return constant values
-   - Commented-out code blocks
-3. If ANY suspicious patterns found:
-   - **STOP immediately** ⛔
-   - Show the user the exact file:line with context
-   - Highlight what looks wrong
-   - Ask: "This looks like debug/test code. Should this be committed?"
-
-### Unused Import Warning Signs
-- **3+ unused imports** in a single file = likely incomplete debugging cleanup
-- Imports with names like: `Mock*`, `Test*`, `Debug*`, `Logger`, `console*`
-- Import statements from `/mocks/`, `/fixtures/`, `/test-utils/` in production code
-- Recently added imports that aren't used in the diff
-
-### Exception - Proceed Without Confirmation Only If:
-- Changes are in test files (`*.test.ts`, `*.spec.ts`, `__tests__/`, `*.stories.tsx`)
-- Mock data is in designated directories (`__mocks__/`, `fixtures/`, `test-data/`)
-- File is a configuration/constant file clearly meant for test data
-- Unused imports are part of a refactoring where the file will be cleaned up by linter
-- User explicitly confirms the code is intentional
-
-### Search Keywords in Diffs
-- `import` statements (check if all are used)
-- `return true` or `return false` (especially if ignoring above logic)
-- `res.send([`, `res.json([`, `res.json({`
-- `mock`, `dummy`, `fake`, `test`, `hardcode`, `HARDCODE`
-- `TODO`, `FIXME`, `HACK`, `XXX`
-- `console.log`, `console.warn`, `debugger`
-- Feature flag variables followed by `return true/false`
-- Big objects or arrays with literal values (>3 lines)
-- `// ` at the start of lines (commented code)
-
----
-
-## Development Mode Pattern for Mock/Debug Code
-
-### MANDATORY: Always Wrap Mock Data with Environment Checks
-
-When you need to add mock data, early returns, or bypass logic for testing/debugging:
-
-**NEVER** commit raw mock code. **ALWAYS** wrap it with a development mode environment variable check.
-
-### Project-Specific Environment Patterns
-
-**This project uses:**
-- **Backend packages (Node.js)**: `process.env.NODE_ENV === 'development'`
-- **Client package (React)**: `process.env.REACT_APP_ENV === 'development'`
-- **Config system**: Available via `configs/env` (already reads from `REACT_APP_ENV`)
-
-### Examples for This Project
-
-**❌ BAD - Backend: Naked mock data:**
-```typescript
-export const getProducts = async (req, res) => {
-    res.json([{ id: 1, name: 'Product A', price: 29.99 }])
-}
-```
-
-**✅ GOOD - Backend: Wrapped with dev mode:**
-```typescript
-export const getProducts = async (req, res) => {
-    if (process.env.NODE_ENV === 'development') {
-        return res.json([{ id: 1, name: 'Product A', price: 29.99 }])
-    }
-    const products = await db.products.findAll()
-    res.json(products)
-}
-```
-
-**❌ BAD - Client: Bypassed feature flag:**
-```typescript
-export const useIsFeatureEnabled = (): boolean => {
-    const isEnabled = config.getChatFeatureFlag('feature-x')
-    return true  // ❌ Always true!
-}
-```
-
-**✅ GOOD - Client: Dev mode override:**
-```typescript
-export const useIsFeatureEnabled = (): boolean => {
-    if (process.env.REACT_APP_ENV === 'development' &&
-        process.env.REACT_APP_FORCE_FEATURE_X === 'true') {
-        return true
-    }
-    return config.getChatFeatureFlag('feature-x')
-}
-```
-
-### Quick Reference
-
-- **Backend (Node.js)**: `if (process.env.NODE_ENV === 'development') { ... }`
-- **Frontend (React)**: `if (process.env.REACT_APP_ENV === 'development') { ... }`
-
----
-
-## Branch Switch Detection Protocol
-
-### Automatic Check When Switching Branches
-
-**MANDATORY**: When you detect the user has switched from one branch to another, automatically perform a security scan on the new branch.
-
-### Process
-
-1. Get commits on new branch: `git log main..HEAD --oneline`
-2. Review each commit's diff: `git show <commit-hash>`
-3. Check for mock data, debug returns, unused imports (3+), commented code, sensitive values
-4. If suspicious code found: **STOP** ⛔, report findings, ask before proceeding
-
----
-
-## Pre-Push Security Check
-
-### Before ANY Git Push
-
-**MANDATORY**: Before executing or confirming ANY `git push` command, perform a comprehensive security scan of all commits being pushed.
-
-### Process
-
-1. Get commits: `git log origin/main..HEAD --oneline`
-2. Check each diff: `git show <commit-hash>`
-3. Scan for all red flag patterns (mock data, hardcoded returns, unused imports, debug artifacts)
-4. If ANY issues found: **STOP** ⛔, report, ask before pushing
-
----
-
-## Pre-Rebase Security Check
-
-### Before ANY Git Rebase
-
-**MANDATORY**: Before executing or confirming ANY `git rebase` command, verify the current branch doesn't contain mock/debug code.
-
-### Process
-
-1. Get commits: `git log origin/main..HEAD --oneline`
-2. Scan each commit for red flags
-3. If issues found: **STOP** ⛔, report, ask before rebasing
-
----
-
-## PR Work Protocol
-
-### When Working on Branches with Open PRs
-
-**MANDATORY**: When you identify the user is working on a branch that has an open pull request, automatically check the PR for potential mock/debug code.
-
-### Process
-
-1. Check if current branch has a PR: `gh pr view --json number,title,state`
-2. Get PR diff: `gh pr diff`
-3. Scan for all red flag patterns
-4. If suspicious code found: **Alert the user** ⚠️, list patterns, ask to clean up
-
----
-
-## Security Check Summary
-
-### Trigger Points
-
-✅ **Before Commit** (Pre-Commit Security Check)
-✅ **On Branch Switch** (Branch Switch Detection Protocol)
-✅ **Before Push** (Pre-Push Security Check)
-✅ **Before Rebase** (Pre-Rebase Security Check)
-✅ **When Working on PRs** (PR Work Protocol)
-
-### Quick Reference: What to Look For
-
-- Mock/test data & hardcoded payloads
-- Hardcoded boolean returns (`return true`/`return false`)
-- Multiple unused imports (3+ is suspicious)
-- Commented-out code
-- Sensitive hardcoded values (API keys, credentials)
-- Development artifacts (debug code, temp flags)
-- Early returns with hardcoded data
-- Functions bypassing their logic
-
-## Test Execution — Output Logging
-
-### Always Capture Test Output to a Temp File
-
-**MANDATORY**: When running tests, always redirect output to a temporary file.
-
-### Pattern
-
-```bash
-<test-command> 2>&1 | tee /tmp/test-output.log
-grep -E "FAIL|Error|✕|×|●" /tmp/test-output.log
-```
-
-### Rules
-
-- Always use `2>&1 | tee /tmp/test-output.log` (or a descriptive name like `/tmp/test-jest.log`)
-- After tests complete, use Grep or Read on the log file to extract errors
-- If **no code changes** were made since last run, read the log — do not re-run tests
-- If **code changes were applied**, re-run tests and overwrite the log with fresh output
-- Cleanup: temp test logs follow the 15-day cleanup policy
-
----
-
-## Workflow
-
-- Create a plan first. Show me the plan in digestible chunks and wait for my "go" before applying it.
-- Always use **zsh**. Source `~/.zshrc` before running commands so the environment matches my interactive terminal.
-- **Never run any git command on your own — always ask and confirm first.** Covers commit, push, checkout, rebase, and merge.
-- When tests fail, show me only the errors — filter console output, don't dump it raw.
-- Always run lint to fix files before finishing an implementation.
-- Temporary-file cleanup period: 15 days.
-
-## Package Manager & Monorepo Paths
-
-- Always check which package manager the project uses first — start with `pnpm`.
-- For workspace/monorepo commands, the path is relative to the package, not the repo root.
-  e.g. `pnpm --filter @gorgias-chat/client test:unit src/foo/Bar.spec.tsx`
-
-## Superpowers Persistence
-
-- Persist ALL Superpowers artifacts (brainstorming notes, plans, design docs, skill outputs)
-  under `/Users/guilhermebomfim/developer/gorgias-power-project/<repo>/superpowers/`, where
-  `<repo>` is the repo currently being worked on.
-- Never write these artifacts into the repo itself — always centralize under the path above.
-- Before brainstorming, planning, or resuming work, check that path for existing artifacts and use them as context.
-- Combine the repo (code, docs) WITH the centralized artifacts — read both together.
-
----
-
-## User Environment
-
-### Git Configuration
-- Git user: Guilherme Bomfim (guilherme.bomfim@gorgias.com)
-- SSH signing key: `~/.ssh/id_ed25519.pub` — commits are always GPG-SSH signed
-- Pull strategy: rebase (`pull.rebase = true`)
-
-### Key Environment Variables (from `~/.zshrc`)
-- `GORGIAS_ROOT=/Users/guilhermebomfim/developer`
-- `GOPATH=~/go` · `VOLTA_HOME=$HOME/.volta` (Node) · `EDITOR=vim`
-- `GITHUB_PERSONAL_ACCESS_TOKEN` — populated via `gh auth token`
-- `BAO_ADDR` — Vault address · `HOMEASSISTANT_URL` / `HOMEASSISTANT_TOKEN` — Home Assistant API
-
-### npm Registry
-- `@gorgias` scope: `https://npm.pkg.github.com/` (auth via `$NPM_TOKEN`)
-
-### Project Aliases (cd shortcuts in `~/developer/`)
-- `g:chat`, `g:gorgias`, `g:incoming`, `g:account-manager`, `g:workflows`, `g:help-center`, `g:helpdesk`, `g:ai-agent`
-- `g:proxy`, `g:proxy-chat`, `g:proxy-helpdesk` — local dev proxies
-- `g:pr`, `g:pr-checkout`, `g:pr-rebase` — PR tool shortcuts
-
-### Common Git Aliases
-- `gpfo` — `git push --force-with-lease origin`
-- `grsoh` — `git reset --soft HEAD^1`
-- `grbm` — fetch + stash + rebase origin/main + stash apply
-- `gro` — fetch + rebase origin/main
-- `grbi` / `grbc` — rebase interactive / continue

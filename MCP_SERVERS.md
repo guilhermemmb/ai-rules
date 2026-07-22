@@ -4,6 +4,30 @@ Central inventory of all MCP (Model Context Protocol) servers configured across 
 
 ---
 
+## Global MCPs (All Platforms via `codebase-memory-mcp`)
+
+| Name | Type | Platforms | Purpose |
+|------|------|-----------|---------|
+| `codebase-memory-mcp` | stdio | Claude Code, Codex, Gemini, OpenCode, Antigravity, Zed, VS Code, Cursor | Semantic code search & graph-based codebase exploration via `search_graph` |
+
+### codebase-memory-mcp
+
+Automatically installed and configured across all AI tools (Claude Code, Codex, Gemini CLI, OpenCode, Antigravity, Zed, VS Code, Cursor).
+
+**Hooks:**
+- Claude Code: `PreToolUse` hook (Grep/Glob search-graph augmenter, non-blocking)
+- Other tools: `SessionStart` hook (MCP usage reminder)
+
+**Use when:** 
+- Exploring codebase structure: "show me all files with pattern X"
+- Code search: "find all callers of function Y"
+- Dependency analysis: "what does X import/export"
+- Call graph queries: "trace the call chain for Z"
+
+**Skill:** Use `/codebase-memory` skill or direct Cypher queries for advanced graph operations.
+
+---
+
 ## Claude Code (`~/.claude/settings.json`)
 
 | Name | Type | Command | Purpose |

@@ -1,6 +1,7 @@
 {
   "instructions": [
     ".opencode/memories/custom-rules.md",
+    ".opencode/memories/pr-workflow.md",
     ".opencode/memories/security-scan.md",
     ".opencode/memories/user-config.md"
   ],
