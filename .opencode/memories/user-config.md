@@ -1,10 +1,3 @@
----
-root: false
-targets: ["*"]
-description: "User-wide system configuration known to the developer"
-globs: ["**/*"]
----
-
 ## Git Configuration
 
 - Git user: Guilherme Bomfim (guilherme.bomfim@gorgias.com)

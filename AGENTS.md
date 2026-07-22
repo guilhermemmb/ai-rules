@@ -1,10 +1,3 @@
----
-root: true
-targets: ["*"]
-description: "Global development instructions for guilhermebomfim"
-globs: ["**/*"]
----
-
 # Global Instructions
 
 ## Branch Naming

@@ -1,11 +1,3 @@
----
-root: false
-alwaysApply: true
-targets: ["*"]
-description: "Always-applied workflow and development rules"
-globs: ["**/*"]
----
-
 # Custom Rules (always applied)
 
 ## Machine Configuration
