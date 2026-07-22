@@ -1,7 +1,8 @@
 ---
-paths:
-  - '**/*'
+name: custom-rules
+description: Custom development rules and workflow guidelines
 ---
+
 # Custom Rules (always applied)
 
 ## Machine Configuration

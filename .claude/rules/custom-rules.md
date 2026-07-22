@@ -1,7 +1,3 @@
----
-paths:
-  - '**/*'
----
 # Custom Rules (always applied)
 
 ## Machine Configuration

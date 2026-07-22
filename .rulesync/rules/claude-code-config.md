@@ -1,7 +1,8 @@
 ---
-paths:
-  - '**/*'
+name: claude-code-config
+description: Claude Code configuration for caveman mode statusline and other settings
 ---
+
 # Claude Code Configuration
 
 ## Status Line Setup

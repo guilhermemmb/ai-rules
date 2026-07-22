@@ -1,7 +1,3 @@
----
-paths:
-  - '**/*'
----
 # Commit / Push Safety Scan
 
 On-demand checklist. Read and apply this before any `git commit`, `git push`, or `git rebase`

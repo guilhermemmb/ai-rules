@@ -10,6 +10,7 @@ credentials/
 # Source of truth: ./rules/, *.md docs, rulesync.jsonc, opencode.jsonc, .rules
 .agents/
 .opencode/
+.claude/
 .codex/
 .warp/
 .warpindexingignore

@@ -1,7 +1,3 @@
----
-paths:
-  - '**/*'
----
 # Claude Code Configuration
 
 ## Status Line Setup

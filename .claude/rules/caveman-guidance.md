@@ -1,7 +1,3 @@
----
-paths:
-  - '**/*'
----
 ## Communication Style
 
 - Default to caveman lite: no filler, no hedging. Keep articles + full sentences.

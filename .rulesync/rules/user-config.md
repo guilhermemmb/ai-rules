@@ -1,7 +1,8 @@
 ---
-paths:
-  - '**/*'
+name: user-config
+description: Personal user configuration and environment setup
 ---
+
 ## Git Configuration
 
 - Git user: Guilherme Bomfim (guilherme.bomfim@gorgias.com)

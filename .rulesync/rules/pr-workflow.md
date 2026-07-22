@@ -1,7 +1,8 @@
 ---
-paths:
-  - '**/*'
+name: pr-workflow
+description: Pull request creation and workflow guidelines
 ---
+
 # Pull Request Workflow
 
 ## Git Command Safety

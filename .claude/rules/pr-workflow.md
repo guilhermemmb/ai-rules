@@ -1,7 +1,3 @@
----
-paths:
-  - '**/*'
----
 # Pull Request Workflow
 
 ## Git Command Safety

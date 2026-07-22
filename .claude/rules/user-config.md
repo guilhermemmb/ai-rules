@@ -1,7 +1,3 @@
----
-paths:
-  - '**/*'
----
 ## Git Configuration
 
 - Git user: Guilherme Bomfim (guilherme.bomfim@gorgias.com)
