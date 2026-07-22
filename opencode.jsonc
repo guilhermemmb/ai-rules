@@ -1,5 +1,7 @@
 {
   "instructions": [
+    ".opencode/memories/caveman-guidance.md",
+    ".opencode/memories/claude-code-config.md",
     ".opencode/memories/custom-rules.md",
     ".opencode/memories/pr-workflow.md",
     ".opencode/memories/security-scan.md",

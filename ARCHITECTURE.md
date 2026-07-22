@@ -93,6 +93,7 @@ Every tool's skills directory points to the same place:
 | `~/.ai-agents/skills` | `/developer/rules/.agents/skills` |
 | `~/.ai-agents/INSTRUCTIONS.md` | `/developer/rules/CLAUDE.md` |
 | `~/.codex/AGENTS.md` | `/developer/rules/AGENTS.md` |
+| `~/.claude/hooks/caveman-session-guidance` | `/developer/rules/.claude/hooks/caveman-session-guidance` |
 | `.opencode/skills/` | `../.agents/skills` |
 | `.warp/skills/` | `../.agents/skills` |
 
