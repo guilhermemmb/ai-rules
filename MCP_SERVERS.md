@@ -18,7 +18,7 @@ Automatically installed and configured across all AI tools (Claude Code, Codex, 
 - Claude Code: `PreToolUse` hook (Grep/Glob search-graph augmenter, non-blocking)
 - Other tools: `SessionStart` hook (MCP usage reminder)
 
-**Use when:** 
+**Use when:**
 - Exploring codebase structure: "show me all files with pattern X"
 - Code search: "find all callers of function Y"
 - Dependency analysis: "what does X import/export"

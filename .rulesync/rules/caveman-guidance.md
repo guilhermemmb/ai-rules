@@ -1,6 +1,8 @@
 ---
 name: caveman-guidance
-description: Communication style guidelines for caveman mode usage
+description: Communication style rules for caveman mode — default lite, switch with commands
+metadata:
+  type: rule
 ---
 
 ## Communication Style

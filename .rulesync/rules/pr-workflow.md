@@ -1,6 +1,8 @@
 ---
 name: pr-workflow
-description: Pull request creation and workflow guidelines
+description: PR workflow rules — git command safety, PR creation/updates, title format, description format
+metadata:
+  type: rule
 ---
 
 # Pull Request Workflow

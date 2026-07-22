@@ -1,6 +1,8 @@
 ---
 name: custom-rules
-description: Custom development rules and workflow guidelines
+description: Custom rules always applied — machine config, workflow, superpowers persistence, git safety, testing, monorepo paths
+metadata:
+  type: rule
 ---
 
 # Custom Rules (always applied)

@@ -3,9 +3,7 @@
   "targets": [
     "claudecode",
     "codexcli",
-    "opencode",
-    "zed",
-    "warp"
+    "opencode"
   ],
   "features": [
     "rules",
@@ -13,12 +11,12 @@
     "subagents",
     "skills"
   ],
-  "delete": false,
-  "verbose": false,
+  "delete": true,
+  "verbose": true,
   "silent": false,
-  "global": false,
-  "simulateCommands": false,
-  "simulateSubagents": false,
-  "simulateSkills": false,
+  "global": true,
+  "simulateCommands": true,
+  "simulateSubagents": true,
+  "simulateSkills": true,
   "gitignoreTargetsOnly": true
 }

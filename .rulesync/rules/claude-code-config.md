@@ -1,6 +1,8 @@
 ---
 name: claude-code-config
-description: Claude Code configuration for caveman mode statusline and other settings
+description: Claude Code configuration — status line setup for caveman mode badge
+metadata:
+  type: rule
 ---
 
 # Claude Code Configuration

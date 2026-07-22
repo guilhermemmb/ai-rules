@@ -1,6 +1,8 @@
 ---
 name: user-config
-description: Personal user configuration and environment setup
+description: Git configuration, environment variables, PATH components, and shell functions
+metadata:
+  type: rule
 ---
 
 ## Git Configuration
