@@ -5,3 +5,11 @@
 credentials/
 *.env
 *.secret
+
+# Auto-generated & synced directories (not source of truth)
+# Source of truth: ./rules/, *.md docs, rulesync.jsonc, opencode.jsonc, .rules
+.agents/
+.opencode/
+.codex/
+.warp/
+.warpindexingignore

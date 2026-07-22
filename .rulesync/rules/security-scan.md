@@ -1,11 +1,7 @@
 ---
-root: false
-alwaysApply: false
-targets: ["*"]
-description: "On-demand commit/push safety scan checklist"
-globs: ["**/*"]
+paths:
+  - '**/*'
 ---
-
 # Commit / Push Safety Scan
 
 On-demand checklist. Read and apply this before any `git commit`, `git push`, or `git rebase`
