@@ -138,6 +138,40 @@ See `DEPLOY.md` for full steps including dry-run verification.
 
 This auto-syncs agent config (tools/MCPs) from `agents/main.md` and subagents every Claude Code startup. Ensures main agent stays restricted to `[codebase-memory-mcp, github, context7]`, dropping MCP token load from ~70k to ~30-40k.
 
+## Global MCP Server Setup
+
+Global `~/.claude/settings.json` defines mcpServers and disables plugin-based MCPs to reduce token load:
+
+**mcpServers configured:**
+
+```json
+{
+  "mcpServers": {
+    "codebase-memory-mcp": {"command": "npx", "args": ["-y", "codebase-memory-mcp"]},
+    "context7": {"command": "npx", "args": ["-y", "@upstash/context7-mcp"]},
+    "chrome-devtools": {"command": "npx", "args": ["-y", "@anthropics/chrome-devtools-mcp"]},
+    "sentry": {"command": "npx", "args": ["-y", "@sentry/mcp-server@latest", "--agent"]},
+    "datadog": {"command": "/opt/homebrew/bin/pup", "args": ["mcp", "--agent", "--read-only"]},
+    "cortex": {"type": "http", "url": "https://cortex.mcp.gorgias-decision-engine.com/mcp"},
+    "HomeAssistant": {...}
+  }
+}
+```
+
+**MCP plugins disabled in enabledPlugins:**
+
+- context7@claude-plugins-official
+- github@claude-plugins-official
+- chrome-devtools-mcp@chrome-devtools-plugins
+- superpowers-chrome@superpowers-marketplace
+- sentry-cli@claude-plugins-official
+
+**Non-MCP utility plugins kept enabled:**
+
+- caveman, code-review, pr-review-toolkit, claude-md-management, skill-creator, code-simplifier, superpowers
+
+MCPs load on-demand via npx instead of pre-loading as plugins. Reduces token overhead for sessions outside ai-rules.
+
 ## Key Files Reference
 
 | File | Loaded when | Tool |
