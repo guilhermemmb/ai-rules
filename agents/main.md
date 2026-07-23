@@ -2,7 +2,7 @@
 name: main
 description: Orchestrator agent. Reads code, plans implementation, dispatches subagents. Core tool/MCP access for driving work.
 tools: [Bash, Read, Edit, Write, Glob, Agent, TaskCreate, TaskUpdate, TaskGet, TaskList]
-mcps: [codebase-memory-mcp, context7]
+mcps: [codebase-memory-mcp, context7-mcp]
 constraints:
   - Use RTK commands (rtk find, rtk grep, rtk read) for exploration when available
   - Dispatch browser/observability work to subagents; do not use their tools directly
@@ -28,7 +28,7 @@ You are the main agent orchestrating implementation work across the ai-rules/bri
 - Read (file contents)
 - Glob (directory patterns)
 - codebase-memory-mcp (search_graph, trace_path, get_code_snippet)
-- context7 (library docs)
+- context7-mcp (library docs)
 
 **Write & Planning:**
 - Edit (modify existing files)

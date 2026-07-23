@@ -57,7 +57,7 @@ Main agent orchestrates; it cannot directly touch browser, observability, or dom
 
 | Agent | Purpose | MCPs | Dispatch When |
 |-------|---------|------|---------------|
-| **main** | Orchestrator | codebase-memory-mcp, github, context7 | Code, planning, implementation |
+| **main** | Orchestrator | codebase-memory-mcp, github, context7-mcp | Code, planning, implementation |
 | **browser-agent** | Browser interaction | chrome-devtools, superpowers-chrome | Screenshots, DOM, web automation |
 | **observability-and-troubleshoot** | Production diagnostics | sentry, datadog, gcloud | Errors, logs, metrics, root cause |
 | **cortex-agent** | Gorgias domain knowledge | cortex | Metrics, schemas, business rules |
@@ -136,7 +136,7 @@ See `DEPLOY.md` for full steps including dry-run verification.
 }
 ```
 
-This auto-syncs agent config (tools/MCPs) from `agents/main.md` and subagents every Claude Code startup. Ensures main agent stays restricted to `[codebase-memory-mcp, github, context7]`, dropping MCP token load from ~70k to ~30-40k.
+This auto-syncs agent config (tools/MCPs) from `agents/main.md` and subagents every Claude Code startup. Ensures main agent stays restricted to `[codebase-memory-mcp, github, context7-mcp]`, dropping MCP token load from ~70k to ~30-40k.
 
 ## Global MCP Server Setup
 
@@ -148,7 +148,7 @@ Global `~/.claude/settings.json` defines mcpServers and disables plugin-based MC
 {
   "mcpServers": {
     "codebase-memory-mcp": {"command": "npx", "args": ["-y", "codebase-memory-mcp"]},
-    "context7": {"command": "npx", "args": ["-y", "@upstash/context7-mcp"]},
+    "context7-mcp": {"command": "npx", "args": ["-y", "@upstash/context7-mcp"]},
     "chrome-devtools": {"command": "npx", "args": ["-y", "@anthropics/chrome-devtools-mcp"]},
     "sentry": {"command": "npx", "args": ["-y", "@sentry/mcp-server@latest", "--agent"]},
     "datadog": {"command": "/opt/homebrew/bin/pup", "args": ["mcp", "--agent", "--read-only"]},

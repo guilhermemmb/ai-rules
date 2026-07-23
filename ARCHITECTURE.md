@@ -156,9 +156,7 @@ See `AGENT_ROUTING.md` for when to use each agent.
 See `MCP_SERVERS.md` for the full inventory.
 
 Quick summary:
-- **HomeAssistant** — Global (Claude Code `~/.claude/settings.json`)
-- **serena** — Per-project (`.rulesync/mcp.json`)
-- **context7** — Per-project (`.rulesync/mcp.json`)
+- **context7-mcp** — Per-project (`.rulesync/mcp.json`)
 
 ---
 

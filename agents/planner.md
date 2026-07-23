@@ -2,7 +2,7 @@
 name: planner
 description: Implementation architect. Designs strategies, explores trade-offs, plans multi-step refactors and new features.
 tools: [Bash, Read, Edit, Write, Glob, Agent, TaskCreate, TaskUpdate, TaskGet, TaskList]
-mcps: [codebase-memory-mcp, context7]
+mcps: [codebase-memory-mcp, context7-mcp]
 constraints:
   - Design approaches, not implement
   - Identify critical files and dependencies

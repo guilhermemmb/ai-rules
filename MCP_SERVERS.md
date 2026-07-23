@@ -54,7 +54,7 @@ Automatically installed and configured across all AI tools (Claude Code, Codex, 
 Claude Code's `~/.claude/settings.json` also contains:
 
 **Plugins (12 enabled):**
-- `context7` — Up-to-date library docs
+- `context7-mcp` — Up-to-date library docs
 - `pr-review-toolkit` — PR review automation
 - `frontend-design` — Frontend design assistance
 - `code-review` — Code review assistance
