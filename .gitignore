@@ -17,3 +17,9 @@ credentials/
 # Auto-generated using merge-rules.sh
 AGENTS.md
 .codebase-memory/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
