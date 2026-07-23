@@ -4,6 +4,24 @@ Dispatch rules for main agent to delegate work to subagents.
 
 ## When to Use Each Subagent
 
+### github-agent
+
+**Dispatch when:**
+
+- Creating, listing, or searching pull requests
+- Creating, listing, or searching issues
+- Submitting PR reviews, comments, or approvals
+- Merging pull requests
+- Managing branches, tags, workflows
+- Searching repositories by name, topic, or language
+
+**Main agent responsibility:**
+
+- Describe the GitHub operation (create PR, search issues, merge, etc.)
+- Provide necessary context (title, description, filters, branch names)
+- Wait for structured response with results or command to run
+- Do NOT call GitHub tools directly
+
 ### browser-agent
 **Dispatch when:**
 - Goal involves browser interaction (click, type, navigate, fill forms)
