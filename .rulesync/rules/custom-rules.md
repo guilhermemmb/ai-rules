@@ -65,7 +65,7 @@ metadata:
 - Exception: you are the `browser-agent` subagent itself.
 
 ## General
-- Temporary-file cleanup period: 15 days.
+- Temporary-file cleanup period: 7 days.
 
 ## Commit / Push Safety
 - Before any `git commit`, `git push`, or `git rebase` (and on branch switch, or when working on

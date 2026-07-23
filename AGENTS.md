@@ -22,6 +22,24 @@
 - **NEVER run `gh run rerun`** or any command that triggers GitHub workflow runs
 - The `collect` commands in gh-actions-metrics are read-only only
 
+## Agent Configuration
+
+Granular tool/MCP access per agent. Each agent handles specific domains:
+
+| Agent | Purpose | MCPs | When to Dispatch |
+|-------|---------|------|------------------|
+| **main** | Orchestrator (no elevated access) | codebase-memory-mcp, github, context7 | Code exploration, implementation, dispatch |
+| **browser-agent** | Browser interaction | chrome-devtools, superpowers-chrome | Screenshots, page analysis, web interaction |
+| **observability-and-troubleshoot** | Production diagnostics | sentry, datadog, gcloud | Sentry/logs/metrics queries, root cause analysis |
+| **cortex-agent** | Gorgias domain knowledge | cortex | Metric definitions, schemas, business rules |
+| **knowledge-agent** | External docs & issues | notion, linear | Notion docs, Linear issues/epics, specs |
+
+**Main Agent Constraints:**
+- No chrome-devtools, superpowers-chrome (→ browser-agent)
+- No sentry, datadog, gcloud (→ observability-and-troubleshoot)
+- No cortex (→ cortex-agent)
+- No Notion, Linear (→ knowledge-agent)
+
 ## PR Workflow
 
 When asked to "create PR", "open PR", "update PR", "draft PR", or similar:
@@ -428,7 +446,7 @@ Displays active caveman mode level (`[CAVEMAN]`, `[CAVEMAN:LITE]`, `[CAVEMAN:ULT
 - Exception: you are the `browser-agent` subagent itself.
 
 ## General
-- Temporary-file cleanup period: 15 days.
+- Temporary-file cleanup period: 7 days.
 
 ## Commit / Push Safety
 - Before any `git commit`, `git push`, or `git rebase` (and on branch switch, or when working on
@@ -566,6 +584,36 @@ gh pr edit 42 \
   --title "$(head -1 /tmp/pr-feature-name.md | sed 's/^# //')" \
   --body-file <(tail -n +3 /tmp/pr-feature-name.md)
 ```
+
+# rtk.md
+
+  type: rule
+---
+
+# RTK — Rust Token Killer
+
+RTK is a token-optimized CLI proxy. It intercepts dev commands (git, pnpm, etc.) and filters output to reduce token usage by 60-90%.
+
+**The Claude Code hook rewrites commands transparently.** No manual action needed — `git status` automatically becomes `rtk git status`.
+
+## Meta Commands (use `rtk` directly)
+
+```bash
+rtk gain              # Token savings analytics
+rtk gain --history    # Command history with savings
+rtk discover          # Find missed optimization opportunities
+rtk proxy <cmd>       # Execute raw without filtering (debug)
+rtk --version         # Verify installation
+```
+
+## Verification
+
+```bash
+rtk --version   # Should show: rtk X.Y.Z
+which rtk       # Verify binary location
+```
+
+Name collision: `rtk gain` failing may mean `reachingforthejack/rtk` (Rust Type Kit) is installed instead of the correct binary.
 
 # security-scan.md
 

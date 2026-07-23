@@ -22,6 +22,30 @@
 - **NEVER run `gh run rerun`** or any command that triggers GitHub workflow runs
 - The `collect` commands in gh-actions-metrics are read-only only
 
+## Agent Configuration
+
+Granular tool/MCP access per agent. Each agent handles specific domains:
+
+| Agent | Purpose | MCPs | When to Dispatch |
+|-------|---------|------|------------------|
+| **main** | Orchestrator (no elevated access) | codebase-memory-mcp, github, context7 | Code exploration, implementation, dispatch |
+| **browser-agent** | Browser interaction | chrome-devtools, superpowers-chrome | Screenshots, page analysis, web interaction |
+| **observability-and-troubleshoot** | Production diagnostics | sentry, datadog, gcloud | Sentry/logs/metrics queries, root cause analysis |
+| **cortex-agent** | Gorgias domain knowledge | cortex | Metric definitions, schemas, business rules |
+| **knowledge-agent** | External docs & issues | notion, linear | Notion docs, Linear issues/epics, specs |
+
+**Dispatch Rules:** See `agents/routing.md` for dispatch examples & detailed rules.
+
+**Main Agent Constraints:**
+- No chrome-devtools, superpowers-chrome (→ browser-agent)
+- No sentry, datadog, gcloud (→ observability-and-troubleshoot)
+- No cortex (→ cortex-agent)
+- No Notion, Linear (→ knowledge-agent)
+
+**Build & Deploy:** `./build-agents.sh` parses agent definitions, generates config. See `DEPLOY.md` for setup.
+
+**RTK Usage:** Always prefer RTK commands (rtk grep, rtk find, rtk read) for exploration when available.
+
 ## PR Workflow
 
 When asked to "create PR", "open PR", "update PR", "draft PR", or similar:
