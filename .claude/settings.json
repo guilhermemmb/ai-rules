@@ -1,0 +1,12 @@
+{
+  "agents": {
+    "default": {
+      "mcps": [
+        "codebase-memory-mcp",
+        "github",
+        "context7",
+        "linear"
+      ]
+    }
+  }
+}
