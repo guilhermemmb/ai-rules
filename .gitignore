@@ -14,3 +14,5 @@ credentials/
 .codex/
 .warp/
 .warpindexingignore
+# Auto-generated using merge-rules.sh
+AGENTS.md
