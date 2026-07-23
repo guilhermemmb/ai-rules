@@ -53,6 +53,11 @@ metadata:
 - Good: `fix(bundle): reduce bundle size by removing unused deps`
 - Bad: `Added new feature` · `Fixed bug.` · `Update`
 
+## Browser Interaction
+- **Never use chrome-devtools MCP tools directly** (navigate_page, take_screenshot, click, fill, evaluate_script, etc.) — always delegate to the `browser-agent` subagent.
+- **Never run `npx agentic-browser` or `agentic-browser` CLI directly** — always delegate to the `browser-agent` subagent.
+- Exception: you are the `browser-agent` subagent itself.
+
 ## General
 - Temporary-file cleanup period: 15 days.
 
