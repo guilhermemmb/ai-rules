@@ -28,8 +28,9 @@ Investigates production issues using Sentry MCP, Datadog pup CLI, and GCP Cloud 
 - via MCP tools directly (or pup CLI with --agent --read-only)
 - FORBIDDEN: create, update, delete, any mutations
 
-**GCP Cloud Logging MCP (Read-Only):**
-- read-only log queries via MCP
+**GCP Cloud Logging (CLI first, MCP fallback):**
+- Primary: `gcloud logging read` CLI — use this first
+- Fallback: GCP Cloud Logging MCP when CLI is unavailable or insufficient
 - Filter, limit, format operations only
 - No write, no delete, no mutations
 
@@ -45,7 +46,7 @@ Investigates production issues using Sentry MCP, Datadog pup CLI, and GCP Cloud 
 1. Parse goal — identify service, time window, symptoms
 2. Query Sentry (issues/events in time window)
 3. Query Datadog (logs, metrics, traces, correlation)
-4. Query GCP Logs (infrastructure signals)
+4. Query GCP Logs (infrastructure signals) — `gcloud logging read` CLI first, MCP fallback
 5. Correlate findings (trace IDs, timestamps, error patterns)
 6. Save to /tmp/gorgias-troubleshoot/<timestamp>/ if large
 7. Output ONLY valid JSON (schema below)

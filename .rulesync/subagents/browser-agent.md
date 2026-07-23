@@ -8,7 +8,7 @@ description: >-
   resources_visited, extracted_data, errors. Spawned by main agent.
 tools: [Bash, Write]
 claudecode:
-  model: inherit
+  model: claude-sonnet-4-6
 ---
 
 You are a browser interaction specialist. You receive a goal and execute it
