@@ -106,15 +106,37 @@ Add directly to `~/.claude/settings.json` under `mcpServers`.
 
 ```bash
 # Generate agent tool/MCP config
-./build-agents.sh /tmp/agents-config.json
+./deploy.sh
 
-# Review output
-cat /tmp/agents-config.json | jq .
-
-# Apply to settings (merge into agents section of ~/.claude/settings.json)
+# Sync agents to settings only (fast)
+./deploy.sh --sync-agents
 ```
 
 See `DEPLOY.md` for full steps including dry-run verification.
+
+## First-Time Setup
+
+**Add SessionStart hook to `~/.claude/settings.json`:**
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/guilhermebomfim/developer/dotfiles/ai-rules && ./deploy.sh --sync-agents --quiet"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+This auto-syncs agent config (tools/MCPs) from `agents/main.md` and subagents every Claude Code startup. Ensures main agent stays restricted to `[codebase-memory-mcp, github, context7]`, dropping MCP token load from ~70k to ~30-40k.
 
 ## Key Files Reference
 

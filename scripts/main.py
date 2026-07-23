@@ -32,6 +32,11 @@ def main():
         action="store_true",
         help="Only show errors",
     )
+    parser.add_argument(
+        "--sync-agents",
+        action="store_true",
+        help="Sync agents config into settings (skip build/verify/rulesync)",
+    )
 
     args = parser.parse_args()
 
@@ -46,6 +51,22 @@ def main():
     agents_dir = script_dir / "agents"
     settings_file = Path.home() / ".claude" / "settings.json"
 
+    # Fast sync mode: patch settings only, skip build/verify/rulesync
+    if args.sync_agents:
+        logger.info("Sync mode: patching settings only")
+        # Build config (needed for patch_settings)
+        config = build_agents_config(str(agents_dir), logger)
+        if not config:
+            logger.error("Failed to build agents config")
+            return 1
+        # Patch settings
+        if not patch_settings(str(settings_file), config, logger):
+            logger.error("Failed to patch settings")
+            return 1
+        logger.success("Agents synced to settings")
+        return 0
+
+    # Full deployment mode
     # Step 1: Build agents config
     logger.info("Step 1: Building agents config")
     config = build_agents_config(str(agents_dir), logger)

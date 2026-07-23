@@ -37,10 +37,20 @@ def patch_settings(settings_file, agents_config, logger):
     except IOError as e:
         logger.warn(f"Failed to create backup: {e}")
 
-    # Merge agents block
+    # Initialize agents block if missing
+    if "agents" not in settings:
+        settings["agents"] = {}
+
+    # Merge main agent if present
+    if "main" in agents_config:
+        settings["agents"]["main"] = agents_config["main"]
+        logger.debug("Merged main agent into settings")
+
+    # Merge subagents
     if "agents" in agents_config:
-        settings["agents"] = agents_config["agents"]
-        logger.debug("Merged agents block into settings")
+        for agent_name, agent_config in agents_config["agents"].items():
+            settings["agents"][agent_name] = agent_config
+        logger.debug("Merged subagents into settings")
 
     # Validate result
     try:

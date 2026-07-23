@@ -63,9 +63,10 @@ def build_agents_config(agents_dir, logger):
     """
     Parse all agents/*.md files → agents config dict.
 
-    Skip: main.md, routing.md, README.md
+    Includes main.md as agents.main, plus subagents.
+    Skips: routing.md, README.md
 
-    Returns dict with structure: {agents: {agent_name: {tools: [...], mcps: [...]}}}
+    Returns dict with structure: {main: {...}, agents: {agent_name: {...}}}
     """
     logger.debug(f"Building agent config from {agents_dir}")
 
@@ -73,6 +74,17 @@ def build_agents_config(agents_dir, logger):
     if not agents_path.exists():
         logger.error(f"Agents directory not found: {agents_dir}")
         return {}
+
+    # Parse main agent if it exists
+    main_agent = {}
+    main_file = agents_path / "main.md"
+    if main_file.exists():
+        main_agent = parse_agent_file(str(main_file))
+        if main_agent:
+            main_agent.pop("name", None)
+            logger.debug("Parsed main agent")
+        else:
+            logger.warn("main.md exists but is invalid")
 
     agents = {}
     skip_files = {"main.md", "routing.md", "README.md"}
@@ -91,12 +103,18 @@ def build_agents_config(agents_dir, logger):
         agents[name] = agent
         logger.debug(f"Parsed agent: {name}")
 
-    if not agents:
+    config = {}
+    if main_agent:
+        config["main"] = main_agent
+    if agents:
+        config["agents"] = agents
+
+    if not config:
         logger.warn("No agents found in agents/*.md")
         return {}
 
-    config = {"agents": agents}
-    logger.success(f"Built config for {len(agents)} agents")
+    agent_count = len(agents) + (1 if main_agent else 0)
+    logger.success(f"Built config for {agent_count} agents")
     return config
 
 
