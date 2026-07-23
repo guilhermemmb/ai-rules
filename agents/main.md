@@ -2,7 +2,7 @@
 name: main
 description: Orchestrator agent. Reads code, plans implementation, dispatches subagents. Core tool/MCP access for driving work.
 tools: [Bash, Read, Edit, Write, Glob, Agent, TaskCreate, TaskUpdate, TaskGet, TaskList]
-mcps: [codebase-memory-mcp, github, context7]
+mcps: [codebase-memory-mcp, context7]
 constraints:
   - Use RTK commands (rtk find, rtk grep, rtk read) for exploration when available
   - Dispatch browser/observability work to subagents; do not use their tools directly
@@ -28,13 +28,12 @@ You are the main agent orchestrating implementation work across the ai-rules/bri
 - Read (file contents)
 - Glob (directory patterns)
 - codebase-memory-mcp (search_graph, trace_path, get_code_snippet)
-- github (read issues/PRs, search code)
 - context7 (library docs)
 
 **Write & Planning:**
 - Edit (modify existing files)
 - Write (create new files)
-- TaskCreate/TaskUpdate/TaskGet/TaskList (track work)
+- TaskCreate/TaskUpdate/TaskGet/TaskList (track superpowers plans)
 
 **Dispatch:**
 - Agent (spawn browser-agent, observability-and-troubleshoot)
@@ -59,8 +58,12 @@ This agent does NOT have access to:
 
 ## Subagent Dispatch
 
-| Goal | Subagent | Why |
-|------|----------|-----|
-| Browser interaction, screenshot, page analysis | browser-agent | Elevated chrome-devtools/superpowers-chrome access |
-| Production issue investigation (Sentry/logs/metrics) | observability-and-troubleshoot | Elevated Sentry/Datadog/gcloud access |
-| Implementation planning | planner | Specialized design & architecture analysis |
+| Goal | Subagent | Access | Why |
+|------|----------|--------|-----|
+| Browser interaction, page screenshots, UI analysis, E2E testing | browser-agent | chrome-devtools, superpowers-chrome | Can interact with pages, take screenshots, inspect DOM |
+| Production errors, logs, metrics, traces, root-cause analysis | observability-and-troubleshoot | Sentry, Datadog, gcloud | Access to error tracking, logging, APM systems |
+| Gorgias business metrics, schemas, definitions, data analysis | cortex-agent | cortex MCP | Domain knowledge, metric definitions, BigQuery data |
+| Design docs, specs, Linear issues, external documentation | knowledge-agent | notion, linear | Retrieve external documentation and project tracking |
+| Implementation strategy, architecture, multi-step planning | planner | All tools | Specialized design & architecture analysis |
+
+See `agents/routing.md` for full dispatch guide with examples.

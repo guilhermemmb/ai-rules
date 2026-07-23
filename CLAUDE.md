@@ -4,24 +4,17 @@
 
 - Always use `guilhermebomfim/` as the prefix (e.g. `guilhermebomfim/feature-name`), never `guilhermemmb/`
 
-## GitHub Operations — Delegated to github-agent
+## GitHub Operations — gh CLI
 
-Main agent does NOT call GitHub tools. All GitHub operations delegated to `github-agent` subagent.
+Main agent uses `gh` CLI directly for GitHub operations. No MCP needed.
 
-**github-agent handles:**
+**Allowed gh commands:**
 
-- PR operations (create, list, view, diff, edit, merge, review, comment)
-- Issue operations (create, list, view, search, edit, comment)
-- Repository operations (search, list)
-- Branch operations (create, list, delete)
-- Workflow operations (list, view)
-
-**Main agent responsibility:**
-
-- Describe the GitHub task (PR creation, issue search, etc.)
-- Provide context (title, description, filters)
-- Wait for structured response
-- Do NOT call GitHub tools directly
+- `gh pr create/edit/merge/view/diff/checks`
+- `gh issue create/edit/view/list`
+- `gh repo search/list`
+- `gh run list/view`
+- `gh api` (GET only)
 
 ## Git Push Safety
 
@@ -39,8 +32,7 @@ Granular tool/MCP access per agent. Each agent handles specific domains:
 
 | Agent | Purpose | MCPs | When to Dispatch |
 |-------|---------|------|------------------|
-| **main** | Orchestrator (no elevated access) | codebase-memory-mcp, context7 | Code exploration, implementation, dispatch |
-| **github-agent** | GitHub operations | github | PR/issue creation, search, review, merge |
+| **main** | Orchestrator | codebase-memory-mcp, context7 | Code exploration, implementation, gh CLI, dispatch |
 | **browser-agent** | Browser interaction | chrome-devtools, superpowers-chrome | Screenshots, page analysis, web interaction |
 | **observability-and-troubleshoot** | Production diagnostics | sentry, datadog, gcloud | Sentry/logs/metrics queries, root cause analysis |
 | **cortex-agent** | Gorgias domain knowledge | cortex | Metric definitions, schemas, business rules |
@@ -50,7 +42,6 @@ Granular tool/MCP access per agent. Each agent handles specific domains:
 
 **Main Agent Constraints:**
 
-- No github (→ github-agent)
 - No chrome-devtools, superpowers-chrome (→ browser-agent)
 - No sentry, datadog, gcloud (→ observability-and-troubleshoot)
 - No cortex (→ cortex-agent)
