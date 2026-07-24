@@ -1,17 +1,16 @@
 ---
-description: 'Review a pull request'
-targets: ["*"]
+description: 'Review a pull request using pr-review-toolkit agents'
+targets: ["claudecode"]
 ---
 
-target_pr = $ARGUMENTS
+# Review PR
 
-If target_pr is not provided, use the PR of the current branch.
+Dispatch a comprehensive PR review using the `pr-review-toolkit` specialized agents.
 
-Execute the following in parallel:
+Optional aspect filter: $ARGUMENTS (comments | tests | errors | types | code | simplify | all)
+If not provided, default to `all`.
 
-1. Check code quality and style consistency
-2. Review test coverage
-3. Verify documentation updates
-4. Check for potential bugs or security issues
+Run `/pr-review-toolkit:review-pr $ARGUMENTS`
 
-Then provide a summary of findings and suggestions for improvement.
+Do NOT run `gh pr comment` to post results — the GitHub API read-only rule in overview.md
+blocks all write operations. Print findings to terminal only.
