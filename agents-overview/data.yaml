@@ -6,12 +6,14 @@ nodes:
     role: Orchestrator
     color: '#60a5fa'
     parent: null
+    model: claude-sonnet-4-6[1m]
     orchestrates: true
     dispatches:
       - browser-agent
       - observability
       - cortex-agent
       - knowledge-agent
+      - planner
     constraints: |
       Cannot directly access: chrome-devtools, sentry, datadog, gcloud, cortex, notion, linear
       Must dispatch to appropriate subagent for these tools
@@ -29,8 +31,9 @@ nodes:
     role: Browser Interaction
     color: '#60a5fa'
     parent: main
+    model: claude-sonnet-4-6[1m]
     trigger: 'Screenshots, page analysis, UI interaction, E2E testing'
-    tools: 'chrome-devtools, agentic-browser'
+    tools: 'chrome-devtools, superpowers-chrome, agentic-browser'
     constraints: |
       Cannot access: Sentry, Datadog, gcloud, cortex, Notion, Linear
       Browser interaction only — no backend diagnostics
@@ -47,16 +50,19 @@ nodes:
     role: Production Diagnostics
     color: '#60a5fa'
     parent: main
+    model: claude-sonnet-4-6
     trigger: 'Production errors, logs, metrics, traces, root-cause analysis'
-    tools: 'Sentry, Datadog, gcloud logging'
+    tools: 'Sentry, Datadog, gcloud logging, codebase-memory-mcp'
     constraints: |
       Cannot access: chrome-devtools, cortex, Notion, Linear
       Production diagnostics only — no UI interaction
+      codebase-memory-mcp is read-only: map telemetry to code, don't infer runtime behavior from it
     responsibilities: |
       • Query Sentry for error details & events
       • Fetch logs from Datadog & gcloud
       • Analyze metrics & APM traces
       • Trace request paths & dependencies
+      • Correlate stack traces to source via codebase-memory-mcp
       • Root cause analysis & incident response
 
   - id: cortex-agent
@@ -65,16 +71,19 @@ nodes:
     role: Domain Knowledge
     color: '#60a5fa'
     parent: main
+    model: claude-haiku-4-5
     trigger: 'Gorgias metrics, schemas, definitions, business rules, data analysis'
-    tools: 'cortex-mcp, BigQuery'
+    tools: 'cortex-mcp, BigQuery, codebase-memory-mcp'
     constraints: |
       Cannot access: chrome-devtools, Sentry/Datadog, Notion, Linear
       Gorgias domain knowledge only — no external docs
+      codebase-memory-mcp optional & read-only: cortex stays source of truth for definitions
     responsibilities: |
       • Access Gorgias metric definitions
       • Query BigQuery data & schemas
       • Provide business context & rules
       • Analyze business metrics & KPIs
+      • Map metrics/pipelines to code via codebase-memory-mcp
       • Explain domain concepts
 
   - id: knowledge-agent
@@ -83,6 +92,7 @@ nodes:
     role: External Docs & Issues
     color: '#60a5fa'
     parent: main
+    model: claude-haiku-4-5
     trigger: 'Design docs, specs, Linear issues, Notion pages, external docs'
     tools: 'notion-mcp, linear-mcp'
     constraints: |
@@ -94,6 +104,24 @@ nodes:
       • Search external documentation
       • Retrieve project context & decisions
       • Link requirements to implementation
+
+  - id: planner
+    label: planner
+    type: agent
+    role: Planning (user-invoke only)
+    color: '#60a5fa'
+    parent: main
+    model: inherit
+    trigger: 'User explicitly requests a plan/spec — cannot write code'
+    tools: 'codebase-memory-mcp, context7-mcp (read-only analysis)'
+    constraints: |
+      Invoked by user explicitly only — never auto-dispatched
+      Read/analyze only — must not write code
+    responsibilities: |
+      • Analyze related files & codebase structure
+      • Produce detailed implementation plans / specs
+      • Output plan files to tmp/ if needed
+      • No code writing
 
   # MCPs (owned by agents)
   - id: codebase-memory
@@ -117,6 +145,13 @@ nodes:
     color: '#a78bfa'
     parent: browser-agent
 
+  - id: superpowers-chrome
+    label: superpowers-chrome
+    type: mcp
+    role: Browser Superpowers
+    color: '#a78bfa'
+    parent: browser-agent
+
   - id: sentry
     label: sentry-mcp
     type: mcp
@@ -128,6 +163,13 @@ nodes:
     label: datadog-mcp
     type: mcp
     role: APM & Logs
+    color: '#a78bfa'
+    parent: observability
+
+  - id: gcloud
+    label: gcloud
+    type: mcp
+    role: GCP Logs
     color: '#a78bfa'
     parent: observability
 
@@ -228,7 +270,7 @@ nodes:
     location: '~/.claude/settings.json'
     config: |
       • MCPs: codebase-memory-mcp, context7-mcp
-      • Model: Opus 4.8 1M
+      • Model: Sonnet 4.6 1M
       • Permissions: auto mode
 
   - id: settings
@@ -311,9 +353,17 @@ links:
     target: knowledge-agent
     label: dispatches
 
+  - source: main
+    target: planner
+    label: dispatches
+
   # Browser agent
   - source: browser-agent
     target: chrome-devtools
+    label: uses
+
+  - source: browser-agent
+    target: superpowers-chrome
     label: uses
 
   # Observability agent
@@ -325,9 +375,21 @@ links:
     target: datadog
     label: uses
 
+  - source: observability
+    target: gcloud
+    label: uses
+
+  - source: observability
+    target: codebase-memory
+    label: uses
+
   # Cortex agent
   - source: cortex-agent
     target: cortex
+    label: uses
+
+  - source: cortex-agent
+    target: codebase-memory
     label: uses
 
   # Knowledge agent
@@ -337,6 +399,15 @@ links:
 
   - source: knowledge-agent
     target: linear
+    label: uses
+
+  # Planner agent
+  - source: planner
+    target: codebase-memory
+    label: uses
+
+  - source: planner
+    target: context7
     label: uses
 
   # Infrastructure

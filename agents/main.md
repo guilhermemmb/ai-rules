@@ -5,7 +5,7 @@ constraints:
 - Read security-scan.md before any git commit/push/rebase
 description: Orchestrator agent. Reads code, plans implementation, dispatches subagents.
   Core tool/MCP access for driving work.
-model: claude-opus-4-8[1m]
+model: claude-sonnet-4-6[1m]
 name: main
 tools:
 - Bash

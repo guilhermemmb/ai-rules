@@ -473,6 +473,22 @@
             description.textContent = agent.role;
             container.appendChild(description);
 
+            // Model badge
+            if (agent.model) {
+                const modelBadge = document.createElement('div');
+                modelBadge.style.display = 'inline-block';
+                modelBadge.style.background = 'rgba(167, 139, 250, 0.15)';
+                modelBadge.style.border = '1px solid rgba(167, 139, 250, 0.4)';
+                modelBadge.style.borderRadius = '4px';
+                modelBadge.style.padding = '0.2rem 0.5rem';
+                modelBadge.style.fontSize = '0.75rem';
+                modelBadge.style.color = '#c4b5fd';
+                modelBadge.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, monospace';
+                modelBadge.style.marginBottom = '0.75rem';
+                modelBadge.textContent = '⚙ ' + agent.model;
+                container.appendChild(modelBadge);
+            }
+
             // Main agent orchestration info
             if (agent.orchestrates) {
                 const orchestrationBox = document.createElement('div');

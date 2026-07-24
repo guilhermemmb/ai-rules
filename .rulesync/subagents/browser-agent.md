@@ -8,7 +8,7 @@ description: >-
   resources_visited, extracted_data, errors. Spawned by main agent.
 tools: [Bash, Write]
 claudecode:
-  model: claude-opus-4-8[1m]
+  model: claude-sonnet-4-6[1m]
   mcpServers: [chrome-devtools, superpowers-chrome]
 ---
 

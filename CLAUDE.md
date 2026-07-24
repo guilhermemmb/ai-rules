@@ -34,8 +34,8 @@ Granular tool/MCP access per agent. Each agent handles specific domains:
 |-------|---------|------|------------------|
 | **main** | Orchestrator | codebase-memory-mcp, context7 | Code exploration, implementation, gh CLI, dispatch |
 | **browser-agent** | Browser interaction | chrome-devtools, superpowers-chrome | Screenshots, page analysis, web interaction |
-| **observability-and-troubleshoot** | Production diagnostics | sentry, datadog, gcloud | Sentry/logs/metrics queries, root cause analysis |
-| **cortex-agent** | Gorgias domain knowledge | cortex | Metric definitions, schemas, business rules |
+| **observability-and-troubleshoot** | Production diagnostics | sentry, datadog, gcloud, codebase-memory-mcp | Sentry/logs/metrics queries, root cause analysis, correlate telemetry to code |
+| **cortex-agent** | Gorgias domain knowledge | cortex, codebase-memory-mcp | Metric definitions, schemas, business rules, map metrics to code |
 | **knowledge-agent** | External docs & issues | notion, linear | Notion docs, Linear issues/epics, specs |
 
 **Dispatch Rules:** See `agents/routing.md` for dispatch examples & detailed rules.

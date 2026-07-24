@@ -8,8 +8,8 @@ Decision guide for main agent to delegate work to specialized subagents, or exec
 |-------|---------|--------|---------|
 | **main** | Code, git, tests, design, planning | Read, Edit, Write, Bash, codebase-memory-mcp, context7 | "Find where the auth middleware uses session tokens" |
 | **browser-agent** | Screenshots, page interaction, UI inspection | chrome-devtools, superpowers-chrome | "Take a screenshot of the login page and extract the form fields" |
-| **observability-and-troubleshoot** | Production errors, logs, metrics, traces | Sentry, Datadog, gcloud | "Find errors in helpdesk service last hour, root cause" |
-| **cortex-agent** | Gorgias business metrics, schemas, definitions | cortex MCP | "What's the definition of MRR? Which tables store it?" |
+| **observability-and-troubleshoot** | Production errors, logs, metrics, traces | Sentry, Datadog, gcloud, codebase-memory-mcp | "Find errors in helpdesk service last hour, root cause" |
+| **cortex-agent** | Gorgias business metrics, schemas, definitions | cortex MCP, codebase-memory-mcp | "What's the definition of MRR? Which tables store it?" |
 | **knowledge-agent** | Notion docs, Linear issues, specs | notion, linear MCPs | "Find design docs for auth refactor. Get related Linear issues." |
 | **planner** | Implementation strategy, architecture, design | All tools + reasoning | "Plan a refactor of the auth module" |
 
@@ -71,6 +71,7 @@ Decision guide for main agent to delegate work to specialized subagents, or exec
 - Find error patterns and signatures
 - Correlate errors with deployments
 - Diagnose latency and performance regressions
+- Correlate stack traces to source code (codebase-memory-mcp: search_graph, get_code_snippet, trace_path, detect_changes)
 - Build root-cause hypotheses
 
 **Main agent sends:**
@@ -108,6 +109,7 @@ Decision guide for main agent to delegate work to specialized subagents, or exec
 - Describe data model and relationships
 - Query business data from BigQuery
 - Analyze trends and patterns
+- Map metrics/pipelines to their implementation code (codebase-memory-mcp, read-only)
 - Answer strategic questions
 
 **Main agent sends:**

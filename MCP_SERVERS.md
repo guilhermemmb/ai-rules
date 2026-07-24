@@ -8,23 +8,38 @@ Central inventory of all MCP (Model Context Protocol) servers configured across 
 
 | Name | Type | Platforms | Purpose |
 |------|------|-----------|---------|
-| `codebase-memory-mcp` | stdio | Claude Code, Codex, Gemini, OpenCode, Antigravity, Zed, VS Code, Cursor | Semantic code search & graph-based codebase exploration via `search_graph` |
+| `codebase-memory-mcp` | stdio | Claude Code, Codex, Gemini, OpenCode, Antigravity, Zed, VS Code, Cursor | Local code-intelligence server — persistent knowledge graph over source for graph-based exploration |
 
 ### codebase-memory-mcp
 
+Local, single-binary code-intelligence server ([DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)). Builds a persistent knowledge graph from source using tree-sitter (158 languages) plus semantic type resolution for 12 (Python, TypeScript, Go, Rust, Java, PHP, C#, C/C++, Kotlin). Sub-millisecond queries, ~99% fewer tokens than file-by-file reading, 100% local (no telemetry, code never leaves the machine).
+
 Automatically installed and configured across all AI tools (Claude Code, Codex, Gemini CLI, OpenCode, Antigravity, Zed, VS Code, Cursor).
+
+**Config:** `.rulesync/mcp.json` — `command: /Users/guilhermebomfim/.local/bin/codebase-memory-mcp`.
 
 **Hooks:**
 - Claude Code: `PreToolUse` hook (Grep/Glob search-graph augmenter, non-blocking)
 - Other tools: `SessionStart` hook (MCP usage reminder)
 
-**Use when:**
-- Exploring codebase structure: "show me all files with pattern X"
-- Code search: "find all callers of function Y"
-- Dependency analysis: "what does X import/export"
-- Call graph queries: "trace the call chain for Z"
+**Tools (15):**
+- Discover/search: `search_graph`, `search_code`, `get_architecture`
+- Trace/read: `trace_path`, `get_code_snippet`, `query_graph` (read-only Cypher), `get_graph_schema`, `detect_changes`
+- Manage: `index_repository`, `list_projects`, `index_status`, `delete_project`, `ingest_traces`, `manage_adr`
 
-**Skill:** Use `/codebase-memory` skill or direct Cypher queries for advanced graph operations.
+**Indexing modes:** `full` (files + similarity/semantic edges) · `moderate` · `fast` (no similarity/semantic) · `cross-repo-intelligence` (match Routes/Channels across projects). `persistence: true` writes a shareable `.codebase-memory/graph.db.zst`.
+
+**Config files & env:** `.codebase-memory.json` (custom extensions), `.cbmignore` (ignore rules); `CBM_CACHE_DIR`, `CBM_WORKERS`, `CBM_ALLOWED_ROOT`, `CBM_LOG_LEVEL`.
+
+**Use when:**
+- Orienting in an unfamiliar codebase: `get_architecture`
+- Finding a definition/symbol: `search_graph`, then `get_code_snippet`
+- Callers/callees, impact, cross-service flow: `trace_path`
+- Multi-hop / aggregate / hot-path queries: `query_graph`
+
+**Agents with access:** `main`, `planner`, `observability-and-troubleshoot` (correlate telemetry to code), `cortex-agent` (map metrics/pipelines to implementation).
+
+**Rule & skill:** `rules/codebase-memory.md` for full usage guidance; direct Cypher via `query_graph` for advanced graph operations.
 
 ---
 
