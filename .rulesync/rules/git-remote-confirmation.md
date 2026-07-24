@@ -1,10 +1,10 @@
 ---
-root: true
-targets:
-  - '*'
-globs:
-  - '**/*'
+name: git-remote-confirmation
+description: Confirm before any git/gh command that writes to or alters the remote
+metadata:
+  type: rule
 ---
+
 # Git Remote & GitHub — Confirm Before Acting
 
 Before executing ANY command that writes to or alters the remote, **always stop and ask the user for explicit confirmation first**. This includes:

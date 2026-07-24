@@ -28,9 +28,6 @@ bridgetown/
 │   ├── knowledge-agent.md     # Notion + Linear MCPs
 │   ├── routing.md             # Dispatch rules & examples
 │   └── README.md              # Quick agent reference
-├── rules/                     # Always-on supplementary rules (not in .rulesync)
-│   ├── git-remote-confirmation.md
-│   └── pr-workflow.md
 └── .rulesync/                 # Source of truth — distributed by rulesync
     ├── rules/                 # → ~/.claude/rules/, .opencode/, .codex/, .warp/
     ├── skills/                # → ~/.claude/skills/
@@ -50,6 +47,8 @@ bridgetown/
 ```
 
 `rulesync.jsonc` at the repo root controls targets and features. Run `rulesync` after any change to `.rulesync/`.
+
+> **All rules must live in `.rulesync/rules/`** — this is the single source of truth. Do not create a top-level `rules/` directory; files there are not distributed by rulesync and will be ignored.
 
 ## Agent System
 
