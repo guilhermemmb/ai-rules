@@ -1,6 +1,7 @@
 ---
 name: main
 description: Orchestrator agent. Reads code, plans implementation, dispatches subagents. Core tool/MCP access for driving work.
+model: sonnet[1m]
 tools: [Bash, Read, Edit, Write, Glob, Agent, TaskCreate, TaskUpdate, TaskGet, TaskList]
 mcps: [codebase-memory-mcp, context7-mcp]
 constraints:
