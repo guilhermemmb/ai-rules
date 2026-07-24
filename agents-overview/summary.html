@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Rules — Summary</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #e2e8f0;
+    padding: 28px 32px;
+    width: 1200px;
+  }
+  h1 {
+    font-size: 1.6rem;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .sub { color: #94a3b8; font-size: 0.9rem; margin: 4px 0 18px; }
+
+  .main-card {
+    background: rgba(96,165,250,0.1);
+    border: 2px solid #60a5fa;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+  }
+  .main-card .name { font-size: 1.15rem; font-weight: 700; color: #60a5fa; }
+  .main-card .desc { color: #cbd5e1; font-size: 0.85rem; margin: 4px 0 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-size: 0.72rem; padding: 3px 9px; border-radius: 5px;
+    font-family: ui-monospace, Menlo, monospace;
+  }
+  .chip.disp { background: rgba(96,165,250,0.2); border: 1px solid rgba(96,165,250,0.5); color: #93c5fd; }
+  .chip.mcp  { background: rgba(167,139,250,0.15); border: 1px solid rgba(167,139,250,0.45); color: #c4b5fd; }
+  .row-label { font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin: 10px 0 5px; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .card {
+    background: rgba(30,41,59,0.8);
+    border: 1px solid rgba(148,163,184,0.25);
+    border-left: 3px solid #a78bfa;
+    border-radius: 8px;
+    padding: 13px 15px;
+  }
+  .card .name { font-weight: 700; font-size: 0.95rem; color: #e2e8f0; }
+  .card .model {
+    display: inline-block; font-size: 0.68rem; font-family: ui-monospace, Menlo, monospace;
+    color: #c4b5fd; background: rgba(167,139,250,0.15);
+    border: 1px solid rgba(167,139,250,0.35); border-radius: 4px;
+    padding: 1px 6px; margin-top: 4px;
+  }
+  .card .trig { color: #94a3b8; font-size: 0.78rem; line-height: 1.35; margin: 8px 0 9px; }
+  .card .mcps { display: flex; flex-wrap: wrap; gap: 5px; }
+  .card .mcps .chip { font-size: 0.68rem; padding: 2px 7px; }
+
+  .legend { display: flex; gap: 20px; margin-top: 18px; font-size: 0.78rem; color: #94a3b8; flex-wrap: wrap; }
+  .legend span { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 3px; }
+  .footer { margin-top: 14px; font-size: 0.72rem; color: #475569; }
+</style>
+</head>
+<body>
+  <h1>AI Rules Architecture</h1>
+  <div class="sub">Orchestrator + 5 specialized subagents · MCP access per agent</div>
+
+  <div class="main-card">
+    <div class="name">🧭 main <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">— Orchestrator</span></div>
+    <div class="desc">Reads code, plans, implements, dispatches subagents. Own MCPs: codebase-memory-mcp, context7-mcp.</div>
+    <div class="row-label">Dispatches</div>
+    <div class="chips">
+      <span class="chip disp">browser-agent</span>
+      <span class="chip disp">observability-and-troubleshoot</span>
+      <span class="chip disp">cortex-agent</span>
+      <span class="chip disp">knowledge-agent</span>
+      <span class="chip disp">planner</span>
+    </div>
+    <div class="row-label">MCPs</div>
+    <div class="chips">
+      <span class="chip mcp">codebase-memory-mcp</span>
+      <span class="chip mcp">context7-mcp</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="name">🌐 browser-agent</div><br>
+      <span class="model">⚙ sonnet-4-6[1m]</span>
+      <div class="trig">Screenshots, page interaction, UI inspection, E2E testing</div>
+      <div class="mcps">
+        <span class="chip mcp">chrome-devtools</span>
+        <span class="chip mcp">superpowers-chrome</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="name">🔍 observability-and-troubleshoot</div><br>
+      <span class="model">⚙ sonnet-4-6</span>
+      <div class="trig">Prod errors, logs, metrics, traces, root-cause — correlated to source code</div>
+      <div class="mcps">
+        <span class="chip mcp">sentry</span>
+        <span class="chip mcp">datadog</span>
+        <span class="chip mcp">gcloud</span>
+        <span class="chip mcp">codebase-memory-mcp</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="name">📊 cortex-agent</div><br>
+      <span class="model">⚙ haiku-4-5</span>
+      <div class="trig">Gorgias metrics, schemas, definitions, business rules — mapped to impl</div>
+      <div class="mcps">
+        <span class="chip mcp">cortex</span>
+        <span class="chip mcp">codebase-memory-mcp</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="name">📚 knowledge-agent</div><br>
+      <span class="model">⚙ haiku-4-5</span>
+      <div class="trig">Notion docs, Linear issues, specs, design docs</div>
+      <div class="mcps">
+        <span class="chip mcp">notion</span>
+        <span class="chip mcp">linear</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="name">🗺 planner</div><br>
+      <span class="model">⚙ inherit</span>
+      <div class="trig">User-invoke only. Plans/specs, read-only analysis — never writes code</div>
+      <div class="mcps">
+        <span class="chip mcp">codebase-memory-mcp</span>
+        <span class="chip mcp">context7-mcp</span>
+      </div>
+    </div>
+
+    <div class="card" style="border-left-color:#34d399;background:rgba(52,211,153,0.06);">
+      <div class="name" style="color:#6ee7b7;">🧠 codebase-memory-mcp</div><br>
+      <span class="model" style="color:#6ee7b7;background:rgba(52,211,153,0.12);border-color:rgba(52,211,153,0.35);">local knowledge graph</span>
+      <div class="trig">Persistent code graph (158 langs). Sub-ms queries, ~99% fewer tokens. Shared by 4 agents.</div>
+      <div class="mcps">
+        <span class="chip disp">main</span>
+        <span class="chip disp">planner</span>
+        <span class="chip disp">observability</span>
+        <span class="chip disp">cortex</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><div class="dot" style="background:#60a5fa;"></div>Agent</span>
+    <span><div class="dot" style="background:#a78bfa;"></div>MCP</span>
+    <span><div class="dot" style="background:#34d399;"></div>Shared code-intel</div></span>
+  </div>
+  <div class="footer">Full interactive view: agents-overview/index.html · driven by data.yaml</div>
+</body>
+</html>
