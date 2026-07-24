@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guilherme's AI Rules Architecture</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            padding: 1.5rem 2rem;
+            background: rgba(15, 23, 42, 0.8);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.1);
+            backdrop-filter: blur(10px);
+            flex-shrink: 0;
+        }
+
+        header h1 {
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        header p {
+            font-size: 0.95rem;
+            color: #94a3b8;
+            margin-bottom: 1rem;
+        }
+
+        .legend {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            font-size: 0.85rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        #canvas {
+            flex: 1;
+            overflow: auto;
+            padding: 2rem;
+        }
+
+        .canvas-content {
+            max-width: 1800px;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin: 2rem 0 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid rgba(96, 165, 250, 0.3);
+        }
+
+        .section-title:first-child {
+            margin-top: 0;
+        }
+
+        /* Main Agent Container */
+        .agent-container {
+            background: rgba(30, 41, 59, 0.6);
+            border: 2px solid rgba(96, 165, 250, 0.5);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .main-agent {
+            background: rgba(96, 165, 250, 0.1);
+            border-color: #60a5fa;
+            margin-bottom: 2rem;
+        }
+
+        .agent-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #60a5fa;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .agent-title::before {
+            content: '';
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #60a5fa;
+        }
+
+        .agent-title.sub::before {
+            background: #a78bfa;
+        }
+
+        /* Grid for child elements */
+        .children-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* Item Cards */
+        .item-card {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .item-card:hover {
+            background: rgba(30, 41, 59, 1);
+            border-color: rgba(148, 163, 184, 0.6);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .item-card.expanded {
+            border-color: rgba(96, 165, 250, 0.6);
+            background: rgba(30, 41, 59, 1);
+            box-shadow: 0 8px 24px rgba(96, 165, 250, 0.2);
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .item-label {
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1;
+        }
+
+        .item-label::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .expand-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            font-size: 1.2rem;
+            transition: transform 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .item-card.expanded .expand-icon {
+            transform: rotate(180deg);
+        }
+
+        .item-role {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-top: 0.5rem;
+        }
+
+        .item-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.2s ease;
+            margin-top: 0;
+        }
+
+        .item-card.expanded .item-details {
+            max-height: 200px;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(96, 165, 250, 0.2);
+        }
+
+        .detail-item {
+            font-size: 0.8rem;
+            line-height: 1.4;
+            color: #cbd5e1;
+            margin-bottom: 0.5rem;
+        }
+
+        .detail-label {
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        /* Type-specific colors */
+        .mcp .item-label::before { background: #a78bfa; }
+        .tool .item-label::before { background: #34d399; }
+        .skill .item-label::before { background: #f59e0b; }
+        .infra .item-label::before { background: #f472b6; }
+
+        .mcp .item-label { color: #a78bfa; }
+        .tool .item-label { color: #34d399; }
+        .skill .item-label { color: #f59e0b; }
+        .infra .item-label { color: #f472b6; }
+
+        /* Infrastructure section */
+        .infra-section {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(244, 114, 182, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .infra-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        footer {
+            padding: 1rem 2rem;
+            background: rgba(15, 23, 42, 0.6);
+            border-top: 1px solid rgba(226, 232, 240, 0.1);
+            font-size: 0.85rem;
+            color: #64748b;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #94a3b8;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(96, 165, 250, 0.3);
+            border-top: 3px solid #60a5fa;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            color: #f87171;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        @media (max-width: 1024px) {
+            .children-grid {
+                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .children-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AI Rules Architecture</h1>
+            <p>Hierarchical overview of agents, MCPs, tools, skills & infrastructure</p>
+            <div class="legend" id="legend"></div>
+        </header>
+
+        <div id="canvas" class="canvas-scroll">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p>Loading architecture...</p>
+            </div>
+        </div>
+
+        <footer>
+            Click any card to see details • Responsive grid layout
+        </footer>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const legendContainer = document.getElementById('legend');
+
+        fetch('./data.yaml')
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to load data.yaml');
+                return response.text();
+            })
+            .then(yamlText => {
+                const data = jsyaml.load(yamlText);
+                renderArchitecture(data);
+            })
+            .catch(error => {
+                canvas.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                console.error(error);
+            });
+
+        function renderArchitecture(data) {
+            canvas.innerHTML = '';
+
+            // Build legend
+            const types = ['agent', 'mcp', 'tool', 'skill', 'infra'];
+            const typeLabels = {
+                agent: 'Agents',
+                mcp: 'MCPs',
+                tool: 'Tools',
+                skill: 'Skills',
+                infra: 'Infrastructure'
+            };
+
+            types.forEach(type => {
+                const node = data.nodes.find(n => n.type === type);
+                if (node) {
+                    const item = document.createElement('div');
+                    item.className = 'legend-item';
+                    const color = node.color;
+                    item.innerHTML = `
+                        <div class="legend-dot" style="background: ${color};"></div>
+                        <span>${typeLabels[type]}</span>
+                    `;
+                    legendContainer.appendChild(item);
+                }
+            });
+
+            // Create content container
+            const content = document.createElement('div');
+            content.className = 'canvas-content';
+
+            // Main agent section
+            const mainAgent = data.nodes.find(n => n.id === 'main');
+            if (mainAgent) {
+                const mainSection = createAgentSection(mainAgent, data);
+                content.appendChild(mainSection);
+            }
+
+            // Specialized agents section
+            const specializedAgents = data.nodes.filter(n => n.type === 'agent' && n.parent === 'main');
+            if (specializedAgents.length > 0) {
+                const title = document.createElement('div');
+                title.className = 'section-title';
+                title.textContent = 'Specialized Agents';
+                content.appendChild(title);
+
+                const agentsGrid = document.createElement('div');
+                agentsGrid.style.display = 'grid';
+                agentsGrid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(320px, 1fr))';
+                agentsGrid.style.gap = '1.5rem';
+                agentsGrid.style.marginBottom = '2rem';
+
+                specializedAgents.forEach(agent => {
+                    const agentSection = createAgentSection(agent, data);
+                    agentsGrid.appendChild(agentSection);
+                });
+
+                content.appendChild(agentsGrid);
+            }
+
+            // Tools section
+            const tools = data.nodes.filter(n => n.type === 'tool' && !n.parent);
+            const skills = data.nodes.filter(n => n.type === 'skill' && !n.parent);
+
+            if (tools.length > 0 || skills.length > 0) {
+                const title = document.createElement('div');
+                title.className = 'section-title';
+                title.textContent = 'Tools & Skills';
+                content.appendChild(title);
+
+                const grid = document.createElement('div');
+                grid.className = 'children-grid';
+
+                [...tools, ...skills].forEach(item => {
+                    const card = createItemCard(item);
+                    grid.appendChild(card);
+                });
+
+                content.appendChild(grid);
+            }
+
+            // Infrastructure section
+            const infra = data.nodes.filter(n => n.type === 'infra');
+            if (infra.length > 0) {
+                const infraSection = document.createElement('div');
+                infraSection.className = 'infra-section';
+
+                const title = document.createElement('div');
+                title.className = 'section-title';
+                title.style.marginTop = '0';
+                title.textContent = 'Infrastructure & Configuration';
+                infraSection.appendChild(title);
+
+                const grid = document.createElement('div');
+                grid.className = 'infra-grid';
+
+                infra.forEach(item => {
+                    const card = createItemCard(item);
+                    grid.appendChild(card);
+                });
+
+                infraSection.appendChild(grid);
+                content.appendChild(infraSection);
+            }
+
+            canvas.appendChild(content);
+        }
+
+        function createAgentSection(agent, data) {
+            const container = document.createElement('div');
+            container.className = `agent-container ${agent.id === 'main' ? 'main-agent' : ''}`;
+
+            const title = document.createElement('div');
+            title.className = `agent-title ${agent.parent ? 'sub' : ''}`;
+            title.textContent = agent.label;
+            container.appendChild(title);
+
+            const description = document.createElement('div');
+            description.style.color = '#cbd5e1';
+            description.style.fontSize = '0.9rem';
+            description.style.marginBottom = '0.75rem';
+            description.textContent = agent.role;
+            container.appendChild(description);
+
+            // Main agent orchestration info
+            if (agent.orchestrates) {
+                const orchestrationBox = document.createElement('div');
+                orchestrationBox.style.background = 'rgba(96, 165, 250, 0.08)';
+                orchestrationBox.style.border = '2px solid rgba(96, 165, 250, 0.4)';
+                orchestrationBox.style.borderRadius = '8px';
+                orchestrationBox.style.padding = '1rem';
+                orchestrationBox.style.marginBottom = '1.5rem';
+                orchestrationBox.style.fontSize = '0.85rem';
+                orchestrationBox.style.color = '#cbd5e1';
+                orchestrationBox.style.lineHeight = '1.6';
+
+                // Dispatches
+                if (agent.dispatches && agent.dispatches.length > 0) {
+                    const dispatchLabel = document.createElement('div');
+                    dispatchLabel.style.color = '#60a5fa';
+                    dispatchLabel.style.fontWeight = '700';
+                    dispatchLabel.style.marginBottom = '0.5rem';
+                    dispatchLabel.style.fontSize = '0.9rem';
+                    dispatchLabel.innerHTML = '🎯 Dispatches Subagents:';
+                    orchestrationBox.appendChild(dispatchLabel);
+
+                    const dispatchList = document.createElement('div');
+                    dispatchList.style.marginLeft = '1.5rem';
+                    dispatchList.style.marginBottom = '1rem';
+                    dispatchList.style.display = 'flex';
+                    dispatchList.style.flexWrap = 'wrap';
+                    dispatchList.style.gap = '0.5rem';
+
+                    agent.dispatches.forEach(agentId => {
+                        const badge = document.createElement('span');
+                        badge.style.background = 'rgba(96, 165, 250, 0.2)';
+                        badge.style.border = '1px solid rgba(96, 165, 250, 0.5)';
+                        badge.style.borderRadius = '4px';
+                        badge.style.padding = '0.3rem 0.6rem';
+                        badge.style.fontSize = '0.8rem';
+                        badge.style.color = '#60a5fa';
+                        badge.textContent = agentId.replace('-', ' ');
+                        dispatchList.appendChild(badge);
+                    });
+
+                    orchestrationBox.appendChild(dispatchList);
+                }
+
+                // Constraints
+                if (agent.constraints) {
+                    const constraintsLabel = document.createElement('div');
+                    constraintsLabel.style.color = '#f87171';
+                    constraintsLabel.style.fontWeight = '700';
+                    constraintsLabel.style.marginBottom = '0.5rem';
+                    constraintsLabel.style.fontSize = '0.9rem';
+                    constraintsLabel.innerHTML = '⚠️ Constraints:';
+                    orchestrationBox.appendChild(constraintsLabel);
+
+                    const constraintsList = document.createElement('div');
+                    constraintsList.style.marginLeft = '1.5rem';
+                    constraintsList.style.marginBottom = '1rem';
+                    constraintsList.style.fontSize = '0.8rem';
+                    constraintsList.style.color = '#fca5a5';
+                    constraintsList.textContent = agent.constraints;
+                    orchestrationBox.appendChild(constraintsList);
+                }
+
+                // Responsibilities
+                if (agent.responsibilities) {
+                    const respLabel = document.createElement('div');
+                    respLabel.style.color = '#34d399';
+                    respLabel.style.fontWeight = '700';
+                    respLabel.style.marginBottom = '0.5rem';
+                    respLabel.style.fontSize = '0.9rem';
+                    respLabel.innerHTML = '✓ Responsibilities:';
+                    orchestrationBox.appendChild(respLabel);
+
+                    const respText = document.createElement('div');
+                    respText.style.marginLeft = '1.5rem';
+                    respText.style.fontSize = '0.8rem';
+                    respText.style.color = '#a7f3d0';
+                    respText.style.whiteSpace = 'pre-wrap';
+                    respText.textContent = agent.responsibilities;
+                    orchestrationBox.appendChild(respText);
+                }
+
+                container.appendChild(orchestrationBox);
+            }
+
+            // Show trigger conditions for specialized agents
+            if (agent.trigger) {
+                const triggerBox = document.createElement('div');
+                triggerBox.style.background = 'rgba(96, 165, 250, 0.1)';
+                triggerBox.style.border = '1px solid rgba(96, 165, 250, 0.3)';
+                triggerBox.style.borderRadius = '6px';
+                triggerBox.style.padding = '0.75rem';
+                triggerBox.style.marginBottom = '1.5rem';
+                triggerBox.style.fontSize = '0.85rem';
+                triggerBox.style.color = '#cbd5e1';
+                triggerBox.style.lineHeight = '1.5';
+
+                const triggerLabel = document.createElement('div');
+                triggerLabel.style.color = '#60a5fa';
+                triggerLabel.style.fontWeight = '600';
+                triggerLabel.style.marginBottom = '0.5rem';
+                triggerLabel.textContent = 'Dispatch when:';
+                triggerBox.appendChild(triggerLabel);
+
+                const triggerText = document.createElement('div');
+                triggerText.textContent = agent.trigger;
+                triggerBox.appendChild(triggerText);
+
+                // Tools available
+                if (agent.tools) {
+                    const toolsDiv = document.createElement('div');
+                    toolsDiv.style.marginTop = '0.75rem';
+                    toolsDiv.style.paddingTop = '0.75rem';
+                    toolsDiv.style.borderTop = '1px solid rgba(96, 165, 250, 0.2)';
+
+                    const toolsLabel = document.createElement('div');
+                    toolsLabel.style.color = '#a78bfa';
+                    toolsLabel.style.fontWeight = '600';
+                    toolsLabel.style.fontSize = '0.8rem';
+                    toolsLabel.style.marginBottom = '0.4rem';
+                    toolsLabel.textContent = 'Tools:';
+                    toolsDiv.appendChild(toolsLabel);
+
+                    const toolsText = document.createElement('div');
+                    toolsText.style.fontSize = '0.8rem';
+                    toolsText.textContent = agent.tools;
+                    toolsDiv.appendChild(toolsText);
+
+                    triggerBox.appendChild(toolsDiv);
+                }
+
+                container.appendChild(triggerBox);
+            }
+
+            // Get children
+            const children = data.nodes.filter(n => n.parent === agent.id);
+            if (children.length > 0) {
+                const grid = document.createElement('div');
+                grid.className = 'children-grid';
+
+                children.forEach(child => {
+                    const card = createItemCard(child);
+                    grid.appendChild(card);
+                });
+
+                container.appendChild(grid);
+            }
+
+            return container;
+        }
+
+        function createItemCard(node) {
+            const card = document.createElement('div');
+            card.className = `item-card ${node.type}`;
+            card.dataset.expanded = 'false';
+
+            const header = document.createElement('div');
+            header.className = 'item-header';
+            header.innerHTML = `
+                <div class="item-label">${node.label}</div>
+                <div class="expand-icon">▼</div>
+            `;
+
+            const role = document.createElement('div');
+            role.className = 'item-role';
+            role.textContent = node.role;
+
+            const details = document.createElement('div');
+            details.className = 'item-details';
+
+            let detailsHTML = `
+                <div class="detail-item"><span class="detail-label">Type:</span> ${node.type}</div>
+                <div class="detail-item"><span class="detail-label">ID:</span> ${node.id}</div>
+            `;
+
+            if (node.trigger) {
+                detailsHTML += `
+                    <div class="detail-item" style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(96, 165, 250, 0.2);">
+                        <span class="detail-label">Dispatch when:</span> ${node.trigger}
+                    </div>
+                `;
+            }
+
+            if (node.tools) {
+                detailsHTML += `
+                    <div class="detail-item">
+                        <span class="detail-label">Tools:</span> ${node.tools}
+                    </div>
+                `;
+            }
+
+            if (node.constraints) {
+                const constraintsText = node.constraints.split('\n').filter(l => l.trim()).join(' • ');
+                detailsHTML += `
+                    <div class="detail-item" style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(244, 114, 182, 0.2); color: #fca5a5;">
+                        <span class="detail-label">Constraints:</span> ${constraintsText}
+                    </div>
+                `;
+            }
+
+            if (node.responsibilities) {
+                const respLines = node.responsibilities.split('\n').filter(l => l.trim());
+                detailsHTML += `
+                    <div class="detail-item" style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(52, 211, 153, 0.2); color: #a7f3d0;">
+                        <span class="detail-label">Responsibilities:</span>
+                        <div style="margin-left: 0; margin-top: 0.3rem; font-size: 0.75rem; line-height: 1.4;">
+                            ${respLines.map(l => l.trim()).join('<br>')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (node.description) {
+                detailsHTML += `
+                    <div class="detail-item">
+                        <span class="detail-label">Description:</span> ${node.description}
+                    </div>
+                `;
+            }
+
+            if (node.used_by) {
+                detailsHTML += `
+                    <div class="detail-item">
+                        <span class="detail-label">Used by:</span> ${node.used_by}
+                    </div>
+                `;
+            }
+
+            if (node.when) {
+                detailsHTML += `
+                    <div class="detail-item">
+                        <span class="detail-label">When:</span> ${node.when}
+                    </div>
+                `;
+            }
+
+            if (node.location) {
+                detailsHTML += `
+                    <div class="detail-item">
+                        <span class="detail-label">Location:</span> <code style="background: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.75rem;">${node.location}</code>
+                    </div>
+                `;
+            }
+
+            if (node.config) {
+                const configLines = node.config.split('\n').filter(l => l.trim());
+                detailsHTML += `
+                    <div class="detail-item">
+                        <span class="detail-label">Config:</span>
+                        <div style="margin-left: 0; margin-top: 0.3rem; font-size: 0.75rem; line-height: 1.4;">
+                            ${configLines.map(l => l.trim()).join('<br>')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            details.innerHTML = detailsHTML;
+
+            card.appendChild(header);
+            card.appendChild(role);
+            card.appendChild(details);
+
+            card.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isExpanded = card.dataset.expanded === 'true';
+                card.dataset.expanded = !isExpanded;
+                card.classList.toggle('expanded');
+            });
+
+            return card;
+        }
+    </script>
+</body>
+</html>

@@ -51,6 +51,20 @@ Granular tool/MCP access per agent. Each agent handles specific domains:
 
 **RTK Usage:** Always prefer RTK commands (rtk grep, rtk find, rtk read) for exploration when available.
 
+## Architecture Visualization
+
+Keep `agents-overview/data.yaml` in sync with any agent/MCP/tool changes:
+
+- **Agent added/removed/renamed?** → update `data.yaml` nodes + trigger/constraints/responsibilities
+- **MCP access changed?** → update parent agent + constraints
+- **Dispatch rules modified?** → update agent's trigger conditions + tools
+- **Tool permissions updated?** → update tool's used_by field
+- **Infrastructure config changed?** → update infra node details
+
+**View:** Open `agents-overview/index.html` to see interactive architecture. No code needed—YAML drives everything.
+
+**When:** After any changes to `agents/`, `MCP_SERVERS.md`, dispatch rules, or tool access.
+
 ## PR Workflow
 
 When asked to "create PR", "open PR", "update PR", "draft PR", or similar:

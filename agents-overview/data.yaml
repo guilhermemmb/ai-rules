@@ -1,0 +1,383 @@
+nodes:
+  # Main Orchestrator
+  - id: main
+    label: main
+    type: agent
+    role: Orchestrator
+    color: '#60a5fa'
+    parent: null
+    orchestrates: true
+    dispatches:
+      - browser-agent
+      - observability
+      - cortex-agent
+      - knowledge-agent
+    constraints: |
+      Cannot directly access: chrome-devtools, sentry, datadog, gcloud, cortex, notion, linear
+      Must dispatch to appropriate subagent for these tools
+    responsibilities: |
+      • Plan & design implementation strategy
+      • Explore codebase (codebase-memory-mcp, context7-mcp)
+      • Implement core changes
+      • Run tests & verify
+      • Dispatch specialized work to subagents
+
+  # Specialized Agents (children of main)
+  - id: browser-agent
+    label: browser-agent
+    type: agent
+    role: Browser Interaction
+    color: '#60a5fa'
+    parent: main
+    trigger: 'Screenshots, page analysis, UI interaction, E2E testing'
+    tools: 'chrome-devtools, agentic-browser'
+    constraints: |
+      Cannot access: Sentry, Datadog, gcloud, cortex, Notion, Linear
+      Browser interaction only — no backend diagnostics
+    responsibilities: |
+      • Take screenshots & record page state
+      • Navigate & interact with pages
+      • Analyze DOM & UI elements
+      • Test UI flows & interactions
+      • Validate page rendering
+
+  - id: observability
+    label: observability-and-troubleshoot
+    type: agent
+    role: Production Diagnostics
+    color: '#60a5fa'
+    parent: main
+    trigger: 'Production errors, logs, metrics, traces, root-cause analysis'
+    tools: 'Sentry, Datadog, gcloud logging'
+    constraints: |
+      Cannot access: chrome-devtools, cortex, Notion, Linear
+      Production diagnostics only — no UI interaction
+    responsibilities: |
+      • Query Sentry for error details & events
+      • Fetch logs from Datadog & gcloud
+      • Analyze metrics & APM traces
+      • Trace request paths & dependencies
+      • Root cause analysis & incident response
+
+  - id: cortex-agent
+    label: cortex-agent
+    type: agent
+    role: Domain Knowledge
+    color: '#60a5fa'
+    parent: main
+    trigger: 'Gorgias metrics, schemas, definitions, business rules, data analysis'
+    tools: 'cortex-mcp, BigQuery'
+    constraints: |
+      Cannot access: chrome-devtools, Sentry/Datadog, Notion, Linear
+      Gorgias domain knowledge only — no external docs
+    responsibilities: |
+      • Access Gorgias metric definitions
+      • Query BigQuery data & schemas
+      • Provide business context & rules
+      • Analyze business metrics & KPIs
+      • Explain domain concepts
+
+  - id: knowledge-agent
+    label: knowledge-agent
+    type: agent
+    role: External Docs & Issues
+    color: '#60a5fa'
+    parent: main
+    trigger: 'Design docs, specs, Linear issues, Notion pages, external docs'
+    tools: 'notion-mcp, linear-mcp'
+    constraints: |
+      Cannot access: chrome-devtools, Sentry/Datadog, cortex
+      External documentation only — no backend systems
+    responsibilities: |
+      • Fetch design docs & specs from Notion
+      • Read Linear issues & epics
+      • Search external documentation
+      • Retrieve project context & decisions
+      • Link requirements to implementation
+
+  # MCPs (owned by agents)
+  - id: codebase-memory
+    label: codebase-memory-mcp
+    type: mcp
+    role: Code Search & Graph
+    color: '#a78bfa'
+    parent: main
+
+  - id: context7
+    label: context7-mcp
+    type: mcp
+    role: Library Docs
+    color: '#a78bfa'
+    parent: main
+
+  - id: chrome-devtools
+    label: chrome-devtools
+    type: mcp
+    role: Browser Automation
+    color: '#a78bfa'
+    parent: browser-agent
+
+  - id: sentry
+    label: sentry-mcp
+    type: mcp
+    role: Error Monitoring
+    color: '#a78bfa'
+    parent: observability
+
+  - id: datadog
+    label: datadog-mcp
+    type: mcp
+    role: APM & Logs
+    color: '#a78bfa'
+    parent: observability
+
+  - id: cortex
+    label: cortex-mcp
+    type: mcp
+    role: Gorgias Data
+    color: '#a78bfa'
+    parent: cortex-agent
+
+  - id: notion
+    label: notion-mcp
+    type: mcp
+    role: Knowledge Docs
+    color: '#a78bfa'
+    parent: knowledge-agent
+
+  - id: linear
+    label: linear-mcp
+    type: mcp
+    role: Issues & Epics
+    color: '#a78bfa'
+    parent: knowledge-agent
+
+  # Tools (shared)
+  - id: bash
+    label: Bash
+    type: tool
+    role: Command Execution
+    color: '#34d399'
+    parent: null
+    description: Execute shell commands, run tests, git operations, package managers
+    used_by: 'All agents'
+
+  - id: read-edit
+    label: Read/Edit/Write
+    type: tool
+    role: File Operations
+    color: '#34d399'
+    parent: null
+    description: Read files, edit code, create new files, modify configs
+    used_by: 'main agent'
+
+  - id: git
+    label: Git
+    type: tool
+    role: Version Control
+    color: '#34d399'
+    parent: null
+    description: Git operations, commit, push, rebase, branch management
+    used_by: 'main agent'
+
+  - id: gh-cli
+    label: gh CLI
+    type: tool
+    role: GitHub Integration
+    color: '#34d399'
+    parent: null
+    description: Query PRs, issues, checks; create/view GitHub resources
+    used_by: 'main agent'
+
+  # Skills (invoked by main)
+  - id: superpowers
+    label: superpowers
+    type: skill
+    role: Planning & Debugging
+    color: '#f59e0b'
+    parent: null
+    description: Brainstorming, systematic debugging, test-driven development, planning
+    when: 'Before feature work, bug fixes, or architectural decisions'
+
+  - id: code-review
+    label: code-review
+    type: skill
+    role: PR Analysis
+    color: '#f59e0b'
+    parent: null
+    description: Review code for style, tests, security, best practices
+    when: 'Before finalizing PRs or committing changes'
+
+  - id: caveman
+    label: caveman
+    type: skill
+    role: Terse Communication
+    color: '#f59e0b'
+    parent: null
+    description: Compress output, drop filler, optimize token usage
+    when: 'Always active for communication'
+
+  # Infrastructure
+  - id: claude-code
+    label: Claude Code
+    type: infra
+    role: IDE Integration
+    color: '#f472b6'
+    parent: null
+    description: Main entry point, runs agents via Claude SDK
+    location: '~/.claude/settings.json'
+    config: |
+      • MCPs: codebase-memory-mcp, context7-mcp
+      • Model: Sonnet (default)
+      • Permissions: auto mode
+
+  - id: settings
+    label: settings.json
+    type: infra
+    role: Configuration
+    color: '#f472b6'
+    parent: null
+    description: Configure MCPs, tools, permissions, hooks
+    location: '~/.claude/settings.json or .claude/settings.json'
+    config: |
+      • MCP servers (codebase-memory, context7, etc)
+      • Tool permissions
+      • Environment variables
+      • Editor integrations
+
+  - id: zsh
+    label: zsh Environment
+    type: infra
+    role: Shell Config
+    color: '#f472b6'
+    parent: null
+    description: Shell environment, aliases, functions, PATH
+    location: '~/.zshrc'
+    config: |
+      • VOLTA_HOME, GORGIAS_ROOT, etc
+      • Git aliases (gpo, grbm, etc)
+      • Project aliases (g:chat, g:gorgias)
+      • Shell functions (dbproxy, etc)
+
+  - id: rtk
+    label: RTK
+    type: infra
+    role: Token Optimization
+    color: '#f472b6'
+    parent: null
+    description: Rust Token Killer — optimizes CLI output to reduce token usage
+    location: 'Via Claude Code hook'
+    config: |
+      • Automatically wraps bash commands
+      • Filters output (60-90% reduction)
+      • Enabled via PreToolUse hook
+
+links:
+  # Main orchestrator
+  - source: main
+    target: codebase-memory
+    label: uses
+
+  - source: main
+    target: context7
+    label: uses
+
+  - source: main
+    target: bash
+    label: uses
+
+  - source: main
+    target: read-edit
+    label: uses
+
+  - source: main
+    target: git
+    label: uses
+
+  # Agent dispatching
+  - source: main
+    target: browser-agent
+    label: dispatches
+
+  - source: main
+    target: observability
+    label: dispatches
+
+  - source: main
+    target: cortex-agent
+    label: dispatches
+
+  - source: main
+    target: knowledge-agent
+    label: dispatches
+
+  # Browser agent
+  - source: browser-agent
+    target: chrome-devtools
+    label: uses
+
+  # Observability agent
+  - source: observability
+    target: sentry
+    label: uses
+
+  - source: observability
+    target: datadog
+    label: uses
+
+  # Cortex agent
+  - source: cortex-agent
+    target: cortex
+    label: uses
+
+  # Knowledge agent
+  - source: knowledge-agent
+    target: notion
+    label: uses
+
+  - source: knowledge-agent
+    target: linear
+    label: uses
+
+  # Infrastructure
+  - source: claude-code
+    target: main
+    label: runs
+
+  - source: claude-code
+    target: settings
+    label: configured by
+
+  - source: settings
+    target: codebase-memory
+    label: enables
+
+  - source: settings
+    target: context7
+    label: enables
+
+  - source: zsh
+    target: bash
+    label: provides
+
+  - source: rtk
+    target: bash
+    label: wraps
+
+  # GitHub
+  - source: main
+    target: gh-cli
+    label: uses
+
+  # Skills
+  - source: main
+    target: superpowers
+    label: invokes
+
+  - source: main
+    target: code-review
+    label: invokes
+
+  - source: main
+    target: caveman
+    label: uses
