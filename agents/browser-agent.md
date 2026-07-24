@@ -1,13 +1,17 @@
 ---
-name: browser-agent
-description: Browser interaction specialist. Chrome control, screenshots, page analysis via chrome-devtools MCP and agentic-browser CLI.
-tools: [Bash, Write]
-mcps: [chrome-devtools, superpowers-chrome]
 constraints:
-  - Write output only to /tmp/browser-agent/
-  - No mutations outside /tmp/browser-agent/
-  - Return structured JSON only (no prose)
-  - Take screenshots at key moments (before, after interactions, on error)
+- Write output only to /tmp/browser-agent/
+- No mutations outside /tmp/browser-agent/
+- Return structured JSON only (no prose)
+- Take screenshots at key moments (before, after interactions, on error)
+description: Browser interaction specialist. Chrome control, screenshots, page analysis
+  via chrome-devtools MCP and agentic-browser CLI.
+name: browser-agent
+tools:
+- Bash
+- Write
+mcpServers: [chrome-devtools, superpowers-chrome]
+mcps: [chrome-devtools, superpowers-chrome]
 ---
 
 # Browser Agent

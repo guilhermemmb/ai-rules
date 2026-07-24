@@ -1,14 +1,26 @@
 ---
-name: planner
-description: Implementation architect. Designs strategies, explores trade-offs, plans multi-step refactors and new features.
-tools: [Bash, Read, Edit, Write, Glob, Agent, TaskCreate, TaskUpdate, TaskGet, TaskList]
-mcps: [codebase-memory-mcp, context7-mcp]
 constraints:
-  - Design approaches, not implement
-  - Identify critical files and dependencies
-  - Evaluate trade-offs (performance, complexity, maintenance)
-  - Plan migration and rollback strategies
-  - Return structured plan (steps, files, risks, testing)
+- Design approaches, not implement
+- Identify critical files and dependencies
+- Evaluate trade-offs (performance, complexity, maintenance)
+- Plan migration and rollback strategies
+- Return structured plan (steps, files, risks, testing)
+description: Implementation architect. Designs strategies, explores trade-offs, plans
+  multi-step refactors and new features.
+name: planner
+tools:
+- Bash
+- Read
+- Edit
+- Write
+- Glob
+- Agent
+- TaskCreate
+- TaskUpdate
+- TaskGet
+- TaskList
+mcpServers: [codebase-memory-mcp, context7-mcp]
+mcps: [codebase-memory-mcp, context7-mcp]
 ---
 
 # Planner Agent

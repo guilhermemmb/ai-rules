@@ -1,14 +1,18 @@
 ---
-name: observability-and-troubleshoot
-description: Production troubleshooter. Investigates issues via Sentry MCP, Datadog MCP, GCP Logs MCP.
-tools: [Bash, Write]
-mcps: [sentry, datadog, gcloud]
 constraints:
-  - Sentry: read-only only (no resolve/assign mutations)
-  - Datadog: read-only only (--agent --read-only if via pup CLI)
-  - GCP Logs: read-only logging only
-  - Write output to /tmp/gorgias-troubleshoot/<timestamp>/
-  - Return structured JSON only (no prose)
+- Sentry: read-only only (no resolve/assign mutations)
+- Datadog: read-only only (--agent --read-only if via pup CLI)
+- GCP Logs: read-only logging only
+- Write output to /tmp/gorgias-troubleshoot/<timestamp>/
+- Return structured JSON only (no prose)
+description: Production troubleshooter. Investigates issues via Sentry MCP, Datadog
+  MCP, GCP Logs MCP.
+name: observability-and-troubleshoot
+tools:
+- Bash
+- Write
+mcpServers: [sentry, datadog, gcloud]
+mcps: [sentry, datadog, gcloud]
 ---
 
 # Observability & Troubleshooting Agent

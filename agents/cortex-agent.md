@@ -1,13 +1,16 @@
 ---
-name: cortex-agent
-description: Cortex specialist. Gorgias business knowledge via Context Layer MCP.
-tools: [Bash, Write]
-mcps: [cortex]
 constraints:
-  - Call get_instruction first
-  - Cortex read-only (no mutations)
-  - Write to /tmp/cortex-agent/ only
-  - Return structured JSON only
+- Call get_instruction first
+- Cortex read-only (no mutations)
+- Write to /tmp/cortex-agent/ only
+- Return structured JSON only
+description: Cortex specialist. Gorgias business knowledge via Context Layer MCP.
+name: cortex-agent
+tools:
+- Bash
+- Write
+mcpServers: [cortex]
+mcps: [cortex]
 ---
 
 # Cortex Agent

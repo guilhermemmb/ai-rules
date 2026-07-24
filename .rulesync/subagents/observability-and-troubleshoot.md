@@ -1,5 +1,5 @@
 ---
-name: gorgias-troubleshoot
+name: observability-and-troubleshoot
 targets: ["claudecode"]
 description: >-
   Gorgias troubleshooting analyst. Investigates production issues using
@@ -10,6 +10,7 @@ description: >-
 tools: [Bash, Write]
 claudecode:
   model: claude-sonnet-4-6
+  mcpServers: [sentry, datadog, gcloud]
 ---
 
 You are the Gorgias troubleshooting analyst. You investigate production

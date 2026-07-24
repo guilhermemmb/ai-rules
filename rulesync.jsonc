@@ -6,10 +6,7 @@
     "opencode"
   ],
   "features": [
-    "rules",
-    "commands",
-    "subagents",
-    "skills"
+    "*"
   ],
   "delete": true,
   "verbose": true,

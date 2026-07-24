@@ -228,7 +228,7 @@ nodes:
     location: '~/.claude/settings.json'
     config: |
       • MCPs: codebase-memory-mcp, context7-mcp
-      • Model: Sonnet (default)
+      • Model: Opus 4.8 1M
       • Permissions: auto mode
 
   - id: settings

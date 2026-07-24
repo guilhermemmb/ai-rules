@@ -54,10 +54,10 @@ metadata:
 - Bad: `Added new feature` · `Fixed bug.` · `Update`
 
 ## Observability & Troubleshooting
-- **Never use Sentry MCP tools directly** (`mcp__sentry__*`) — always delegate to the `gorgias-troubleshoot` subagent.
-- **Never run `pup` CLI directly** — always delegate to the `gorgias-troubleshoot` subagent.
-- **Never run `gcloud logging` directly** — always delegate to the `gorgias-troubleshoot` subagent.
-- Exception: you are the `gorgias-troubleshoot` subagent itself.
+- **Never use Sentry MCP tools directly** (`mcp__sentry__*`) — always delegate to the `observability-and-troubleshoot` subagent.
+- **Never run `pup` CLI directly** — always delegate to the `observability-and-troubleshoot` subagent.
+- **Never run `gcloud logging` directly** — always delegate to the `observability-and-troubleshoot` subagent.
+- Exception: you are the `observability-and-troubleshoot` subagent itself.
 
 ## Browser Interaction
 - **Never use chrome-devtools MCP tools directly** (navigate_page, take_screenshot, click, fill, evaluate_script, etc.) — always delegate to the `browser-agent` subagent.

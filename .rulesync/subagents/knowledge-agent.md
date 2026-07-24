@@ -11,6 +11,7 @@ description: >-
 tools: [Bash, Write]
 claudecode:
   model: claude-haiku-4-5-20251001
+  mcpServers: [notion, linear]
 ---
 
 You are the internal knowledge specialist. You find and summarize content from Notion and

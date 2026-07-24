@@ -1,13 +1,25 @@
 ---
-name: main
-description: Orchestrator agent. Reads code, plans implementation, dispatches subagents. Core tool/MCP access for driving work.
-model: sonnet[1m]
-tools: [Bash, Read, Edit, Write, Glob, Agent, TaskCreate, TaskUpdate, TaskGet, TaskList]
-mcps: [codebase-memory-mcp, context7-mcp]
 constraints:
-  - Use RTK commands (rtk find, rtk grep, rtk read) for exploration when available
-  - Dispatch browser/observability work to subagents; do not use their tools directly
-  - Read security-scan.md before any git commit/push/rebase
+- Use RTK commands (rtk find, rtk grep, rtk read) for exploration when available
+- Dispatch browser/observability work to subagents; do not use their tools directly
+- Read security-scan.md before any git commit/push/rebase
+description: Orchestrator agent. Reads code, plans implementation, dispatches subagents.
+  Core tool/MCP access for driving work.
+model: claude-opus-4-8[1m]
+name: main
+tools:
+- Bash
+- Read
+- Edit
+- Write
+- Glob
+- Agent
+- TaskCreate
+- TaskUpdate
+- TaskGet
+- TaskList
+mcpServers: [codebase-memory-mcp, context7-mcp]
+mcps: [codebase-memory-mcp, context7-mcp]
 ---
 
 # Main Orchestrator

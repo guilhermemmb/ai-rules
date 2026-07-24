@@ -1,6 +1,9 @@
-"""Verify deployed config: JSON validity, agent restrictions, etc."""
+"""Verify deployed config: JSON validity, agent files, mcpServers restrictions."""
 import json
+import re
 from pathlib import Path
+
+import yaml
 
 
 def verify_json(filepath, logger):
@@ -21,33 +24,85 @@ def verify_json(filepath, logger):
         return False
 
 
-def verify_agents_block(settings_file, logger):
-    """Check agents block exists and has valid structure."""
-    logger.debug(f"Verifying agents block in {settings_file}")
+def _parse_frontmatter(filepath):
+    """Return parsed YAML frontmatter dict from a .md file, or empty dict."""
+    try:
+        content = Path(filepath).read_text()
+    except IOError:
+        return {}
+
+    match = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
+    if not match:
+        return {}
 
     try:
-        with open(settings_file) as f:
-            settings = json.load(f)
-    except (IOError, json.JSONDecodeError) as e:
-        logger.error(f"Failed to load settings: {e}")
+        return yaml.safe_load(match.group(1)) or {}
+    except yaml.YAMLError:
+        return {}
+
+
+def verify_agents_dir(agents_config, claude_agents_dir, logger):
+    """Check each subagent in config has a matching file in ~/.claude/agents/."""
+    logger.debug(f"Verifying agents in {claude_agents_dir}")
+
+    agents_path = Path(claude_agents_dir)
+    if not agents_path.exists():
+        logger.error(f"~/.claude/agents/ directory not found: {claude_agents_dir}")
         return False
 
-    if "agents" not in settings:
-        logger.error("No agents block in settings.json")
-        return False
+    if "agents" not in agents_config:
+        logger.debug("No subagents in config — skipping agents dir check")
+        return True
 
-    agents = settings["agents"]
-    if not isinstance(agents, dict):
-        logger.error("agents block is not a dict")
-        return False
+    missing = []
+    for name in agents_config["agents"]:
+        target = agents_path / f"{name}.md"
+        if not target.exists():
+            missing.append(name)
 
-    logger.success(f"Agents block valid ({len(agents)} agents)")
+    if missing:
+        logger.warn(f"Missing agent files in ~/.claude/agents/: {', '.join(missing)}")
+    else:
+        logger.success(f"All {len(agents_config['agents'])} agent files present")
+
     return True
 
 
-def verify_main_agent_restrictions(settings_file, logger):
-    """Verify main agent has no restricted MCPs/tools."""
-    logger.debug("Verifying main agent restrictions")
+def verify_mcpservers_in_agents_dir(agents_config, claude_agents_dir, logger):
+    """Check mcpServers frontmatter is set correctly in ~/.claude/agents/*.md."""
+    logger.debug("Verifying mcpServers in agent files")
+
+    agents_path = Path(claude_agents_dir)
+    if "agents" not in agents_config:
+        return True
+
+    restricted_mcps = {"cortex", "notion", "linear", "chrome-devtools", "superpowers-chrome", "sentry", "datadog", "gcloud"}
+    errors = []
+
+    for name, config in agents_config["agents"].items():
+        target = agents_path / f"{name}.md"
+        if not target.exists():
+            continue
+
+        fm = _parse_frontmatter(str(target))
+        deployed = set(fm.get("mcpServers", []))
+        expected = set(config.get("mcpServers", []))
+
+        if deployed != expected:
+            errors.append(f"{name}: expected {sorted(expected)}, got {sorted(deployed)}")
+
+    if errors:
+        for e in errors:
+            logger.warn(f"mcpServers mismatch: {e}")
+    else:
+        logger.success("All agent mcpServers match config")
+
+    return True
+
+
+def verify_no_agents_block_in_settings(settings_file, logger):
+    """Confirm settings.json has no custom agents block."""
+    logger.debug("Checking settings.json has no agents block")
 
     try:
         with open(settings_file) as f:
@@ -56,31 +111,11 @@ def verify_main_agent_restrictions(settings_file, logger):
         logger.error(f"Failed to load settings: {e}")
         return False
 
-    if "agents" not in settings or "main" not in settings["agents"]:
-        logger.debug("main agent not in settings (OK)")
-        return True
+    if "agents" in settings:
+        logger.error("settings.json still has agents block — patch_settings may have failed")
+        return False
 
-    main_agent = settings["agents"]["main"]
-    restricted_mcps = ["cortex", "notion", "linear", "chrome-devtools", "superpowers-chrome", "sentry"]
-    restricted_tools = []
-
-    # Check MCPs
-    if "mcps" in main_agent:
-        mcps = main_agent["mcps"]
-        found_restricted = [m for m in mcps if m in restricted_mcps]
-        if found_restricted:
-            logger.error(f"main agent has restricted MCPs: {', '.join(found_restricted)}")
-            return False
-
-    # Check tools (if needed in future)
-    if "tools" in main_agent:
-        tools = main_agent["tools"]
-        found_restricted = [t for t in tools if t in restricted_tools]
-        if found_restricted:
-            logger.error(f"main agent has restricted tools: {', '.join(found_restricted)}")
-            return False
-
-    logger.success("main agent has no restricted access")
+    logger.success("settings.json has no agents block")
     return True
 
 
@@ -88,11 +123,21 @@ def verify_deployment(agents_json, settings_file, logger):
     """Run all verifications."""
     logger.info("Starting verification")
 
+    claude_agents_dir = Path.home() / ".claude" / "agents"
+
+    try:
+        with open(agents_json) as f:
+            agents_config = json.load(f)
+    except (IOError, json.JSONDecodeError) as e:
+        logger.error(f"Failed to load agents config: {e}")
+        return False
+
     checks = [
         ("agents config JSON", lambda: verify_json(agents_json, logger)),
         ("settings JSON", lambda: verify_json(settings_file, logger)),
-        ("agents block structure", lambda: verify_agents_block(settings_file, logger)),
-        ("main agent restrictions", lambda: verify_main_agent_restrictions(settings_file, logger)),
+        ("no agents block in settings", lambda: verify_no_agents_block_in_settings(settings_file, logger)),
+        ("agent files in ~/.claude/agents/", lambda: verify_agents_dir(agents_config, str(claude_agents_dir), logger)),
+        ("mcpServers in agent files", lambda: verify_mcpservers_in_agents_dir(agents_config, str(claude_agents_dir), logger)),
     ]
 
     passed = 0

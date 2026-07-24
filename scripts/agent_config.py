@@ -1,4 +1,4 @@
-"""Parse agents/*.md YAML frontmatter → JSON config."""
+"""Parse agent YAML frontmatter → JSON config."""
 import json
 import re
 from pathlib import Path
@@ -9,7 +9,11 @@ def parse_agent_file(filepath):
     """
     Parse single agent .md file.
 
-    Returns dict with name, tools, mcps or empty dict if invalid.
+    Supports two frontmatter formats:
+    - Direct: mcpServers: [...]
+    - Rulesync: claudecode: { mcpServers: [...] }
+
+    Returns dict with name, tools, mcpServers or empty dict if invalid.
     """
     try:
         with open(filepath) as f:
@@ -17,7 +21,6 @@ def parse_agent_file(filepath):
     except IOError:
         return {}
 
-    # Extract YAML frontmatter between ---
     match = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
     if not match:
         return {}
@@ -30,43 +33,31 @@ def parse_agent_file(filepath):
     if not isinstance(frontmatter, dict):
         return {}
 
-    # Require name field
     if "name" not in frontmatter:
         return {}
 
     agent = {"name": frontmatter["name"]}
 
-    # Extract tools (optional)
-    if "tools" in frontmatter:
-        tools = frontmatter["tools"]
-        if isinstance(tools, list):
-            agent["tools"] = tools
-        else:
-            agent["tools"] = []
-    else:
-        agent["tools"] = []
+    tools = frontmatter.get("tools", [])
+    agent["tools"] = tools if isinstance(tools, list) else []
 
-    # Extract mcps (optional)
-    if "mcps" in frontmatter:
-        mcps = frontmatter["mcps"]
-        if isinstance(mcps, list):
-            agent["mcps"] = mcps
-        else:
-            agent["mcps"] = []
-    else:
-        agent["mcps"] = []
+    # Support direct mcpServers or nested claudecode.mcpServers (rulesync format)
+    claudecode = frontmatter.get("claudecode", {}) or {}
+    mcp_servers = frontmatter.get("mcpServers") or claudecode.get("mcpServers", [])
+    agent["mcpServers"] = mcp_servers if isinstance(mcp_servers, list) else []
 
     return agent
 
 
-def build_agents_config(agents_dir, logger):
+def build_agents_config(agents_dir, logger, subagents_dir=None):
     """
-    Parse all agents/*.md files → agents config dict.
+    Parse agent .md files → agents config dict.
 
-    Includes main.md as agents.main, plus subagents.
-    Skips: routing.md, README.md
+    Reads main.md from agents_dir.
+    Reads subagents from subagents_dir (falls back to agents_dir).
+    Skips: routing.md, README.md, statusline-setup.md
 
-    Returns dict with structure: {main: {...}, agents: {agent_name: {...}}}
+    Returns dict: {main: {...}, agents: {agent_name: {...}}}
     """
     logger.debug(f"Building agent config from {agents_dir}")
 
@@ -75,7 +66,11 @@ def build_agents_config(agents_dir, logger):
         logger.error(f"Agents directory not found: {agents_dir}")
         return {}
 
-    # Parse main agent if it exists
+    subagents_path = Path(subagents_dir) if subagents_dir else agents_path
+    if not subagents_path.exists():
+        logger.error(f"Subagents directory not found: {subagents_dir}")
+        return {}
+
     main_agent = {}
     main_file = agents_path / "main.md"
     if main_file.exists():
@@ -87,9 +82,9 @@ def build_agents_config(agents_dir, logger):
             logger.warn("main.md exists but is invalid")
 
     agents = {}
-    skip_files = {"main.md", "routing.md", "README.md"}
+    skip_files = {"main.md", "routing.md", "README.md", "statusline-setup.md"}
 
-    for md_file in sorted(agents_path.glob("*.md")):
+    for md_file in sorted(subagents_path.glob("*.md")):
         if md_file.name in skip_files:
             logger.debug(f"Skipping {md_file.name}")
             continue
@@ -110,7 +105,7 @@ def build_agents_config(agents_dir, logger):
         config["agents"] = agents
 
     if not config:
-        logger.warn("No agents found in agents/*.md")
+        logger.warn("No agents found")
         return {}
 
     agent_count = len(agents) + (1 if main_agent else 0)

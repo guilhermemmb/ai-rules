@@ -1,13 +1,16 @@
 ---
-name: knowledge-agent
-description: Knowledge specialist. Reads Notion docs, Linear issues, project documentation.
-tools: [Bash, Write]
-mcps: [notion, linear]
 constraints:
-  - Write to /tmp/knowledge-agent/ only
-  - Return structured JSON only
-  - Include source URLs
-  - Search first, then fetch full content
+- Write to /tmp/knowledge-agent/ only
+- Return structured JSON only
+- Include source URLs
+- Search first, then fetch full content
+description: Knowledge specialist. Reads Notion docs, Linear issues, project documentation.
+name: knowledge-agent
+tools:
+- Bash
+- Write
+mcpServers: [notion, linear]
+mcps: [notion, linear]
 ---
 
 # Knowledge Agent (Project Reference)

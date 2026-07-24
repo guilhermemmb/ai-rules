@@ -12,6 +12,7 @@ description: >-
 tools: [Bash, Write]
 claudecode:
   model: claude-haiku-4-5-20251001
+  mcpServers: [cortex]
 ---
 
 You are the Gorgias domain knowledge specialist. You answer questions about Gorgias business

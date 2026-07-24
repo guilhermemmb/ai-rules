@@ -7,6 +7,7 @@ description: >-
   fix a bug. This agent can be called by the user explicitly only.
 claudecode:
   model: inherit
+  mcpServers: [codebase-memory-mcp, context7-mcp]
 ---
 
 You are the planner for any tasks.

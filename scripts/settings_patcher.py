@@ -1,26 +1,43 @@
-"""Patch ~/.claude/settings.json with agents config."""
+"""Patch ~/.claude/settings.json: remove non-official agents block, sync main model."""
 import json
+import re
 import shutil
 from pathlib import Path
 
+import yaml
 
-def patch_settings(settings_file, agents_config, logger):
+
+def _get_main_model(agents_dir):
+    """Read model: from agents/main.md YAML frontmatter. Returns None if not found."""
+    main_file = Path(agents_dir) / "main.md"
+    if not main_file.exists():
+        return None
+    try:
+        content = main_file.read_text()
+        match = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
+        if not match:
+            return None
+        fm = yaml.safe_load(match.group(1)) or {}
+        return fm.get("model")
+    except Exception:
+        return None
+
+
+def patch_settings(settings_file, agents_config, logger, agents_dir=None):
     """
-    Merge agents_config into settings_file.
+    Remove the custom agents block from settings.json and sync main agent model.
 
-    Creates backup before modifying.
-    Validates JSON before/after patch.
-
-    Returns True on success, False otherwise.
+    Agent MCP access is now controlled via mcpServers: in ~/.claude/agents/*.md
+    frontmatter (official Claude Code format). The agents block in settings.json
+    was a non-official custom format.
     """
-    logger.debug(f"Patching {settings_file} with agents config")
+    logger.debug(f"Patching {settings_file}")
 
     settings_path = Path(settings_file)
     if not settings_path.exists():
         logger.error(f"Settings file not found: {settings_file}")
         return False
 
-    # Load existing settings
     try:
         with open(settings_path) as f:
             settings = json.load(f)
@@ -29,37 +46,32 @@ def patch_settings(settings_file, agents_config, logger):
         logger.error(f"Failed to load settings: {e}")
         return False
 
-    # Create backup
-    backup_path = f"{settings_file}.backup"
-    try:
-        shutil.copy(settings_path, backup_path)
-        logger.debug(f"Created backup at {backup_path}")
-    except IOError as e:
-        logger.warn(f"Failed to create backup: {e}")
+    changed = False
 
-    # Initialize agents block if missing
-    if "agents" not in settings:
-        settings["agents"] = {}
+    if "agents" in settings:
+        backup_path = f"{settings_file}.backup"
+        try:
+            shutil.copy(settings_path, backup_path)
+            logger.debug(f"Created backup at {backup_path}")
+        except IOError as e:
+            logger.warn(f"Failed to create backup: {e}")
+        del settings["agents"]
+        logger.debug("Removed agents block from settings")
+        changed = True
+    else:
+        logger.debug("No agents block in settings.json — nothing to remove")
 
-    # Merge main agent if present
-    if "main" in agents_config:
-        settings["agents"]["main"] = agents_config["main"]
-        logger.debug("Merged main agent into settings")
+    if agents_dir:
+        model = _get_main_model(agents_dir)
+        if model and settings.get("model") != model:
+            settings["model"] = model
+            logger.debug(f"Synced main model: {model}")
+            changed = True
 
-    # Merge subagents
-    if "agents" in agents_config:
-        for agent_name, agent_config in agents_config["agents"].items():
-            settings["agents"][agent_name] = agent_config
-        logger.debug("Merged subagents into settings")
+    if not changed:
+        logger.debug("No changes to settings.json")
+        return True
 
-    # Validate result
-    try:
-        json.dumps(settings)
-    except (TypeError, ValueError) as e:
-        logger.error(f"Invalid JSON after patch: {e}")
-        return False
-
-    # Write patched settings
     try:
         with open(settings_path, "w") as f:
             json.dump(settings, f, indent=2)
