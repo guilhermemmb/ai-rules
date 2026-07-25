@@ -72,7 +72,7 @@ def build_agents_config(agents_dir, logger, subagents_dir=None):
         return {}
 
     main_agent = {}
-    main_file = agents_path / "main.md"
+    main_file = subagents_path / "main.md"
     if main_file.exists():
         main_agent = parse_agent_file(str(main_file))
         if main_agent:

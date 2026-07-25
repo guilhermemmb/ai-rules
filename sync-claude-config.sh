@@ -17,25 +17,16 @@ fi
 
 BEFORE=$(cat "$TARGET")
 
+# Use jq's built-in * operator (recursive object merge, arrays overridden by right side).
+# mcpServers entries are replaced wholesale via shallow + merge so that an http-typed
+# server in custom doesn't inherit leftover stdio fields from the target.
 jq -s '
-  def deepmerge(a; b):
-    if (a | type) == "object" and (b | type) == "object" then
-      ((a | keys) + (b | keys) | unique) | reduce .[] as $k (
-        {};
-        if (a | has($k)) and (b | has($k)) then
-          .[$k] = deepmerge(a[$k]; b[$k])
-        elif (a | has($k)) then
-          .[$k] = a[$k]
-        else
-          .[$k] = b[$k]
-        end
-      )
-    elif (a | type) == "array" and (b | type) == "array" then
-      a + b
-    else
-      b
-    end;
-  deepmerge(.[0]; .[1])
+  .[0] as $target |
+  .[1] as $custom |
+  ($target * $custom) |
+  if ($custom | has("mcpServers")) then
+    .mcpServers = (($target.mcpServers // {}) + $custom.mcpServers)
+  else . end
 ' "$TARGET" "$CUSTOM" > /tmp/claude.json.tmp \
   && mv /tmp/claude.json.tmp "$TARGET"
 
@@ -51,10 +42,9 @@ jq -rn \
 
   def fmt(v): v | tojson;
 
-  (($before | keys) + ($custom | keys) | unique)[] |
+  ($custom | keys_unsorted)[] |
   . as $k |
-  if ($custom | has($k) | not) then empty
-  elif ($before | has($k) | not) then
+  if ($before | has($k) | not) then
     "[+] \($k)  added\n    → \(fmt($custom[$k]))\n"
   elif ($before[$k] == $after[$k]) then empty
   else

@@ -20,4 +20,7 @@ fi
 
 # Call Python orchestrator, passing all arguments
 cd "$SCRIPT_DIR"
-exec python3 scripts/main.py "$@"
+python3 scripts/main.py "$@"
+
+# Sync claude config as final step
+"$SCRIPT_DIR/sync-claude-config.sh"

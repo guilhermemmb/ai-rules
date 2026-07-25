@@ -119,6 +119,16 @@ def verify_no_agents_block_in_settings(settings_file, logger):
     return True
 
 
+def verify_main_agent_deployed(claude_agents_dir, logger):
+    """Check ~/.claude/agents/main.md exists."""
+    main_file = Path(claude_agents_dir) / "main.md"
+    if not main_file.exists():
+        logger.warn("~/.claude/agents/main.md not found")
+        return False
+    logger.success("main agent deployed at ~/.claude/agents/main.md")
+    return True
+
+
 def verify_deployment(agents_json, settings_file, logger):
     """Run all verifications."""
     logger.info("Starting verification")
@@ -138,6 +148,7 @@ def verify_deployment(agents_json, settings_file, logger):
         ("no agents block in settings", lambda: verify_no_agents_block_in_settings(settings_file, logger)),
         ("agent files in ~/.claude/agents/", lambda: verify_agents_dir(agents_config, str(claude_agents_dir), logger)),
         ("mcpServers in agent files", lambda: verify_mcpservers_in_agents_dir(agents_config, str(claude_agents_dir), logger)),
+        ("main agent deployed", lambda: verify_main_agent_deployed(str(claude_agents_dir), logger)),
     ]
 
     passed = 0

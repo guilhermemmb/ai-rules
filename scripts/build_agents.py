@@ -69,7 +69,7 @@ def deploy_to_agents_dir(config, agents_dir, logger):
         try:
             fm = yaml.safe_load(deployed.read_text().split("---")[1])
             agent_name = fm.get("name") if fm else None
-            if agent_name and agent_name not in known_names:
+            if agent_name and agent_name not in known_names and agent_name != "main":
                 deployed.unlink()
                 logger.success(f"Removed stale agent: {deployed.name}")
         except Exception:

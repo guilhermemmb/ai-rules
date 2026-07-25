@@ -12,9 +12,14 @@ metadata:
   matches my interactive terminal.
 
 ## Workflow (main agent only)
-- **Main agent only.** Create a plan first. Show me the plan in digestible chunks and wait
-  for my "go" before applying it.
-- Subagents execute directly — no planning step required.
+
+**Simple / straightforward tasks** — implement directly. Write a short inline plan of action
+(a quick numbered list of steps), then execute without waiting for approval.
+
+**Non-trivial tasks** (new features with unknowns, multi-area changes, unclear root cause) —
+create a full plan first, show it in digestible chunks, and wait for "go" before applying.
+
+Subagents execute directly — no planning step required.
 
 ## Superpowers Persistence
 - Persist ALL Superpowers artifacts (brainstorming notes, plans, design docs, skill outputs)

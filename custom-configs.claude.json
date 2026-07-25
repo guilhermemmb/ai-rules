@@ -21,11 +21,11 @@
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8[1m]"
   },
   "model": "claude-sonnet-4-6[1m]",
-  "effortLevel": "medium",
+  "effortLevel": "high",
   "permissions": {
     "allow": [],
     "deny": [],
-    "defaultMode": "plan"
+    "defaultMode": "manual"
   },
   "disableClaudeAiConnectors": true,
   "enableAllProjectMcpServers": true,
