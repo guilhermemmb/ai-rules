@@ -16,6 +16,7 @@ bridgetown/
 ├── DEPLOY.md                  # How to deploy agent tool/MCP configs
 ├── RULES_GUIDE.md             # How rules are organized and when loaded
 ├── MCP_SERVERS.md             # MCP inventory across all tools
+├── custom-configs.claude.json # Committed partial Claude config (user-scope settings + MCPs)
 ├── rulesync.jsonc             # rulesync targets and features config
 ├── opencode.jsonc             # OpenCode project-level config
 ├── build-agents.sh            # Generates per-agent tool/MCP JSON config
@@ -157,8 +158,7 @@ Global `~/.claude/settings.json` defines mcpServers and disables plugin-based MC
     "linear": {"command": "npx", "args": ["-y", "@linear/sdk-mcp"]},
     "notion": {"command": "npx", "args": ["-y", "@notion-mcp/notion-mcp"]},
     "gcloud": {"command": "npx", "args": ["-y", "@google-cloud/gcloud-mcp"]},
-    "gcloud-observability": {"command": "npx", "args": ["-y", "@google-cloud/observability-mcp"]},
-    "HomeAssistant": {"command": "/opt/homebrew/bin/uvx", "args": ["--refresh", "ha-mcp@latest"]}
+    "gcloud-observability": {"command": "npx", "args": ["-y", "@google-cloud/observability-mcp"]}
   }
 }
 ```
@@ -174,6 +174,34 @@ Global `~/.claude/settings.json` defines mcpServers and disables plugin-based MC
 - caveman, code-review, pr-review-toolkit, claude-md-management, skill-creator, code-simplifier, superpowers, superpowers-developing-for-claude-code
 
 MCPs load on-demand via npx instead of pre-loading as plugins. Reduces token overhead for sessions outside ai-rules.
+
+## User-Scope Claude Config
+
+`custom-configs.claude.json` is a committed partial JSON file containing all custom user-scope Claude Code settings. It is the canonical reference for what should be in `~/.claude/claude.json` (user preferences) and `.claude/settings.json` (project settings).
+
+**Contents:** `env` (API routing + model overrides), `model`, `effortLevel`, `permissions`, `mcpServers`, `enabledPlugins`, `extraKnownMarketplaces`, `statusLine`, `tui`, `theme`, and other behavioral flags.
+
+**To apply to a new machine:**
+```bash
+# Quick sync (script)
+./sync-claude-config.sh
+```
+Merges `custom-configs.claude.json` into `~/.claude.json` in one step.
+
+```bash
+# Manual merge into ~/.claude/claude.json
+jq -s '.[0] * .[1]' ~/.claude/claude.json custom-configs.claude.json > /tmp/claude.tmp \
+  && mv /tmp/claude.tmp ~/.claude/claude.json
+
+# Or copy as the project settings baseline
+cp custom-configs.claude.json .claude/settings.json
+```
+
+**Source of truth:** `.claude/settings.json` — edit there, then regenerate:
+```bash
+jq '{env,model,effortLevel,permissions,disableClaudeAiConnectors,enableAllProjectMcpServers,skipDangerousModePermissionPrompt,skipAutoPermissionPrompt,tui,editorMode,preferredNotifChannel,includeCoAuthoredBy,cleanupPeriodDays,verbose,theme,statusLine,hooks,enabledPlugins,extraKnownMarketplaces,mcpServers}' \
+  .claude/settings.json > custom-configs.claude.json
+```
 
 ## Key Files Reference
 

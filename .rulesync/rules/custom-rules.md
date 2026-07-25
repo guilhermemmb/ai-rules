@@ -11,9 +11,10 @@ metadata:
 - Always use zsh. Before running any command, source my `~/.zshrc` first so the environment
   matches my interactive terminal.
 
-## Workflow
-- Create a plan first. Show me the plan in digestible chunks and wait for my "go" before
-  applying it.
+## Workflow (main agent only)
+- **Main agent only.** Create a plan first. Show me the plan in digestible chunks and wait
+  for my "go" before applying it.
+- Subagents execute directly — no planning step required.
 
 ## Superpowers Persistence
 - Persist ALL Superpowers artifacts (brainstorming notes, plans, design docs, skill outputs)
