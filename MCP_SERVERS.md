@@ -13,7 +13,6 @@ Central inventory of all MCP servers configured in `~/.claude/settings.json`.
 | `context-mode` | all agents |
 | `github` | main |
 | `mcp-server-browser` | browser-agent |
-| `chrome-devtools-mcp` | browser-agent |
 | `sentry-mcp` | observability-and-troubleshoot |
 | `gcloud` | observability-and-troubleshoot |
 | `gcloud-observability-ai-agent` | observability-and-troubleshoot |
@@ -97,19 +96,6 @@ Primary browser automation. Used by `browser-agent` for all navigation, interact
 ```
 
 **Tools:** `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_form_input_fill`, `browser_get_text`, `browser_get_markdown`, `browser_scroll`, `browser_evaluate`, and more. See `subagents/browser-agent.md` for full tool list.
-
----
-
-### chrome-devtools-mcp
-
-Chrome DevTools integration. Used by `browser-agent` for heavy inspection — performance profiling, Lighthouse audits, network analysis. Not for general navigation.
-
-```json
-{
-  "command": "npx",
-  "args": ["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics"]
-}
-```
 
 ---
 

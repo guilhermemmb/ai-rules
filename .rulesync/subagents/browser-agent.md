@@ -3,13 +3,12 @@ name: browser-agent
 targets: ["claudecode"]
 description: >-
   Browser interaction specialist. Receives a goal, executes it using
-  mcp-server-browser (tier 1) and chrome-devtools-mcp (tier 2 — heavy
-  inspection/performance only). Returns a clear report back to the main agent.
+  mcp-server-browser. Returns a clear report back to the main agent.
   Spawned by main agent.
 tools: [Bash, Read, Write, Edit]
 claudecode:
   model: claude-sonnet-4-6[1m]
-  mcpServers: [mcp-server-browser, chrome-devtools-mcp, codebase-memory-mcp]
+  mcpServers: [mcp-server-browser, codebase-memory-mcp]
 ---
 
 ## Superpowers / Planning
@@ -66,16 +65,6 @@ Use for all navigation, interaction, and content extraction:
 
 - `browser_scroll` — scroll vertically by pixel amount
 - `browser_evaluate` — execute JavaScript in browser console
-
-**Tier 2 — chrome-devtools-mcp** (only for heavy inspection / performance work)
-
-Use only when the goal explicitly requires deep inspection, performance
-profiling, or Lighthouse audits — not for general browsing:
-
-- `lighthouse_audit` — full Lighthouse performance / accessibility audit
-- `list_network_requests` / `get_network_request` — detailed network inspection
-- `get_console_message` — read browser console output
-- `evaluate_script` — complex JS execution with DevTools context
 
 **Write/Edit tools** — persist extracted data, page content, or reports to disk.
 Use `/tmp/browser-agent/` for all file output.

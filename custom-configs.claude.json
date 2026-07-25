@@ -44,15 +44,14 @@
     "refreshInterval": 15
   },
   "enabledPlugins": {
-    "context7-mcp@claude-plugins-official": false,
+    "context7-mcp@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
     "pr-review-toolkit@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
-    "chrome-devtools-mcp@chrome-devtools-plugins": false,
-    "superpowers@superpowers-marketplace": true,
+"superpowers@superpowers-marketplace": true,
     "superpowers-developing-for-claude-code@superpowers-marketplace": true,
     "shopify-ai-toolkit@claude-plugins-official": false,
-    "caveman@caveman": false,
+    "caveman@caveman": true,
     "superpowers-chrome@superpowers-marketplace": false,
     "skill-creator@claude-plugins-official": true,
     "sentry-cli@claude-plugins-official": false,
@@ -65,13 +64,7 @@
         "repo": "warpdotdev/claude-code-warp"
       }
     },
-    "chrome-devtools-plugins": {
-      "source": {
-        "source": "github",
-        "repo": "ChromeDevTools/chrome-devtools-mcp"
-      }
-    },
-    "superpowers-marketplace": {
+"superpowers-marketplace": {
       "source": {
         "source": "github",
         "repo": "obra/superpowers-marketplace"
@@ -110,20 +103,12 @@
       "command": "npx",
       "args": ["@agent-infra/mcp-server-browser@latest", "--headless"]
     },
-    "chrome-devtools-mcp": {
-      "command": "npx",
-      "args": ["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics"]
-    },
     "sentry-mcp": {
       "command": "npx",
       "args": ["-y", "@sentry/mcp-server@latest", "--agent"],
       "env": {
         "SENTRY_ACCESS_TOKEN": "${SENTRY_ACCESS_TOKEN}"
       }
-    },
-    "datadog-mcp": {
-      "type": "http",
-      "url": "https://mcp.datadoghq.com/v1/mcp"
     },
     "cortex": {
       "type": "http",

@@ -22,7 +22,7 @@ Granular tool/MCP access per agent. Each agent handles specific domains:
 | Agent | Purpose | MCPs | When to Dispatch |
 |-------|---------|------|------------------|
 | **main** | Senior developer + orchestrator. Implements simple tasks directly; plans and dispatches for complex/specialized work | codebase-memory-mcp, context7-mcp, github, context-mode | Code exploration, implementation, gh CLI, dispatch |
-| **browser-agent** | Browser interaction | mcp-server-browser, chrome-devtools-mcp, codebase-memory-mcp, context-mode | Navigation, screenshots, page analysis, web automation |
+| **browser-agent** | Browser interaction | mcp-server-browser, codebase-memory-mcp, context-mode | Navigation, screenshots, page analysis, web automation |
 | **observability-and-troubleshoot** | Production diagnostics | sentry-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat, codebase-memory-mcp, context-mode | Sentry/logs/metrics queries, root cause analysis, correlate telemetry to code (Datadog via pup skills) |
 | **cortex-agent** | Gorgias domain knowledge | cortex, codebase-memory-mcp, context-mode | Metric definitions, schemas, business rules, map metrics to code |
 | **knowledge-agent** | External docs & issues | notion, linear, codebase-memory-mcp, context-mode | Notion docs, Linear issues/epics, specs |
@@ -31,7 +31,7 @@ Granular tool/MCP access per agent. Each agent handles specific domains:
 
 **Main Agent Constraints:**
 
-- No mcp-server-browser, chrome-devtools-mcp (→ browser-agent)
+- No mcp-server-browser (→ browser-agent)
 - No sentry-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat (→ observability-and-troubleshoot)
 - No cortex (→ cortex-agent)
 - No notion, linear (→ knowledge-agent)
