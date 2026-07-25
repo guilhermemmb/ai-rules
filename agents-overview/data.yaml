@@ -13,6 +13,8 @@ nodes:
       - observability
       - cortex-agent
       - knowledge-agent
+      - plan-agent
+      - main (parallel)
     constraints: |
       Cannot directly access: chrome-devtools-mcp, sentry-mcp, datadog-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat, cortex, notion, linear
       Must dispatch to appropriate subagent for these tools
@@ -22,6 +24,8 @@ nodes:
       • Implement core changes
       • Run tests & verify
       • Dispatch specialized work to subagents
+      • Self-dispatch additional main agents for independent parallel tasks
+      • Dispatch Plan agent when architecture design needs to run concurrently with implementation
 
   # Specialized Agents (children of main)
   - id: browser-agent
@@ -103,6 +107,24 @@ nodes:
       • Search external documentation
       • Retrieve project context & decisions
       • Link requirements to implementation
+
+  - id: plan-agent
+    label: Plan
+    type: agent
+    role: Architecture Planner
+    color: '#60a5fa'
+    parent: main
+    model: claude-sonnet-4-6[1m]
+    trigger: 'Architecture planning — only when running concurrently with implementation tasks'
+    tools: 'Read-only (no Edit/Write)'
+    constraints: |
+      Read-only — cannot edit or write files
+      Only worth dispatching during parallel work; use superpowers:writing-plans for sequential planning
+    responsibilities: |
+      • Design implementation approach for a task
+      • Identify critical files and call paths
+      • Consider architectural trade-offs
+      • Return step-by-step plan for main to execute
 
   # MCPs (owned by agents)
   - id: codebase-memory
@@ -355,6 +377,14 @@ links:
   - source: main
     target: knowledge-agent
     label: dispatches
+
+  - source: main
+    target: plan-agent
+    label: dispatches (parallel only)
+
+  - source: main
+    target: main
+    label: self-dispatch (parallel)
 
   # Browser agent
   - source: browser-agent
