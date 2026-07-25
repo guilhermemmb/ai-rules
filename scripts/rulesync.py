@@ -18,7 +18,7 @@ def run_rulesync(script_dir, logger):
 
     try:
         result = subprocess.run(
-            ["rulesync", "generate"],
+            ["rulesync", "generate", "--global"],
             cwd=str(script_path),
             capture_output=True,
             text=True,

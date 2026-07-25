@@ -6,20 +6,9 @@
 
 ## GitHub Operations — gh CLI
 
-Main agent uses `gh` CLI directly for GitHub operations. No MCP needed.
+Main agent uses `gh` CLI directly. Confirm before any write operation. See `.rulesync/rules/git-remote-confirmation.md` for the full blocked/allowed list — that file is the authoritative source and is distributed globally via rulesync.
 
-**Allowed gh commands:**
-
-- `gh pr create/edit/merge/view/diff/checks`
-- `gh issue create/edit/view/list`
-- `gh repo search/list`
-- `gh run list/view`
-- `gh api` (GET only)
-
-## Git Push Safety
-
-- **Never use `git push --force`** — use `git push --force-with-lease` only when explicitly instructed after a rebase/amend
-- Never force-push to `main`/`master` under any circumstances
+**Never use `git push --force`** — use `git push --force-with-lease` only when explicitly instructed. Never force-push to `main`/`master`.
 
 ## Forbidden Commands
 

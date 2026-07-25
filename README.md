@@ -105,14 +105,63 @@ Add directly to `~/.claude/settings.json` under `mcpServers`.
 ## Deployment
 
 ```bash
-# Generate agent tool/MCP config
 ./deploy.sh
-
-# Sync agents to settings only (fast)
-./deploy.sh --sync-agents
 ```
 
-See `DEPLOY.md` for full steps including dry-run verification.
+Runs `scripts/main.py` then `sync-claude-config.sh`. Four steps:
+
+**Step 1 — Build agents config**
+
+Reads every `.rulesync/subagents/*.md`, extracts `name`, `tools`, and `mcpServers` from the YAML frontmatter, and writes a snapshot to `/tmp/agents-config.json`.
+
+**Step 2 — `rulesync generate --global`**
+
+Distributes everything in `.rulesync/` to the global Claude Code config:
+
+| Source | Destination |
+|--------|-------------|
+| `.rulesync/rules/*.md` | `~/.claude/rules/*.md` |
+| `.rulesync/subagents/*.md` | `~/.claude/agents/*.md` |
+| `.rulesync/skills/*/SKILL.md` | `~/.claude/skills/*/SKILL.md` |
+| `.rulesync/commands/*.md` | `~/.claude/commands/*.md` |
+| `.rulesync/hooks.json` | merged into `~/.claude/settings.json` |
+| `.rulesync/mcp.json` | merged into `~/.claude/settings.json` (mcpServers) |
+
+If `rulesync` fails (not installed, timeout), the step logs a warning and continues.
+
+**Step 3 — Patch `mcpServers` into `~/.claude/agents/`**
+
+`rulesync` copies the `.md` files but doesn't guarantee the `mcpServers` frontmatter matches the computed config. This step re-writes that field in each `~/.claude/agents/<name>.md` and removes any stale agent files no longer in the source.
+
+MCP access per agent after this step:
+
+| Agent | MCPs |
+|-------|------|
+| `main` | `codebase-memory-mcp`, `context7-mcp` |
+| `browser-agent` | `mcp-server-browser`, `chrome-devtools-mcp`, `codebase-memory-mcp` |
+| `observability-and-troubleshoot` | `sentry-mcp`, `datadog-mcp`, `gcloud`, `gcloud-observability-ai-agent`, `gcloud-observability-chat`, `codebase-memory-mcp` |
+| `cortex-agent` | `cortex`, `codebase-memory-mcp` |
+| `knowledge-agent` | `notion`, `linear`, `codebase-memory-mcp` |
+
+**Step 4 — Verify**
+
+Checks: agents-config JSON valid, settings JSON valid, no stale `agents` block in settings, all agent files present, `mcpServers` frontmatter matches config, `main.md` deployed.
+
+**Final — `sync-claude-config.sh`**
+
+Deep-merges `custom-configs.claude.json` into `~/.claude.json` via `jq`. `mcpServers` entries are shallow-merged (right side replaces same-keyed entries wholesale, so no stale fields bleed across).
+
+**What changes where:**
+
+```
+.rulesync/subagents/*.md   →  ~/.claude/agents/*.md  (mcpServers frontmatter patched)
+.rulesync/rules/*.md       →  ~/.claude/rules/*.md
+.rulesync/skills/**        →  ~/.claude/skills/
+.rulesync/commands/*.md    →  ~/.claude/commands/*.md
+.rulesync/hooks.json       →  ~/.claude/settings.json (hooks merged)
+.rulesync/mcp.json         →  ~/.claude/settings.json (mcpServers merged)
+custom-configs.claude.json →  ~/.claude.json (deep merged)
+```
 
 ## First-Time Setup
 
@@ -127,7 +176,7 @@ See `DEPLOY.md` for full steps including dry-run verification.
         "hooks": [
           {
             "type": "command",
-            "command": "cd /Users/guilhermebomfim/developer/dotfiles/ai-rules && ./deploy.sh --sync-agents --quiet"
+            "command": "cd /Users/guilhermebomfim/developer/dotfiles/ai-rules && ./deploy.sh --quiet"
           }
         ]
       }
@@ -136,7 +185,7 @@ See `DEPLOY.md` for full steps including dry-run verification.
 }
 ```
 
-This auto-syncs agent config (tools/MCPs) from `agents/main.md` and subagents every Claude Code startup. Ensures main agent stays restricted to `[codebase-memory-mcp, github, context7-mcp]`, dropping MCP token load from ~70k to ~30-40k.
+Runs the full deploy on every Claude Code startup — distributes rules, patches agent mcpServers, verifies. Keeps agent MCP access in sync automatically.
 
 ## Global MCP Server Setup
 

@@ -110,47 +110,78 @@ This agent does NOT have access to:
 
 ### Quick Reference
 
-| Agent | Trigger | Access | Example |
-|-------|---------|--------|---------|
-| **main** (direct) | Code, git, tests, design, planning | Read, Edit, Write, Bash, codebase-memory-mcp, context7-mcp, github | "Find where auth middleware uses session tokens" |
-| **browser-agent** | Navigation, screenshots, page interaction, UI inspection | mcp-server-browser, chrome-devtools-mcp | "Take a screenshot of the login page and extract form fields" |
-| **observability-and-troubleshoot** | Production errors, logs, metrics, traces | sentry-mcp, datadog-mcp, gcloud, gcloud-observability-* | "Find errors in helpdesk service last hour, root cause" |
-| **cortex-agent** | Gorgias business metrics, schemas, definitions | cortex MCP, codebase-memory-mcp | "What's the definition of MRR? Which tables store it?" |
-| **knowledge-agent** | Notion docs, Linear issues, specs | notion, linear MCPs | "Find design docs for auth refactor, get related Linear issues" |
+| Agent | Dispatch when | MCPs |
+|-------|--------------|------|
+| **main** (direct) | Code, git, gh CLI, tests, linting, planning | codebase-memory-mcp, context7-mcp |
+| **browser-agent** | Any browser navigation, screenshot, DOM, UI automation | mcp-server-browser, chrome-devtools-mcp, codebase-memory-mcp |
+| **observability-and-troubleshoot** | Production errors, logs, metrics, traces, incidents | sentry-mcp, datadog-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat, codebase-memory-mcp |
+| **cortex-agent** | Gorgias business metrics, schemas, domain rules, BigQuery | cortex, codebase-memory-mcp |
+| **knowledge-agent** | Notion docs, Linear issues/epics, specs, project tracking | notion, linear, codebase-memory-mcp |
+
+### Per-agent dispatch criteria
+
+**browser-agent** — dispatch when the task requires a real browser:
+
+- Navigate to a URL, click, fill forms, submit
+- Take screenshots or capture page state
+- Inspect DOM, extract page content, accessibility tree
+- Automate a UI flow or verify a UI change in the running app
+- Performance tracing, Lighthouse audits
+
+**observability-and-troubleshoot** — dispatch for any production signal:
+
+- Find Sentry errors, exceptions, or issues in a service
+- Query Datadog logs, metrics, APM traces, monitors, RUM, incidents
+- Read GCP logs via `gcloud logging read`
+- Correlate an error/trace back to source code (it has codebase-memory-mcp too)
+- Root cause analysis across multiple observability sources
+
+**cortex-agent** — dispatch for Gorgias domain knowledge:
+
+- Metric definitions (MRR, ARR, churn, NPS, LTV, …)
+- Table schemas and column mappings in BigQuery
+- Business rules and calculations
+- Customer data structure, revenue, product usage questions
+- Map a metric or pipeline concept to its implementation code
+
+**knowledge-agent** — dispatch for internal docs and issue tracking:
+
+- Find or summarize Notion pages (design docs, specs, runbooks)
+- Retrieve Linear issues, epics, or project status
+- Cross-reference a feature request with its spec
+- Gather context before starting a complex implementation
 
 ### Direct Execution (no dispatch needed)
 
-- **Code exploration** — RTK grep/find, codebase-memory-mcp search_graph, trace_path
-- **Code modification** — Edit/Write files (non-browser, non-observability, non-domain)
-- **Testing & linting** — pnpm test, pnpm lint (run & fix)
-- **Builds & deploys** — ./deploy.sh, build scripts
-- **Git operations** — with user confirmation
-- **GitHub operations** — gh CLI directly (pr, issue, repo, run)
-- **Superpowers planning** — TaskCreate/TaskUpdate for plan tracking
+- Code exploration — RTK grep/find, codebase-memory-mcp search_graph, trace_path
+- Code modification — Edit/Write files
+- Testing & linting — pnpm test, pnpm lint
+- Builds & deploys — ./deploy.sh, build scripts
+- Git operations — with user confirmation
+- GitHub operations — gh CLI directly (pr, issue, repo, run)
+- Superpowers planning — TaskCreate/TaskUpdate
 
 ### When NOT to Dispatch
 
-Don't dispatch when main has the tool or the task is simple:
-
 ```
 ❌ "Find where auth middleware uses session tokens" → use codebase-memory-mcp directly
-❌ "What's in the auth module?" → use grep or codebase-memory-mcp
+❌ "What's in the auth module?" → use codebase-memory-mcp or grep
 ❌ "Fix typo in README" → just edit the file
-❌ "Create a PR" → use gh CLI directly, don't spawn a github-agent
-❌ "Search for an issue" → use gh CLI directly
+❌ "Create a PR" → use gh CLI directly
+❌ "Search for a Linear issue" → use knowledge-agent, not gh CLI
 ```
 
 ### Example Workflows
 
 **GitHub operations (main direct):**
 ```
-gh pr create --title "feat(auth): add jwt token refresh" --body "..." --draft
+gh pr create --title "feat(auth): add jwt token refresh" --body-file /tmp/pr.md --draft
 ```
 
 **Browser interaction (dispatch):**
 ```
 main → browser-agent: "Navigate to https://example.com/login, take a screenshot"
-browser-agent → main: screenshot_path, extracted data
+browser-agent → main: {screenshot_path, extracted_data}
 ```
 
 **Production investigation (dispatch):**
@@ -167,10 +198,9 @@ main → cortex-agent: "What's the metric definition for MRR? Which tables?"
 cortex-agent → main: {definition, formula, tables}
 ```
 
-**External documentation (dispatch):**
+**Internal docs (dispatch):**
 ```
-main → knowledge-agent:
-  "Search Notion for auth refactor design docs. Get related Linear issues."
+main → knowledge-agent: "Find Notion design doc for auth refactor. Get related Linear issues."
 knowledge-agent → main: {docs: [...], issues: [...], key_points: [...]}
 ```
 
@@ -178,5 +208,5 @@ knowledge-agent → main: {docs: [...], issues: [...], key_points: [...]}
 ```
 search_graph(query="authenticateRequest")
 trace_path(function_name="authenticateRequest", mode="inbound")
-→ No dispatch needed — main has codebase-memory-mcp
+→ No dispatch — main has codebase-memory-mcp
 ```
