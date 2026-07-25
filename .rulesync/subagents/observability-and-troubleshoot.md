@@ -10,7 +10,7 @@ description: >-
 tools: [Bash, Read, Write]
 claudecode:
   model: claude-sonnet-4-6
-  mcpServers: [sentry-mcp, datadog-mcp, gcloud, gcloud-observability, codebase-memory-mcp]
+  mcpServers: [sentry-mcp, datadog-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat, codebase-memory-mcp]
 ---
 
 ## Superpowers / Planning

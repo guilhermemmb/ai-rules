@@ -1,4 +1,17 @@
 {
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "rtk hook claude"
+          }
+        ]
+      }
+    ]
+  },
   "env": {
     "ANTHROPIC_BASE_URL": "https://bifrost.ops.gorgias.io/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "sk-bf-9a345580-467f-4fa6-ad1b-b01f92289d7f",
@@ -30,7 +43,6 @@
     "command": "npx -y ccstatusline@latest",
     "refreshInterval": 15
   },
-  "hooks": {},
   "enabledPlugins": {
     "context7-mcp@claude-plugins-official": false,
     "claude-md-management@claude-plugins-official": true,
@@ -132,9 +144,13 @@
       "command": "npx",
       "args": ["-y", "@google-cloud/gcloud-mcp"]
     },
-    "gcloud-observability": {
+    "gcloud-observability-ai-agent": {
       "command": "npx",
-      "args": ["-y", "@google-cloud/observability-mcp"]
+      "args": ["-y", "@google-cloud/observability-mcp", "--project", "gorgias-conversations-prod"]
+    },
+    "gcloud-observability-chat": {
+      "command": "npx",
+      "args": ["-y", "@google-cloud/observability-mcp", "--project", "gorgias-chat-production"]
     }
   }
 }

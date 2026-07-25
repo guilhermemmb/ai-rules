@@ -59,7 +59,7 @@ Main agent orchestrates; it cannot directly touch browser, observability, or dom
 |-------|---------|------|---------------|
 | **main** | Orchestrator | codebase-memory-mcp, github, context7-mcp | Code, planning, implementation |
 | **browser-agent** | Browser interaction | mcp-server-browser, chrome-devtools-mcp | Navigation, screenshots, DOM, web automation |
-| **observability-and-troubleshoot** | Production diagnostics | sentry-mcp, datadog-mcp, gcloud, gcloud-observability | Errors, logs, metrics, root cause |
+| **observability-and-troubleshoot** | Production diagnostics | sentry-mcp, datadog-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat | Errors, logs, metrics, root cause |
 | **cortex-agent** | Gorgias domain knowledge | cortex | Metrics, schemas, business rules |
 | **knowledge-agent** | Internal docs & issues | notion, linear | Notion pages, Linear issues/specs |
 
@@ -158,7 +158,8 @@ Global `~/.claude/settings.json` defines mcpServers and disables plugin-based MC
     "linear": {"command": "npx", "args": ["-y", "@linear/sdk-mcp"]},
     "notion": {"command": "npx", "args": ["-y", "@notion-mcp/notion-mcp"]},
     "gcloud": {"command": "npx", "args": ["-y", "@google-cloud/gcloud-mcp"]},
-    "gcloud-observability": {"command": "npx", "args": ["-y", "@google-cloud/observability-mcp"]}
+    "gcloud-observability-ai-agent": {"command": "npx", "args": ["-y", "@google-cloud/observability-mcp", "--project", "gorgias-conversations-prod"]},
+    "gcloud-observability-chat": {"command": "npx", "args": ["-y", "@google-cloud/observability-mcp", "--project", "gorgias-chat-production"]}
   }
 }
 ```

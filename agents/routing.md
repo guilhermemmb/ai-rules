@@ -8,7 +8,7 @@ Decision guide for main agent to delegate work to specialized subagents, or exec
 |-------|---------|--------|---------|
 | **main** | Code, git, tests, design, planning | Read, Edit, Write, Bash, codebase-memory-mcp, context7-mcp, github | "Find where the auth middleware uses session tokens" |
 | **browser-agent** | Navigation, screenshots, page interaction, UI inspection | mcp-server-browser, chrome-devtools-mcp | "Take a screenshot of the login page and extract the form fields" |
-| **observability-and-troubleshoot** | Production errors, logs, metrics, traces | sentry-mcp, datadog-mcp, gcloud, gcloud-observability, codebase-memory-mcp | "Find errors in helpdesk service last hour, root cause" |
+| **observability-and-troubleshoot** | Production errors, logs, metrics, traces | sentry-mcp, datadog-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat, codebase-memory-mcp | "Find errors in helpdesk service last hour, root cause" |
 | **cortex-agent** | Gorgias business metrics, schemas, definitions | cortex MCP, codebase-memory-mcp | "What's the definition of MRR? Which tables store it?" |
 | **knowledge-agent** | Notion docs, Linear issues, specs | notion, linear MCPs | "Find design docs for auth refactor. Get related Linear issues." |
 | **planner** | Implementation strategy, architecture, design | All tools + reasoning | "Plan a refactor of the auth module" |

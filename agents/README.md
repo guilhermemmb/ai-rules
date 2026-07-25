@@ -17,7 +17,7 @@ Granular agent definitions with tool/MCP restrictions for ai-rules/bridgetown.
 |------|-------|-----|
 | Code exploration, implementation | main | Core read/write access |
 | Take screenshot, fill form, click button | browser-agent | Elevated mcp-server-browser |
-| Find Sentry errors, query logs, diagnose issue | observability-and-troubleshoot | Elevated Sentry/Datadog/gcloud/gcloud-observability |
+| Find Sentry errors, query logs, diagnose issue | observability-and-troubleshoot | Elevated Sentry/Datadog/gcloud/gcloud-observability-{ai-agent,chat} |
 | Gorgias metrics, schemas, business rules | cortex-agent | Elevated cortex MCP |
 | Notion docs, Linear issues, specs | knowledge-agent | Elevated Notion/Linear MCPs |
 | Design refactor, architecture decision | planner | Specialized planning |
@@ -35,8 +35,8 @@ Granular agent definitions with tool/MCP restrictions for ai-rules/bridgetown.
 - Output: /tmp/browser-agent/ only, JSON schema
 
 **Observability (Restricted):**
-- Bash (pup with --agent --read-only, gcloud/gcloud-observability read-only), Write
-- MCPs: sentry-mcp, datadog-mcp, gcloud, gcloud-observability (read-only)
+- Bash (pup with --agent --read-only, gcloud read-only), Write
+- MCPs: sentry-mcp, datadog-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat (read-only)
 - Output: /tmp/gorgias-troubleshoot/ only, JSON schema
 
 **Cortex Agent (Restricted):**

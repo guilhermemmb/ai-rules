@@ -189,7 +189,8 @@ No code needed—YAML drives everything.
 - **sentry-mcp** — Error monitoring (read-only)
 - **datadog-mcp** — APM, logs, metrics (read-only)
 - **gcloud** — GCP Cloud Logging
-- **gcloud-observability** — GCP Observability (always paired with gcloud)
+- **gcloud-observability-ai-agent** — GCP Observability for gorgias-conversations-prod (always paired with gcloud)
+- **gcloud-observability-chat** — GCP Observability for gorgias-chat-production (always paired with gcloud)
 
 **cortex-agent:**
 
@@ -225,7 +226,7 @@ No code needed—YAML drives everything.
 
 **Main agent cannot directly access:**
 - mcp-server-browser, chrome-devtools-mcp (→ dispatch to browser-agent)
-- sentry-mcp, datadog-mcp, gcloud, gcloud-observability (→ dispatch to observability-and-troubleshoot)
+- sentry-mcp, datadog-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat (→ dispatch to observability-and-troubleshoot)
 - cortex (→ dispatch to cortex-agent)
 - notion, linear (→ dispatch to knowledge-agent)
 

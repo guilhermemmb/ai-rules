@@ -16,7 +16,8 @@ Central inventory of all MCP servers configured in `~/.claude/settings.json`.
 | `sentry-mcp` | observability-and-troubleshoot |
 | `datadog-mcp` | observability-and-troubleshoot |
 | `gcloud` | observability-and-troubleshoot |
-| `gcloud-observability` | observability-and-troubleshoot |
+| `gcloud-observability-ai-agent` | observability-and-troubleshoot |
+| `gcloud-observability-chat` | observability-and-troubleshoot |
 | `cortex` | cortex-agent |
 | `linear` | knowledge-agent |
 | `notion` | knowledge-agent |
@@ -128,7 +129,7 @@ Datadog APM, logs, metrics, and RUM via `pup` CLI in agent+read-only mode. Used 
 
 ### gcloud
 
-GCP Cloud Logging CLI via MCP. Always used together with `gcloud-observability`. Used by `observability-and-troubleshoot` only.
+GCP Cloud Logging CLI via MCP. Always used together with `gcloud-observability-ai-agent` and `gcloud-observability-chat`. Used by `observability-and-troubleshoot` only.
 
 ```json
 {
@@ -139,14 +140,27 @@ GCP Cloud Logging CLI via MCP. Always used together with `gcloud-observability`.
 
 ---
 
-### gcloud-observability
+### gcloud-observability-ai-agent
 
-GCP Observability MCP. Always paired with `gcloud` — both go to `observability-and-troubleshoot`.
+GCP Observability MCP scoped to `gorgias-conversations-prod`. Always paired with `gcloud` — both go to `observability-and-troubleshoot`.
 
 ```json
 {
   "command": "npx",
-  "args": ["-y", "@google-cloud/observability-mcp"]
+  "args": ["-y", "@google-cloud/observability-mcp", "--project", "gorgias-conversations-prod"]
+}
+```
+
+---
+
+### gcloud-observability-chat
+
+GCP Observability MCP scoped to `gorgias-chat-production`. Always paired with `gcloud` — both go to `observability-and-troubleshoot`.
+
+```json
+{
+  "command": "npx",
+  "args": ["-y", "@google-cloud/observability-mcp", "--project", "gorgias-chat-production"]
 }
 ```
 
