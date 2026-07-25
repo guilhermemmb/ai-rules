@@ -15,7 +15,6 @@ Central inventory of all MCP servers configured in `~/.claude/settings.json`.
 | `mcp-server-browser` | browser-agent |
 | `chrome-devtools-mcp` | browser-agent |
 | `sentry-mcp` | observability-and-troubleshoot |
-| `datadog-mcp` | observability-and-troubleshoot |
 | `gcloud` | observability-and-troubleshoot |
 | `gcloud-observability-ai-agent` | observability-and-troubleshoot |
 | `gcloud-observability-chat` | observability-and-troubleshoot |
@@ -123,19 +122,6 @@ Sentry error monitoring. Read-only access to issues, events, stack traces. Used 
   "command": "npx",
   "args": ["-y", "@sentry/mcp-server@latest", "--agent"],
   "env": {"SENTRY_ACCESS_TOKEN": "${SENTRY_ACCESS_TOKEN}"}
-}
-```
-
----
-
-### datadog-mcp
-
-Datadog APM, logs, metrics, and RUM via `pup` CLI in agent+read-only mode. Used by `observability-and-troubleshoot` only.
-
-```json
-{
-  "command": "/opt/homebrew/bin/pup",
-  "args": ["mcp", "--agent", "--read-only"]
 }
 ```
 

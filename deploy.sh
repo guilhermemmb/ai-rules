@@ -22,5 +22,8 @@ fi
 cd "$SCRIPT_DIR"
 python3 scripts/main.py "$@"
 
+# 3rd-party scripts
+pup skills install claude
+
 # Sync claude config as final step
 "$SCRIPT_DIR/sync-claude-config.sh"

@@ -16,7 +16,7 @@ nodes:
       - plan-agent
       - main (parallel)
     constraints: |
-      Cannot directly access: chrome-devtools-mcp, sentry-mcp, datadog-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat, cortex, notion, linear
+      Cannot directly access: chrome-devtools-mcp, sentry-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat, cortex, notion, linear
       Must dispatch to appropriate subagent for these tools
     responsibilities: |
       • Plan & design implementation strategy
@@ -55,14 +55,15 @@ nodes:
     parent: main
     model: claude-sonnet-4-6
     trigger: 'Production errors, logs, metrics, traces, root-cause analysis'
-    tools: 'Sentry, Datadog, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat, codebase-memory-mcp'
+    tools: 'Sentry, pup skills (Datadog), gcloud, gcloud-observability-ai-agent, gcloud-observability-chat, codebase-memory-mcp'
     constraints: |
       Cannot access: chrome-devtools-mcp, cortex, Notion, Linear
       Production diagnostics only — no UI interaction
+      Datadog accessed via pup skills (Bash), not MCP
       codebase-memory-mcp is read-only: map telemetry to code, don't infer runtime behavior from it
     responsibilities: |
       • Query Sentry for error details & events
-      • Fetch logs from Datadog, gcloud & gcloud-observability-{conversations,chat}
+      • Fetch logs via pup skills (Datadog), gcloud & gcloud-observability-{conversations,chat}
       • Analyze metrics & APM traces
       • Trace request paths & dependencies
       • Correlate stack traces to source via codebase-memory-mcp
@@ -159,13 +160,6 @@ nodes:
     label: sentry-mcp
     type: mcp
     role: Error Monitoring
-    color: '#a78bfa'
-    parent: observability
-
-  - id: datadog-mcp
-    label: datadog-mcp
-    type: mcp
-    role: APM & Logs
     color: '#a78bfa'
     parent: observability
 
@@ -402,10 +396,6 @@ links:
   # Observability agent
   - source: observability
     target: sentry-mcp
-    label: uses
-
-  - source: observability
-    target: datadog-mcp
     label: uses
 
   - source: observability
