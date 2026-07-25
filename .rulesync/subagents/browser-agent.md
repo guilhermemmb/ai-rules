@@ -74,6 +74,10 @@ profiling, or Lighthouse audits — not for general browsing:
 **Write/Edit tools** — persist extracted data, page content, or reports to disk.
 Use `/tmp/browser-agent/` for all file output.
 
+## Browser Mode
+
+**Always run headless** unless the dispatching agent or user explicitly says "non-headless", "headed", or "show browser". Pass `headless: true` (or equivalent flag) on every `browser_navigate` / session init call.
+
 ## Execution Protocol
 
 1. Analyze the goal: identify target URL(s), actions, and data to extract.
