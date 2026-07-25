@@ -13,7 +13,6 @@ nodes:
       - observability
       - cortex-agent
       - knowledge-agent
-      - planner
     constraints: |
       Cannot directly access: chrome-devtools-mcp, sentry-mcp, datadog-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat, cortex, notion, linear
       Must dispatch to appropriate subagent for these tools
@@ -33,7 +32,7 @@ nodes:
     parent: main
     model: claude-sonnet-4-6[1m]
     trigger: 'Screenshots, page analysis, UI interaction, E2E testing'
-    tools: 'mcp-server-browser, chrome-devtools-mcp'
+    tools: 'mcp-server-browser, chrome-devtools-mcp, codebase-memory-mcp'
     constraints: |
       Cannot access: Sentry, Datadog, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat, cortex, Notion, Linear
       Browser interaction only — no backend diagnostics
@@ -94,7 +93,7 @@ nodes:
     parent: main
     model: claude-haiku-4-5
     trigger: 'Design docs, specs, Linear issues, Notion pages, external docs'
-    tools: 'notion-mcp, linear-mcp'
+    tools: 'notion-mcp, linear-mcp, codebase-memory-mcp'
     constraints: |
       Cannot access: chrome-devtools-mcp, Sentry/Datadog, cortex
       External documentation only — no backend systems
@@ -104,24 +103,6 @@ nodes:
       • Search external documentation
       • Retrieve project context & decisions
       • Link requirements to implementation
-
-  - id: planner
-    label: planner
-    type: agent
-    role: Planning (user-invoke only)
-    color: '#60a5fa'
-    parent: main
-    model: inherit
-    trigger: 'User explicitly requests a plan/spec — cannot write code'
-    tools: 'codebase-memory-mcp, context7-mcp (read-only analysis)'
-    constraints: |
-      Invoked by user explicitly only — never auto-dispatched
-      Read/analyze only — must not write code
-    responsibilities: |
-      • Analyze related files & codebase structure
-      • Produce detailed implementation plans / specs
-      • Output plan files to tmp/ if needed
-      • No code writing
 
   # MCPs (owned by agents)
   - id: codebase-memory
@@ -328,6 +309,14 @@ nodes:
       • Filters output (60-90% reduction)
       • Enabled via PreToolUse hook
 
+  - id: context-mode
+    label: context-mode
+    type: mcp
+    role: Context Compression
+    color: '#a78bfa'
+    parent: null
+    description: Token-optimized context compression (60–90% reduction). Available to all agents. Diagnostics via /context-mode:ctx-doctor and /context-mode:ctx-stats.
+
 links:
   # Main orchestrator
   - source: main
@@ -367,10 +356,6 @@ links:
     target: knowledge-agent
     label: dispatches
 
-  - source: main
-    target: planner
-    label: dispatches
-
   # Browser agent
   - source: browser-agent
     target: chrome-devtools-mcp
@@ -378,6 +363,10 @@ links:
 
   - source: browser-agent
     target: mcp-server-browser
+    label: uses
+
+  - source: browser-agent
+    target: codebase-memory
     label: uses
 
   # Observability agent
@@ -423,13 +412,8 @@ links:
     target: linear
     label: uses
 
-  # Planner agent
-  - source: planner
+  - source: knowledge-agent
     target: codebase-memory
-    label: uses
-
-  - source: planner
-    target: context7-mcp
     label: uses
 
   # Infrastructure
@@ -456,6 +440,31 @@ links:
   - source: rtk
     target: bash
     label: wraps
+
+  # context-mode (all agents)
+  - source: main
+    target: context-mode
+    label: uses
+
+  - source: browser-agent
+    target: context-mode
+    label: uses
+
+  - source: observability
+    target: context-mode
+    label: uses
+
+  - source: cortex-agent
+    target: context-mode
+    label: uses
+
+  - source: knowledge-agent
+    target: context-mode
+    label: uses
+
+  - source: settings
+    target: context-mode
+    label: enables
 
   # GitHub
   - source: main

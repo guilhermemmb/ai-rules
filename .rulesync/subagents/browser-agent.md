@@ -9,7 +9,7 @@ description: >-
 tools: [Bash, Read, Write, Edit]
 claudecode:
   model: claude-sonnet-4-6[1m]
-  mcpServers: [mcp-server-browser, chrome-devtools-mcp]
+  mcpServers: [mcp-server-browser, chrome-devtools-mcp, codebase-memory-mcp]
 ---
 
 ## Superpowers / Planning

@@ -18,8 +18,8 @@ tools:
 - TaskUpdate
 - TaskGet
 - TaskList
-mcpServers: [codebase-memory-mcp, context7-mcp, github]
-mcps: [codebase-memory-mcp, context7-mcp, github]
+mcpServers: [codebase-memory-mcp, context7-mcp, github, context-mode]
+mcps: [codebase-memory-mcp, context7-mcp, github, context-mode]
 ---
 
 # Main Orchestrator
@@ -87,6 +87,5 @@ This agent does NOT have access to:
 | Production errors, logs, metrics, traces, root-cause analysis | observability-and-troubleshoot | sentry-mcp, datadog-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat | Access to error tracking, logging, APM systems |
 | Gorgias business metrics, schemas, definitions, data analysis | cortex-agent | cortex MCP | Domain knowledge, metric definitions, BigQuery data |
 | Design docs, specs, Linear issues, external documentation | knowledge-agent | notion, linear | Retrieve external documentation and project tracking |
-| Implementation strategy, architecture, multi-step planning | planner | All tools | Specialized design & architecture analysis |
 
 See `agents/routing.md` for full dispatch guide with examples.

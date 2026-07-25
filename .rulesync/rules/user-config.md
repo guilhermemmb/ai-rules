@@ -20,7 +20,6 @@ metadata:
 - `EDITOR=vim`
 - `GORGIAS_ROOT=/Users/guilhermebomfim/developer`
 - `BAO_ADDR` — Vault address
-- `HOMEASSISTANT_URL` + `HOMEASSISTANT_TOKEN` — Home Assistant API
 - `GITHUB_PERSONAL_ACCESS_TOKEN` — populated via `gh auth token`
 - `NPM_TOKEN` — GitHub npm registry auth
 

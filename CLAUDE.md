@@ -32,11 +32,11 @@ Granular tool/MCP access per agent. Each agent handles specific domains:
 
 | Agent | Purpose | MCPs | When to Dispatch |
 |-------|---------|------|------------------|
-| **main** | Orchestrator | codebase-memory-mcp, context7-mcp, github | Code exploration, implementation, gh CLI, dispatch |
-| **browser-agent** | Browser interaction | mcp-server-browser, chrome-devtools-mcp | Navigation, screenshots, page analysis, web automation |
-| **observability-and-troubleshoot** | Production diagnostics | sentry-mcp, datadog-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat, codebase-memory-mcp | Sentry/logs/metrics queries, root cause analysis, correlate telemetry to code |
-| **cortex-agent** | Gorgias domain knowledge | cortex, codebase-memory-mcp | Metric definitions, schemas, business rules, map metrics to code |
-| **knowledge-agent** | External docs & issues | notion, linear | Notion docs, Linear issues/epics, specs |
+| **main** | Orchestrator | codebase-memory-mcp, context7-mcp, github, context-mode | Code exploration, implementation, gh CLI, dispatch |
+| **browser-agent** | Browser interaction | mcp-server-browser, chrome-devtools-mcp, codebase-memory-mcp, context-mode | Navigation, screenshots, page analysis, web automation |
+| **observability-and-troubleshoot** | Production diagnostics | sentry-mcp, datadog-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat, codebase-memory-mcp, context-mode | Sentry/logs/metrics queries, root cause analysis, correlate telemetry to code |
+| **cortex-agent** | Gorgias domain knowledge | cortex, codebase-memory-mcp, context-mode | Metric definitions, schemas, business rules, map metrics to code |
+| **knowledge-agent** | External docs & issues | notion, linear, codebase-memory-mcp, context-mode | Notion docs, Linear issues/epics, specs |
 
 **Dispatch Rules:** See `agents/routing.md` for dispatch examples & detailed rules.
 
@@ -97,3 +97,9 @@ gh pr edit <number> \
   --title "$(head -1 <file> | sed 's/^# //')" \
   --body-file <(tail -n +3 <file>)
 ```
+
+### Communication style
+
+- Go straight to the point but don't supress details. I'm smart and an experienced software engineer.
+- Do not repeat file contents or command outputs that Context Mode has already indexed.
+- Skip conversational filler ("Sure, I can help with that", "Here is what I found").

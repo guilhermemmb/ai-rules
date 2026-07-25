@@ -46,6 +46,8 @@ def deploy_to_agents_dir(config, agents_dir, logger):
         return True
 
     success = True
+    known_names = set(config["agents"].keys())
+
     for name, agent_config in config["agents"].items():
         mcpServers = agent_config.get("mcpServers", [])
         target = agents_path / f"{name}.md"
@@ -61,6 +63,17 @@ def deploy_to_agents_dir(config, agents_dir, logger):
                 success = False
         else:
             logger.warn(f"~/.claude/agents/{name}.md not found — skipping (create it manually)")
+
+    # Remove deployed agents that no longer have a source definition
+    for deployed in agents_path.glob("*.md"):
+        try:
+            fm = yaml.safe_load(deployed.read_text().split("---")[1])
+            agent_name = fm.get("name") if fm else None
+            if agent_name and agent_name not in known_names:
+                deployed.unlink()
+                logger.success(f"Removed stale agent: {deployed.name}")
+        except Exception:
+            pass
 
     return success
 

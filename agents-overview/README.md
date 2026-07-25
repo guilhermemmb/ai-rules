@@ -201,10 +201,6 @@ No code needed—YAML drives everything.
 - **notion** — Knowledge base docs
 - **linear** — Issues and epics
 
-**personal (main session only):**
-
-- **HomeAssistant** — Home automation control
-
 ### Tools
 - **Bash** — Command execution
 - **Read/Edit/Write** — File operations

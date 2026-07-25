@@ -151,6 +151,9 @@
     "gcloud-observability-chat": {
       "command": "npx",
       "args": ["-y", "@google-cloud/observability-mcp", "--project", "gorgias-chat-production"]
+    },
+    "context-mode": {
+      "command": "context-mode"
     }
   }
 }

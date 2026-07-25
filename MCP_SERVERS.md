@@ -8,8 +8,9 @@ Central inventory of all MCP servers configured in `~/.claude/settings.json`.
 
 | MCP | Agent(s) with access |
 |-----|---------------------|
-| `codebase-memory-mcp` | main, planner, observability-and-troubleshoot, cortex-agent |
-| `context7-mcp` | main, planner |
+| `codebase-memory-mcp` | all agents |
+| `context7-mcp` | main |
+| `context-mode` | all agents |
 | `github` | main |
 | `mcp-server-browser` | browser-agent |
 | `chrome-devtools-mcp` | browser-agent |
@@ -21,7 +22,6 @@ Central inventory of all MCP servers configured in `~/.claude/settings.json`.
 | `cortex` | cortex-agent |
 | `linear` | knowledge-agent |
 | `notion` | knowledge-agent |
-| `HomeAssistant` | main (personal automation) |
 
 ---
 
@@ -41,6 +41,20 @@ Local code-intelligence server. Builds a persistent knowledge graph from source 
 **Tools:** `search_graph`, `search_code`, `get_architecture`, `trace_path`, `get_code_snippet`, `query_graph`, `get_graph_schema`, `detect_changes`, `index_repository`, `list_projects`, `index_status`, `delete_project`, `ingest_traces`, `manage_adr`
 
 **Rule:** `rules/codebase-memory.md`
+
+---
+
+### context-mode
+
+Token-optimized context compression. Intercepts tool calls, filters and compresses output to reduce token usage 60–90%. Provides SQLite FTS5-backed session history. Available to all agents.
+
+```json
+{
+  "command": "context-mode"
+}
+```
+
+**Diagnostic commands:** `/context-mode:ctx-doctor` (health check) · `/context-mode:ctx-stats` (token savings breakdown)
 
 ---
 
@@ -201,23 +215,6 @@ Notion knowledge base. Read-only access to pages, databases, and docs. Used by `
 {
   "command": "npx",
   "args": ["-y", "@notion-mcp/notion-mcp"]
-}
-```
-
----
-
-### HomeAssistant
-
-Home Assistant control. Personal automation — not part of agent routing system.
-
-```json
-{
-  "command": "/opt/homebrew/bin/uvx",
-  "args": ["--refresh", "ha-mcp@latest"],
-  "env": {
-    "HOMEASSISTANT_URL": "${HOMEASSISTANT_URL}",
-    "HOMEASSISTANT_TOKEN": "${HOMEASSISTANT_TOKEN}"
-  }
 }
 ```
 
