@@ -1,177 +1,237 @@
 # MCP Servers
 
-Central inventory of all MCP (Model Context Protocol) servers configured across LLM tools.
+Central inventory of all MCP servers configured in `~/.claude/settings.json`.
 
 ---
 
-## Global MCPs (All Platforms via `codebase-memory-mcp`)
+## Agent Assignment
 
-| Name | Type | Platforms | Purpose |
-|------|------|-----------|---------|
-| `codebase-memory-mcp` | stdio | Claude Code, Codex, Gemini, OpenCode, Antigravity, Zed, VS Code, Cursor | Local code-intelligence server — persistent knowledge graph over source for graph-based exploration |
+| MCP | Agent(s) with access |
+|-----|---------------------|
+| `codebase-memory-mcp` | main, planner, observability-and-troubleshoot, cortex-agent |
+| `context7-mcp` | main, planner |
+| `github` | main |
+| `mcp-server-browser` | browser-agent |
+| `chrome-devtools-mcp` | browser-agent |
+| `sentry-mcp` | observability-and-troubleshoot |
+| `datadog-mcp` | observability-and-troubleshoot |
+| `gcloud` | observability-and-troubleshoot |
+| `gcloud-observability` | observability-and-troubleshoot |
+| `cortex` | cortex-agent |
+| `linear` | knowledge-agent |
+| `notion` | knowledge-agent |
+| `HomeAssistant` | main (personal automation) |
+
+---
+
+## Servers
 
 ### codebase-memory-mcp
 
-Local, single-binary code-intelligence server ([DeusData/codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)). Builds a persistent knowledge graph from source using tree-sitter (158 languages) plus semantic type resolution for 12 (Python, TypeScript, Go, Rust, Java, PHP, C#, C/C++, Kotlin). Sub-millisecond queries, ~99% fewer tokens than file-by-file reading, 100% local (no telemetry, code never leaves the machine).
+Local code-intelligence server. Builds a persistent knowledge graph from source using tree-sitter (158 languages). Sub-millisecond queries, ~99% fewer tokens than file-by-file reading, 100% local.
 
-Automatically installed and configured across all AI tools (Claude Code, Codex, Gemini CLI, OpenCode, Antigravity, Zed, VS Code, Cursor).
+```json
+{
+  "command": "npx",
+  "args": ["-y", "codebase-memory-mcp"]
+}
+```
 
-**Config:** `.rulesync/mcp.json` — `command: /Users/guilhermebomfim/.local/bin/codebase-memory-mcp`.
+**Tools:** `search_graph`, `search_code`, `get_architecture`, `trace_path`, `get_code_snippet`, `query_graph`, `get_graph_schema`, `detect_changes`, `index_repository`, `list_projects`, `index_status`, `delete_project`, `ingest_traces`, `manage_adr`
 
-**Hooks:**
-- Claude Code: `PreToolUse` hook (Grep/Glob search-graph augmenter, non-blocking)
-- Other tools: `SessionStart` hook (MCP usage reminder)
-
-**Tools (15):**
-- Discover/search: `search_graph`, `search_code`, `get_architecture`
-- Trace/read: `trace_path`, `get_code_snippet`, `query_graph` (read-only Cypher), `get_graph_schema`, `detect_changes`
-- Manage: `index_repository`, `list_projects`, `index_status`, `delete_project`, `ingest_traces`, `manage_adr`
-
-**Indexing modes:** `full` (files + similarity/semantic edges) · `moderate` · `fast` (no similarity/semantic) · `cross-repo-intelligence` (match Routes/Channels across projects). `persistence: true` writes a shareable `.codebase-memory/graph.db.zst`.
-
-**Config files & env:** `.codebase-memory.json` (custom extensions), `.cbmignore` (ignore rules); `CBM_CACHE_DIR`, `CBM_WORKERS`, `CBM_ALLOWED_ROOT`, `CBM_LOG_LEVEL`.
-
-**Use when:**
-- Orienting in an unfamiliar codebase: `get_architecture`
-- Finding a definition/symbol: `search_graph`, then `get_code_snippet`
-- Callers/callees, impact, cross-service flow: `trace_path`
-- Multi-hop / aggregate / hot-path queries: `query_graph`
-
-**Agents with access:** `main`, `planner`, `observability-and-troubleshoot` (correlate telemetry to code), `cortex-agent` (map metrics/pipelines to implementation).
-
-**Rule & skill:** `rules/codebase-memory.md` for full usage guidance; direct Cypher via `query_graph` for advanced graph operations.
+**Rule:** `rules/codebase-memory.md`
 
 ---
 
-## Claude Code (`~/.claude/settings.json`)
+### context7-mcp
 
-| Name | Type | Command | Purpose |
-|------|------|---------|---------|
-| `HomeAssistant` | stdio | `uvx ha-mcp@latest` | Control Home Assistant devices, automations, areas, entities |
+Up-to-date library documentation lookup via HTTP. Fetches current docs for any library or framework — more reliable than training data for recent versions.
+
+```json
+{
+  "type": "http",
+  "url": "https://mcp.context7.com/mcp"
+}
+```
+
+**Rule:** `rules/context7.md`
+
+---
+
+### github
+
+GitHub CLI integration. Exposes `gh` commands as MCP tools for PR, issue, and repo operations.
+
+```json
+{
+  "command": "gh",
+  "args": []
+}
+```
+
+---
+
+### mcp-server-browser
+
+Primary browser automation. Used by `browser-agent` for all navigation, interaction, screenshot, and content extraction tasks.
+
+```json
+{
+  "command": "npx",
+  "args": ["@agent-infra/mcp-server-browser@latest"]
+}
+```
+
+**Tools:** `browser_navigate`, `browser_screenshot`, `browser_click`, `browser_form_input_fill`, `browser_get_text`, `browser_get_markdown`, `browser_scroll`, `browser_evaluate`, and more. See `subagents/browser-agent.md` for full tool list.
+
+---
+
+### chrome-devtools-mcp
+
+Chrome DevTools integration. Used by `browser-agent` for heavy inspection — performance profiling, Lighthouse audits, network analysis. Not for general navigation.
+
+```json
+{
+  "command": "npx",
+  "args": ["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics"]
+}
+```
+
+---
+
+### sentry-mcp
+
+Sentry error monitoring. Read-only access to issues, events, stack traces. Used by `observability-and-troubleshoot` only.
+
+```json
+{
+  "command": "npx",
+  "args": ["-y", "@sentry/mcp-server@latest", "--agent"],
+  "env": {"SENTRY_ACCESS_TOKEN": "${SENTRY_ACCESS_TOKEN}"}
+}
+```
+
+---
+
+### datadog-mcp
+
+Datadog APM, logs, metrics, and RUM via `pup` CLI in agent+read-only mode. Used by `observability-and-troubleshoot` only.
+
+```json
+{
+  "command": "/opt/homebrew/bin/pup",
+  "args": ["mcp", "--agent", "--read-only"]
+}
+```
+
+---
+
+### gcloud
+
+GCP Cloud Logging CLI via MCP. Always used together with `gcloud-observability`. Used by `observability-and-troubleshoot` only.
+
+```json
+{
+  "command": "npx",
+  "args": ["-y", "@google-cloud/gcloud-mcp"]
+}
+```
+
+---
+
+### gcloud-observability
+
+GCP Observability MCP. Always paired with `gcloud` — both go to `observability-and-troubleshoot`.
+
+```json
+{
+  "command": "npx",
+  "args": ["-y", "@google-cloud/observability-mcp"]
+}
+```
+
+---
+
+### cortex
+
+Gorgias Context Layer MCP. Exposes metric definitions, table schemas, business rules, and BigQuery data. Used by `cortex-agent` only.
+
+```json
+{
+  "type": "http",
+  "url": "https://cortex.mcp.gorgias-decision-engine.com/mcp"
+}
+```
+
+---
+
+### linear
+
+Linear issue tracking. Read-only access to issues, epics, cycles, and projects. Used by `knowledge-agent` only.
+
+```json
+{
+  "command": "npx",
+  "args": ["-y", "@linear/sdk-mcp"],
+  "env": {"LINEAR_API_KEY": "${LINEAR_API_KEY}"}
+}
+```
+
+---
+
+### notion
+
+Notion knowledge base. Read-only access to pages, databases, and docs. Used by `knowledge-agent` only.
+
+```json
+{
+  "command": "npx",
+  "args": ["-y", "@notion-mcp/notion-mcp"]
+}
+```
+
+---
 
 ### HomeAssistant
+
+Home Assistant control. Personal automation — not part of agent routing system.
 
 ```json
 {
   "command": "/opt/homebrew/bin/uvx",
   "args": ["--refresh", "ha-mcp@latest"],
   "env": {
-    "HOMEASSISTANT_URL": "<set in settings.json>",
-    "HOMEASSISTANT_TOKEN": "<set in settings.json>"
+    "HOMEASSISTANT_URL": "${HOMEASSISTANT_URL}",
+    "HOMEASSISTANT_TOKEN": "${HOMEASSISTANT_TOKEN}"
   }
 }
 ```
-
-**Use when:** Automating Home Assistant (lights, sensors, automations, etc.) via the HA skill (`/ha-api`).
-**Env vars required:** `HOMEASSISTANT_URL`, `HOMEASSISTANT_TOKEN` (stored in `~/.claude/settings.json`).
-
-### Claude Code Settings
-Claude Code's `~/.claude/settings.json` also contains:
-
-**Plugins (12 enabled):**
-- `context7-mcp` — Up-to-date library docs
-- `pr-review-toolkit` — PR review automation
-- `frontend-design` — Frontend design assistance
-- `code-review` — Code review assistance
-- `github` — GitHub integration
-- `warp` — Warp terminal integration
-- `chrome-devtools-mcp` — Chrome DevTools integration
-- `superpowers` — Superpowers (brainstorming, planning)
-- `shopify-ai-toolkit` — Shopify development tools
-- `claude-md-management` — CLAUDE.md management
-- `superpowers-developing-for-claude-code` — Superpowers dev tools
-
-**Model settings:** Sonnet (default), `ANTHROPIC_BASE_URL` proxied through Bifrost.
-**Permissions:** Default `auto` mode with allowed commands for `gh pr`, `git`, `pnpm`, `ls`, `source`.
 
 ---
 
 ## Rulesync / Project-level MCPs (`.rulesync/mcp.json`)
 
-These MCPs are defined in the rules repo and can be distributed to all tools via rulesync.
+Distributed to all AI tools (Codex, OpenCode, Gemini, etc.) via rulesync. Subset of the Claude Code mcpServers above.
 
-| Name | Type | Command | Purpose |
-|------|------|---------|---------|
-| `serena` | stdio | `uvx serena start-mcp-server` | Code intelligence / semantic search for current project |
-| `context7` | stdio | `npx @upstash/context7-mcp` | Up-to-date library documentation lookup |
-
-### serena
-
-```json
-{
-  "type": "stdio",
-  "command": "uvx",
-  "args": [
-    "--from", "git+https://github.com/oraios/serena",
-    "serena", "start-mcp-server",
-    "--context", "ide-assistant",
-    "--enable-web-dashboard", "false",
-    "--project", "."
-  ]
-}
-```
-
-**Use when:** Searching, navigating, or understanding code in the current project. Provides semantic code awareness beyond simple grep.
-
-### context7
-
-```json
-{
-  "type": "stdio",
-  "command": "npx",
-  "args": ["-y", "@upstash/context7-mcp"]
-}
-```
-
-**Use when:** Looking up current documentation for any library or framework (React, Next.js, Prisma, etc.). More reliable than training data for recent versions.
-
----
-
-## OpenCode
-
-OpenCode has two config layers:
-- **User-level:** `~/.config/opencode/opencode.jsonc` — Shell, MCPs (Sentry remote), AGENTS.md
-- **Project-level:** `opencode.jsonc` (in project root) — Instructions referencing `.opencode/memories/`
-
-### User-level MCPs (`~/.config/opencode/opencode.jsonc`)
-| Name | Type | URL | Purpose |
-|------|------|-----|---------|
-| `sentry` | remote | `https://mcp.sentry.dev/mcp` | Sentry error monitoring and debugging |
-
-### Project-level config
-The rules repo's `opencode.jsonc` references instructions from `.opencode/memories/`:
-```json
-{
-  "instructions": [
-    ".opencode/memories/custom-rules.md",
-    ".opencode/memories/security-scan.md",
-    ".opencode/memories/user-config.md"
-  ]
-}
-```
-
-These memory files are generated by rulesync from `.rulesync/rules/`.
+| Name | Purpose |
+|------|---------|
+| `context7-mcp` | Library docs (stdio/npx variant for tools without http MCP support) |
+| `codebase-memory-mcp` | Code intelligence graph |
 
 ---
 
 ## Adding a New MCP
 
-### To Claude Code globally
-Edit `~/.claude/settings.json`, add entry under `mcpServers`.
+**Claude Code only:** Add entry under `mcpServers` in `~/.claude/settings.json`, then add it to the relevant subagent's `mcpServers` frontmatter array in `.rulesync/subagents/`.
 
-### To all tools via rulesync
-Edit `.rulesync/mcp.json`, add entry under `mcpServers`, then run rulesync.
-
-### To OpenCode only
-Edit `opencode.jsonc` in the project root.
+**All tools via rulesync:** Add to `.rulesync/mcp.json` under `mcpServers`, then run `rulesync`.
 
 ---
 
-## MCP Quick Reference
+## Quick Reference
 
-| Tool | Config Location | Scope |
-|------|----------------|-------|
-| Claude Code | `~/.claude/settings.json` | Global (all projects) |
-| Rulesync | `.rulesync/mcp.json` | Per-project, distributed |
-| OpenCode | `opencode.jsonc` | Per-project |
-| Codex | `~/.codex/` | Per-session |
+| Config location | Scope |
+|----------------|-------|
+| `~/.claude/settings.json` | Claude Code global |
+| `.rulesync/mcp.json` | All tools via rulesync |
+| `.rulesync/subagents/*.md` frontmatter | Per-agent access control |

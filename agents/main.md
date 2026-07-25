@@ -18,8 +18,8 @@ tools:
 - TaskUpdate
 - TaskGet
 - TaskList
-mcpServers: [codebase-memory-mcp, context7-mcp]
-mcps: [codebase-memory-mcp, context7-mcp]
+mcpServers: [codebase-memory-mcp, context7-mcp, github]
+mcps: [codebase-memory-mcp, context7-mcp, github]
 ---
 
 # Main Orchestrator
@@ -54,15 +54,15 @@ You are the main agent orchestrating implementation work across the ai-rules/bri
 ## Access Restrictions
 
 This agent does NOT have access to:
-- chrome-devtools, superpowers-chrome MCPs (use browser-agent)
-- sentry MCP (use observability-and-troubleshoot)
+- mcp-server-browser, chrome-devtools-mcp MCPs (use browser-agent)
+- sentry-mcp, datadog-mcp, gcloud, gcloud-observability (use observability-and-troubleshoot)
 - cortex MCP (use cortex-agent)
 - Notion, Linear MCPs (use knowledge-agent)
 
 ## Constraints
 
-- **Never call chrome-devtools MCP tools directly** — use browser-agent
-- **Never call sentry/datadog/gcloud tools directly** — use observability-and-troubleshoot
+- **Never call mcp-server-browser or chrome-devtools-mcp tools directly** — use browser-agent
+- **Never call sentry-mcp/datadog-mcp/gcloud/gcloud-observability tools directly** — use observability-and-troubleshoot
 - **Never call cortex MCP directly** — use cortex-agent
 - **Never call Notion/Linear MCPs directly** — use knowledge-agent
 - **Always use RTK** for file discovery, grep, git output
@@ -73,8 +73,8 @@ This agent does NOT have access to:
 
 | Goal | Subagent | Access | Why |
 |------|----------|--------|-----|
-| Browser interaction, page screenshots, UI analysis, E2E testing | browser-agent | chrome-devtools, superpowers-chrome | Can interact with pages, take screenshots, inspect DOM |
-| Production errors, logs, metrics, traces, root-cause analysis | observability-and-troubleshoot | Sentry, Datadog, gcloud | Access to error tracking, logging, APM systems |
+| Browser interaction, page screenshots, UI analysis, E2E testing | browser-agent | mcp-server-browser, chrome-devtools-mcp | Can interact with pages, take screenshots, inspect DOM |
+| Production errors, logs, metrics, traces, root-cause analysis | observability-and-troubleshoot | sentry-mcp, datadog-mcp, gcloud, gcloud-observability | Access to error tracking, logging, APM systems |
 | Gorgias business metrics, schemas, definitions, data analysis | cortex-agent | cortex MCP | Domain knowledge, metric definitions, BigQuery data |
 | Design docs, specs, Linear issues, external documentation | knowledge-agent | notion, linear | Retrieve external documentation and project tracking |
 | Implementation strategy, architecture, multi-step planning | planner | All tools | Specialized design & architecture analysis |

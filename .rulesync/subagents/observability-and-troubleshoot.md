@@ -10,7 +10,7 @@ description: >-
 tools: [Bash, Read, Write]
 claudecode:
   model: claude-sonnet-4-6
-  mcpServers: [sentry, datadog, gcloud, codebase-memory-mcp]
+  mcpServers: [sentry-mcp, datadog-mcp, gcloud, gcloud-observability, codebase-memory-mcp]
 ---
 
 You are the Gorgias troubleshooting analyst. You investigate production

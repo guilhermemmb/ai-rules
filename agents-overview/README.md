@@ -167,14 +167,37 @@ No code needed—YAML drives everything.
 - **knowledge-agent** — External docs (Notion, Linear)
 
 ### MCPs (Model Context Protocol)
+
+**main agent:**
+
 - **codebase-memory-mcp** — Code search, graph-based exploration
 - **context7-mcp** — Current library documentation
-- **chrome-devtools** — Browser automation
-- **sentry** — Error monitoring
-- **datadog** — APM, logs, metrics
-- **cortex** — Gorgias data access
+- **github** — GitHub CLI integration (PRs, issues, checks)
+
+**browser-agent:**
+
+- **mcp-server-browser** — Browser navigation, screenshots, interaction (tier 1)
+- **chrome-devtools-mcp** — Performance profiling, Lighthouse, network inspection (tier 2)
+
+**observability-and-troubleshoot:**
+
+- **sentry-mcp** — Error monitoring (read-only)
+- **datadog-mcp** — APM, logs, metrics (read-only)
+- **gcloud** — GCP Cloud Logging
+- **gcloud-observability** — GCP Observability (always paired with gcloud)
+
+**cortex-agent:**
+
+- **cortex** — Gorgias domain knowledge, metrics, BigQuery
+
+**knowledge-agent:**
+
 - **notion** — Knowledge base docs
 - **linear** — Issues and epics
+
+**personal (main session only):**
+
+- **HomeAssistant** — Home automation control
 
 ### Tools
 - **Bash** — Command execution
@@ -196,8 +219,8 @@ No code needed—YAML drives everything.
 ## Constraints
 
 **Main agent cannot directly access:**
-- chrome-devtools, superpowers-chrome (→ dispatch to browser-agent)
-- sentry, datadog, gcloud (→ dispatch to observability-and-troubleshoot)
+- mcp-server-browser, chrome-devtools-mcp (→ dispatch to browser-agent)
+- sentry-mcp, datadog-mcp, gcloud, gcloud-observability (→ dispatch to observability-and-troubleshoot)
 - cortex (→ dispatch to cortex-agent)
 - notion, linear (→ dispatch to knowledge-agent)
 

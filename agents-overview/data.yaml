@@ -15,7 +15,7 @@ nodes:
       - knowledge-agent
       - planner
     constraints: |
-      Cannot directly access: chrome-devtools, sentry, datadog, gcloud, cortex, notion, linear
+      Cannot directly access: chrome-devtools-mcp, sentry-mcp, datadog-mcp, gcloud, gcloud-observability, cortex, notion, linear
       Must dispatch to appropriate subagent for these tools
     responsibilities: |
       • Plan & design implementation strategy
@@ -33,9 +33,9 @@ nodes:
     parent: main
     model: claude-sonnet-4-6[1m]
     trigger: 'Screenshots, page analysis, UI interaction, E2E testing'
-    tools: 'chrome-devtools, superpowers-chrome, agentic-browser'
+    tools: 'mcp-server-browser, chrome-devtools-mcp'
     constraints: |
-      Cannot access: Sentry, Datadog, gcloud, cortex, Notion, Linear
+      Cannot access: Sentry, Datadog, gcloud, gcloud-observability, cortex, Notion, Linear
       Browser interaction only — no backend diagnostics
     responsibilities: |
       • Take screenshots & record page state
@@ -52,14 +52,14 @@ nodes:
     parent: main
     model: claude-sonnet-4-6
     trigger: 'Production errors, logs, metrics, traces, root-cause analysis'
-    tools: 'Sentry, Datadog, gcloud logging, codebase-memory-mcp'
+    tools: 'Sentry, Datadog, gcloud, gcloud-observability, codebase-memory-mcp'
     constraints: |
-      Cannot access: chrome-devtools, cortex, Notion, Linear
+      Cannot access: chrome-devtools-mcp, cortex, Notion, Linear
       Production diagnostics only — no UI interaction
       codebase-memory-mcp is read-only: map telemetry to code, don't infer runtime behavior from it
     responsibilities: |
       • Query Sentry for error details & events
-      • Fetch logs from Datadog & gcloud
+      • Fetch logs from Datadog, gcloud & gcloud-observability
       • Analyze metrics & APM traces
       • Trace request paths & dependencies
       • Correlate stack traces to source via codebase-memory-mcp
@@ -75,7 +75,7 @@ nodes:
     trigger: 'Gorgias metrics, schemas, definitions, business rules, data analysis'
     tools: 'cortex-mcp, BigQuery, codebase-memory-mcp'
     constraints: |
-      Cannot access: chrome-devtools, Sentry/Datadog, Notion, Linear
+      Cannot access: chrome-devtools-mcp, Sentry/Datadog, Notion, Linear
       Gorgias domain knowledge only — no external docs
       codebase-memory-mcp optional & read-only: cortex stays source of truth for definitions
     responsibilities: |
@@ -96,7 +96,7 @@ nodes:
     trigger: 'Design docs, specs, Linear issues, Notion pages, external docs'
     tools: 'notion-mcp, linear-mcp'
     constraints: |
-      Cannot access: chrome-devtools, Sentry/Datadog, cortex
+      Cannot access: chrome-devtools-mcp, Sentry/Datadog, cortex
       External documentation only — no backend systems
     responsibilities: |
       • Fetch design docs & specs from Notion
@@ -131,35 +131,35 @@ nodes:
     color: '#a78bfa'
     parent: main
 
-  - id: context7
+  - id: context7-mcp
     label: context7-mcp
     type: mcp
     role: Library Docs
     color: '#a78bfa'
     parent: main
 
-  - id: chrome-devtools
-    label: chrome-devtools
+  - id: chrome-devtools-mcp
+    label: chrome-devtools-mcp
     type: mcp
     role: Browser Automation
     color: '#a78bfa'
     parent: browser-agent
 
-  - id: superpowers-chrome
-    label: superpowers-chrome
+  - id: mcp-server-browser
+    label: mcp-server-browser
     type: mcp
-    role: Browser Superpowers
+    role: Browser Automation
     color: '#a78bfa'
     parent: browser-agent
 
-  - id: sentry
+  - id: sentry-mcp
     label: sentry-mcp
     type: mcp
     role: Error Monitoring
     color: '#a78bfa'
     parent: observability
 
-  - id: datadog
+  - id: datadog-mcp
     label: datadog-mcp
     type: mcp
     role: APM & Logs
@@ -170,6 +170,13 @@ nodes:
     label: gcloud
     type: mcp
     role: GCP Logs
+    color: '#a78bfa'
+    parent: observability
+
+  - id: gcloud-observability
+    label: gcloud-observability
+    type: mcp
+    role: GCP Observability
     color: '#a78bfa'
     parent: observability
 
@@ -282,7 +289,7 @@ nodes:
     description: Configure MCPs, tools, permissions, hooks
     location: '~/.claude/settings.json or .claude/settings.json'
     config: |
-      • MCP servers (codebase-memory, context7, etc)
+      • MCP servers (codebase-memory, context7-mcp, etc)
       • Tool permissions
       • Environment variables
       • Editor integrations
@@ -321,7 +328,7 @@ links:
     label: uses
 
   - source: main
-    target: context7
+    target: context7-mcp
     label: uses
 
   - source: main
@@ -359,24 +366,28 @@ links:
 
   # Browser agent
   - source: browser-agent
-    target: chrome-devtools
+    target: chrome-devtools-mcp
     label: uses
 
   - source: browser-agent
-    target: superpowers-chrome
+    target: mcp-server-browser
     label: uses
 
   # Observability agent
   - source: observability
-    target: sentry
+    target: sentry-mcp
     label: uses
 
   - source: observability
-    target: datadog
+    target: datadog-mcp
     label: uses
 
   - source: observability
     target: gcloud
+    label: uses
+
+  - source: observability
+    target: gcloud-observability
     label: uses
 
   - source: observability
@@ -407,7 +418,7 @@ links:
     label: uses
 
   - source: planner
-    target: context7
+    target: context7-mcp
     label: uses
 
   # Infrastructure
@@ -424,7 +435,7 @@ links:
     label: enables
 
   - source: settings
-    target: context7
+    target: context7-mcp
     label: enables
 
   - source: zsh

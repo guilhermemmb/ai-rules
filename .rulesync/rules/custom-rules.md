@@ -60,8 +60,7 @@ metadata:
 - Exception: you are the `observability-and-troubleshoot` subagent itself.
 
 ## Browser Interaction
-- **Never use chrome-devtools MCP tools directly** (navigate_page, take_screenshot, click, fill, evaluate_script, etc.) — always delegate to the `browser-agent` subagent.
-- **Never run `npx agentic-browser` or `agentic-browser` CLI directly** — always delegate to the `browser-agent` subagent.
+- **Never use mcp-server-browser or chrome-devtools-mcp tools directly** — always delegate to the `browser-agent` subagent.
 - Exception: you are the `browser-agent` subagent itself.
 
 ## General

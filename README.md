@@ -22,7 +22,7 @@ bridgetown/
 ├── merge-rules.sh             # Builds AGENTS.md from AGENTS.source.md + rules
 ├── agents/                    # Agent definitions (parsed by build-agents.sh)
 │   ├── main.md                # Orchestrator: code, planning, dispatch
-│   ├── browser-agent.md       # Chrome DevTools + superpowers-chrome
+│   ├── browser-agent.md       # mcp-server-browser (tier 1) + chrome-devtools-mcp (tier 2)
 │   ├── observability-and-troubleshoot.md  # Sentry + Datadog + GCP
 │   ├── cortex-agent.md        # Cortex MCP (Gorgias domain knowledge)
 │   ├── knowledge-agent.md     # Notion + Linear MCPs
@@ -57,8 +57,8 @@ Main agent orchestrates; it cannot directly touch browser, observability, or dom
 | Agent | Purpose | MCPs | Dispatch When |
 |-------|---------|------|---------------|
 | **main** | Orchestrator | codebase-memory-mcp, github, context7-mcp | Code, planning, implementation |
-| **browser-agent** | Browser interaction | chrome-devtools, superpowers-chrome | Screenshots, DOM, web automation |
-| **observability-and-troubleshoot** | Production diagnostics | sentry, datadog, gcloud | Errors, logs, metrics, root cause |
+| **browser-agent** | Browser interaction | mcp-server-browser, chrome-devtools-mcp | Navigation, screenshots, DOM, web automation |
+| **observability-and-troubleshoot** | Production diagnostics | sentry-mcp, datadog-mcp, gcloud, gcloud-observability | Errors, logs, metrics, root cause |
 | **cortex-agent** | Gorgias domain knowledge | cortex | Metrics, schemas, business rules |
 | **knowledge-agent** | Internal docs & issues | notion, linear | Notion pages, Linear issues/specs |
 
@@ -147,27 +147,31 @@ Global `~/.claude/settings.json` defines mcpServers and disables plugin-based MC
 {
   "mcpServers": {
     "codebase-memory-mcp": {"command": "npx", "args": ["-y", "codebase-memory-mcp"]},
-    "context7-mcp": {"command": "npx", "args": ["-y", "@upstash/context7-mcp"]},
-    "chrome-devtools": {"command": "npx", "args": ["-y", "@anthropics/chrome-devtools-mcp"]},
-    "sentry": {"command": "npx", "args": ["-y", "@sentry/mcp-server@latest", "--agent"]},
-    "datadog": {"command": "/opt/homebrew/bin/pup", "args": ["mcp", "--agent", "--read-only"]},
+    "context7-mcp": {"type": "http", "url": "https://mcp.context7.com/mcp"},
+    "github": {"command": "gh", "args": []},
+    "mcp-server-browser": {"command": "npx", "args": ["@agent-infra/mcp-server-browser@latest"]},
+    "chrome-devtools-mcp": {"command": "npx", "args": ["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics"]},
+    "sentry-mcp": {"command": "npx", "args": ["-y", "@sentry/mcp-server@latest", "--agent"]},
+    "datadog-mcp": {"command": "/opt/homebrew/bin/pup", "args": ["mcp", "--agent", "--read-only"]},
     "cortex": {"type": "http", "url": "https://cortex.mcp.gorgias-decision-engine.com/mcp"},
-    "HomeAssistant": {...}
+    "linear": {"command": "npx", "args": ["-y", "@linear/sdk-mcp"]},
+    "notion": {"command": "npx", "args": ["-y", "@notion-mcp/notion-mcp"]},
+    "gcloud": {"command": "npx", "args": ["-y", "@google-cloud/gcloud-mcp"]},
+    "gcloud-observability": {"command": "npx", "args": ["-y", "@google-cloud/observability-mcp"]},
+    "HomeAssistant": {"command": "/opt/homebrew/bin/uvx", "args": ["--refresh", "ha-mcp@latest"]}
   }
 }
 ```
 
-**MCP plugins disabled in enabledPlugins:**
+**MCP plugins disabled in enabledPlugins** (replaced by mcpServers entries above):
 
-- context7@claude-plugins-official
-- github@claude-plugins-official
-- chrome-devtools-mcp@chrome-devtools-plugins
-- superpowers-chrome@superpowers-marketplace
-- sentry-cli@claude-plugins-official
+- `context7-mcp@claude-plugins-official`
+- `chrome-devtools-mcp@chrome-devtools-plugins`
+- `sentry-cli@claude-plugins-official`
 
 **Non-MCP utility plugins kept enabled:**
 
-- caveman, code-review, pr-review-toolkit, claude-md-management, skill-creator, code-simplifier, superpowers
+- caveman, code-review, pr-review-toolkit, claude-md-management, skill-creator, code-simplifier, superpowers, superpowers-developing-for-claude-code
 
 MCPs load on-demand via npx instead of pre-loading as plugins. Reduces token overhead for sessions outside ai-rules.
 

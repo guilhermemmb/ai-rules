@@ -61,17 +61,17 @@ cat /tmp/agents-config.json | jq .
 After deployment:
 
 1. Check JSON is valid: `jq . ~/.claude/settings.json`
-2. Test main agent has no cortex/Notion/Linear/chrome-devtools access
+2. Test main agent has no cortex/Notion/Linear/chrome-devtools-mcp access
 3. Test cortex-agent can call cortex MCP
-4. Test browser-agent can call chrome-devtools MCP
-5. Test observability-and-troubleshoot can call sentry MCP
+4. Test browser-agent can call chrome-devtools-mcp MCP
+5. Test observability-and-troubleshoot can call sentry-mcp MCP
 
 ## Agent Files
 
 All agent definitions in `agents/`:
 - `main.md` — orchestrator (no browser/obs/cortex/knowledge access)
-- `browser-agent.md` — chrome-devtools, superpowers-chrome
-- `observability-and-troubleshoot.md` — sentry (read-only)
+- `browser-agent.md` — mcp-server-browser, chrome-devtools-mcp
+- `observability-and-troubleshoot.md` — sentry-mcp, datadog-mcp (read-only)
 - `cortex-agent.md` — cortex MCP
 - `knowledge-agent.md` — notion, linear
 
