@@ -113,6 +113,8 @@ This agent does NOT have access to:
 | Agent | Dispatch when | MCPs |
 |-------|--------------|------|
 | **main** (direct) | Code, git, gh CLI, tests, linting, planning | codebase-memory-mcp, context7-mcp |
+| **main** (parallel) | 2+ independent implementation tasks with no shared state | same as main |
+| **Plan** | Architecture planning — only when running concurrently with implementation tasks | none (read-only) |
 | **browser-agent** | Any browser navigation, screenshot, DOM, UI automation | mcp-server-browser, chrome-devtools-mcp, codebase-memory-mcp |
 | **observability-and-troubleshoot** | Production errors, logs, metrics, traces, incidents | sentry-mcp, datadog-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat, codebase-memory-mcp |
 | **cortex-agent** | Gorgias business metrics, schemas, domain rules, BigQuery | cortex, codebase-memory-mcp |
@@ -171,6 +173,29 @@ This agent does NOT have access to:
 ❌ "Search for a Linear issue" → use knowledge-agent, not gh CLI
 ```
 
+### Parallel Main Agent Dispatch
+
+When you have 2+ **independent** implementation tasks (no shared files, no sequential dependencies), spin up additional `main` agents so they run concurrently. Use the `superpowers:dispatching-parallel-agents` skill as the decision framework.
+
+**When to self-dispatch:**
+- Multiple independent features/fixes in different areas of the codebase
+- Independent test suites failing with different root causes in unrelated modules
+- Parallel exploration of separate subsystems before synthesizing results
+
+**When NOT to self-dispatch:**
+- Tasks touch the same files (agents would conflict)
+- Root cause is unknown (explore sequentially first)
+- One task's output is required to start the other
+
+**How to dispatch:**
+```
+Agent(subagent_type="main", prompt="<self-contained task with full context>")
+```
+
+Issue all Agent() calls in the same response to achieve true parallelism. Each dispatched main agent receives full context in its prompt, executes independently, and reports results back for the parent to synthesize.
+
+**Plan agent in parallel scenarios:** When splitting work across multiple main agents, you can also dispatch a `Plan` agent concurrently to design a third independent area while the others implement. Do NOT dispatch Plan for sequential "design then implement" — use `superpowers:writing-plans` inline instead (no context re-explanation overhead).
+
 ### Example Workflows
 
 **GitHub operations (main direct):**
@@ -202,6 +227,15 @@ cortex-agent → main: {definition, formula, tables}
 ```
 main → knowledge-agent: "Find Notion design doc for auth refactor. Get related Linear issues."
 knowledge-agent → main: {docs: [...], issues: [...], key_points: [...]}
+```
+
+**Parallel implementation (self-dispatch):**
+```
+main → main (parallel):
+  Task A: "Implement X in packages/auth — here's the spec and relevant files..."
+main → main (parallel):
+  Task B: "Implement Y in packages/billing — here's the spec and relevant files..."
+Both complete → parent synthesizes, runs tests
 ```
 
 **Code exploration (main direct):**
