@@ -81,10 +81,7 @@
   "mcpServers": {
     "codebase-memory-mcp": {
       "command": "npx",
-      "args": [
-        "-y",
-        "codebase-memory-mcp"
-      ]
+      "args": ["-y", "codebase-memory-mcp"]
     },
     "context7-mcp": {
       "type": "http",
@@ -99,37 +96,22 @@
     },
     "mcp-server-browser": {
       "command": "npx",
-      "args": [
-        "@agent-infra/mcp-server-browser@latest",
-        "--headless"
-      ]
+      "args": ["@agent-infra/mcp-server-browser@latest", "--headless"]
     },
     "chrome-devtools-mcp": {
       "command": "npx",
-      "args": [
-        "-y",
-        "chrome-devtools-mcp@latest",
-        "--no-usage-statistics"
-      ]
+      "args": ["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics"]
     },
     "sentry-mcp": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@sentry/mcp-server@latest",
-        "--agent"
-      ],
+      "args": ["-y", "@sentry/mcp-server@latest", "--agent"],
       "env": {
         "SENTRY_ACCESS_TOKEN": "${SENTRY_ACCESS_TOKEN}"
       }
     },
     "datadog-mcp": {
-      "command": "/opt/homebrew/bin/pup",
-      "args": [
-        "mcp",
-        "--agent",
-        "--read-only"
-      ]
+      "type": "http",
+      "url": "https://mcp.datadoghq.com/v1/mcp"
     },
     "cortex": {
       "type": "http",
@@ -137,34 +119,22 @@
     },
     "linear": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@linear/sdk-mcp"
-      ],
+      "args": ["-y", "@linear/sdk-mcp"],
       "env": {
         "LINEAR_API_KEY": "${LINEAR_API_KEY}"
       }
     },
     "notion": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@notion-mcp/notion-mcp"
-      ]
+      "args": ["-y", "@notion-mcp/notion-mcp"]
     },
     "gcloud": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@google-cloud/gcloud-mcp"
-      ]
+      "args": ["-y", "@google-cloud/gcloud-mcp"]
     },
     "gcloud-observability": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@google-cloud/observability-mcp"
-      ]
+      "args": ["-y", "@google-cloud/observability-mcp"]
     }
   }
 }

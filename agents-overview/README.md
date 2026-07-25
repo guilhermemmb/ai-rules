@@ -12,9 +12,14 @@ Interactive visualization of agents, MCPs, tools, skills, and infrastructure in 
 
 ## Quick Start
 
-1. Open `index.html` in a browser
-2. Click any card to expand and see detailed information
-3. See constraints, responsibilities, tools, and configuration
+The page uses `fetch()` to load `data.yaml`, so it must be served over HTTP (not opened as a `file://` URL).
+
+```sh
+# Serve and open in browser (runs on http://localhost:8888)
+./agents-overview/serve.sh
+```
+
+Click any card to expand and see detailed information — constraints, responsibilities, tools, and configuration.
 
 ## Using the Visualization
 
