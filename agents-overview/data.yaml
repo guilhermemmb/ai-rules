@@ -19,18 +19,18 @@ nodes:
       - navigator
       - detective
       - sage
-    mcp_access: '*, !context7'
+    mcp_access: codebase-memory-mcp, github
     constraints: |
-      Cannot directly access: context7 (→ Librarian), sentry/datadog/gcp-logging/rootly (→ Detective),
-      context-layer (→ Sage), mcp-server-browser (→ Navigator), linear/notion (→ Librarian)
-      Must dispatch to appropriate agent for these tools
+      Hard-enforced at MCP level: no sentry/gcp-logging/rootly (→ Detective),
+      no context-layer (→ Sage), no mcp-server-browser (→ Navigator), no linear/notion (→ Librarian)
+      Must dispatch to appropriate agent for these domains
     responsibilities: |
       • Plan & delegate complex tasks
       • Coordinate background subagents
       • Implement simple tasks directly
       • Read security-scan rules before git commit/push/rebase
       • Never run git commands without user confirmation
-      • RTK for file discovery, grep, git output
+      • RTK active via plugin (transparent rewrite)
 
   - id: oracle
     label: Oracle
@@ -91,12 +91,15 @@ nodes:
     color: '#60a5fa'
     parent: orchestrator
     model: GPT-5.6 Luna (medium)
+    mcp_access: codebase-memory-mcp, figma
     trigger: UI/UX implementation, visual components, frontend polish
     constraints: UI/UX focused. No backend/production tooling.
     responsibilities: |
       • Implement UI components & layouts
       • Visual polish & design system adherence
       • Front-end patterns and animations
+      • Read design system conventions via codebase-memory-mcp
+      • Access Figma designs via figma MCP
 
   - id: fixer
     label: Fixer
@@ -277,6 +280,20 @@ nodes:
     role: Gorgias Domain Data
     color: '#a78bfa'
     parent: sage
+
+  - id: figma-mcp
+    label: figma
+    type: mcp
+    role: Design Files
+    color: '#a78bfa'
+    parent: designer
+
+  - id: github-mcp
+    label: github
+    type: mcp
+    role: PRs, Issues, Repos
+    color: '#a78bfa'
+    parent: orchestrator
 
   # === Skills ===
 
@@ -516,9 +533,12 @@ links:
     target: sage
     label: dispatches
 
-  # Orchestrator → core MCPs
+  # Orchestrator → MCPs
   - source: orchestrator
     target: codebase-memory
+    label: uses
+  - source: orchestrator
+    target: github-mcp
     label: uses
 
   # Librarian → MCPs
@@ -536,6 +556,15 @@ links:
     label: uses
   - source: librarian
     target: notion-mcp
+    label: uses
+
+  # Navigator → MCPs
+  # Designer → MCPs
+  - source: designer
+    target: codebase-memory
+    label: uses
+  - source: designer
+    target: figma-mcp
     label: uses
 
   # Navigator → MCPs
