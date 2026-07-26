@@ -1,265 +1,136 @@
-# bridgetown — AI Rules Engine
+# ai-rules — OpenCode Agent Configuration
 
-Single source of truth for all LLM tool configurations. Change rules, agents, or skills here; rulesync distributes them everywhere.
+Source of truth for OpenCode agent rules, custom agents, skills, and commands. Used by [Oh My OpenCode Slim](https://ohmyopencodeslim.com/) with [Bifrost](https://bifrost.ops.gorgias.io) model routing.
 
-## What this is
+## Quick Start
 
-All LLM configs are authored here and distributed to Claude Code, OpenCode, Codex, Warp, and Zed. Previously scattered across `~/.ai-agents/`, `~/.claude/`, `~/.codex/`. Now: change once, push everywhere.
+```bash
+# Install OMO Slim with tmux
+bunx oh-my-opencode-slim@latest install --tmux=yes
+
+# Inside OpenCode
+ping all agents
+```
+
+## Agent Pantheon
+
+### Built-in (7 — OMO Slim)
+
+| Agent | Model (Bifrost) | Role | MCPs |
+|-------|----------------|------|------|
+| **Orchestrator** | GPT-5.6 Terra (xhigh) | Master delegator & coordinator | `*`, `!context7` |
+| **Oracle** | DeepSeek V4 Pro (high) | Strategic advisor, architecture, hard debugging | codebase-memory-mcp · skill: `simplify` |
+| **Explorer** | DeepSeek V4 Flash (low) | Codebase reconnaissance | codebase-memory-mcp |
+| **Librarian** | DeepSeek V4 Flash (low) | Knowledge retrieval | websearch, context7, gh_grep, linear, notion |
+| **Designer** | GPT-5.6 Luna (medium) | UI/UX excellence | — |
+| **Fixer** | Claude Sonnet 4.6 (xhigh) | Implementation specialist | codebase-memory-mcp |
+| **Observer** | Gemini 2.5 Flash | Visual analysis (images, PDFs) | — |
+
+### Custom (3)
+
+| Agent | Model (Bifrost) | MCPs | Dispatch when |
+|-------|----------------|------|---------------|
+| **Navigator** | Claude Sonnet 4.6 | mcp-server-browser | Navigation, screenshots, DOM, form fills, UI automation |
+| **Detective** | Claude Sonnet 4.6 | sentry, gcp-logging, rootly + **pup CLI** (Datadog) | Production errors, logs, metrics, traces, incidents |
+| **Sage** | Claude Haiku 4.5 | context-layer | Gorgias metrics, schemas, business rules, BigQuery |
+
+**Council** disabled. Observer auto-routes images from Orchestrator (DeepSeek V4 is not multimodal).
 
 ## Directory Map
 
 ```
-bridgetown/
-├── CLAUDE.md                  # Master instructions for Claude Code (always loaded)
-├── AGENTS.md                  # Auto-generated via build-agents.sh — gitignored
-├── ARCHITECTURE.md            # Full architecture narrative
-├── DEPLOY.md                  # How to deploy agent tool/MCP configs
-├── RULES_GUIDE.md             # How rules are organized and when loaded
-├── MCP_SERVERS.md             # MCP inventory across all tools
-├── custom-configs.claude.json # Committed partial Claude config (user-scope settings + MCPs)
-├── rulesync.jsonc             # rulesync targets and features config
-├── opencode.jsonc             # OpenCode project-level config
-├── build-agents.sh            # Generates per-agent tool/MCP JSON config
-├── merge-rules.sh             # Builds AGENTS.md from AGENTS.source.md + rules
-├── agents/                    # Agent definitions (parsed by build-agents.sh)
-│   ├── main.md                # Orchestrator: code, planning, dispatch
-│   ├── browser-agent.md       # mcp-server-browser (tier 1) + chrome-devtools-mcp (tier 2)
-│   ├── observability-and-troubleshoot.md  # Sentry + Datadog + GCP
-│   ├── cortex-agent.md        # Cortex MCP (Gorgias domain knowledge)
-│   ├── knowledge-agent.md     # Notion + Linear MCPs
-│   ├── routing.md             # Dispatch rules & examples
-│   └── README.md              # Quick agent reference
-└── .rulesync/                 # Source of truth — distributed by rulesync
-    ├── rules/                 # → ~/.claude/rules/, .opencode/, .codex/, .warp/
-    ├── skills/                # → ~/.claude/skills/
-    ├── commands/              # → ~/.claude/commands/
-    ├── subagents/             # → ~/.claude/agents/
-    ├── mcp.json               # MCP servers for rulesync targets
-    └── hooks.json             # Tool-use hooks
+ai-rules/
+├── openpackage.yml            # Manifest: declares rules, agents, skills, commands, MCP
+├── opencode.jsonc             # Project-level OpenCode config (MCPs)
+├── rules/                     # Rule files (distributed as prompt overrides)
+│   ├── overview.md            # GitHub/git/PR rules
+│   ├── custom-rules.md        # Workflow, packages, commits, dispatch rules
+│   ├── git-remote-confirmation.md  # gh CLI + git safety
+│   ├── pr-workflow.md         # PR creation workflow
+│   ├── security-scan.md       # On-demand commit/push safety checklist
+│   ├── rtk.md                 # RTK token optimization
+│   ├── user-config.md         # Machine config, env vars, aliases
+│   └── codebase-memory.md     # Codebase Memory MCP usage guide
+├── agents/                    # Custom agent prompt definitions
+│   ├── navigator.md           # Browser automation
+│   ├── detective.md           # Production diagnostics
+│   └── sage.md                # Gorgias domain knowledge
+├── commands/
+│   └── review-pr.md           # PR review command
+├── skills/
+│   └── project-context/       # Summarize project context
+└── agents-overview/           # Interactive visualization (data.yaml + index.html)
 ```
 
-## How Rules Flow
+## RTK — Token Optimization Plugin
 
-```
-.rulesync/rules/*.md  ──rulesync──►  ~/.claude/rules/*.md        (Claude Code)
-                                  ──►  ~/.opencode/memories/*.md  (OpenCode)
-                                  ──►  ~/.codex/instructions/*.md  (Codex)
-                                  ──►  ~/.warp/ai-instructions/*.md (Warp)
-```
-
-`rulesync.jsonc` at the repo root controls targets and features. Run `rulesync` after any change to `.rulesync/`.
-
-> **All rules must live in `.rulesync/rules/`** — this is the single source of truth. Do not create a top-level `rules/` directory; files there are not distributed by rulesync and will be ignored.
-
-## Agent System
-
-Main agent orchestrates; it cannot directly touch browser, observability, or domain-knowledge tools — it dispatches to the appropriate subagent.
-
-| Agent | Purpose | MCPs | Dispatch When |
-|-------|---------|------|---------------|
-| **main** | Orchestrator | codebase-memory-mcp, github, context7-mcp | Code, planning, implementation |
-| **browser-agent** | Browser interaction | mcp-server-browser, chrome-devtools-mcp | Navigation, screenshots, DOM, web automation |
-| **observability-and-troubleshoot** | Production diagnostics | sentry-mcp, datadog-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat | Errors, logs, metrics, root cause |
-| **cortex-agent** | Gorgias domain knowledge | cortex | Metrics, schemas, business rules |
-| **knowledge-agent** | Internal docs & issues | notion, linear | Notion pages, Linear issues/specs |
-
-See `agents/routing.md` for dispatch rules and examples.
-
-### Tool Isolation
-
-`build-agents.sh` parses each `agents/*.md` frontmatter and generates a JSON config listing allowed tools and MCPs per agent. Apply the output to `~/.claude/settings.json` (see `DEPLOY.md`). Until applied, MCPs are accessible to all agents.
-
-### GCP Logging Pattern
-
-GCP logging: CLI first, MCP fallback.
-
-1. Try `gcloud logging read` CLI (always available, token-efficient)
-2. Fall back to GCP Cloud Logging MCP when CLI is unavailable or insufficient
-
-## How to Add Things
-
-### New rule
-1. Create `.rulesync/rules/foo.md` with frontmatter (`name`, `description`, `metadata.type: rule`)
-2. Run `rulesync`
-
-### New skill
-1. Create `.rulesync/skills/foo/SKILL.md`
-2. Run `rulesync`
-
-### New agent
-1. Create `agents/foo.md` — frontmatter defines `name`, `tools`, `mcps`, `constraints`
-2. Create `.rulesync/subagents/foo.md` — full agent definition distributed to `~/.claude/agents/`
-3. Run `rulesync`, then run `./build-agents.sh` and apply output
-
-### New MCP (all tools)
-1. Add to `.rulesync/mcp.json`
-2. Run `rulesync`
-
-### New MCP (Claude Code only)
-Add directly to `~/.claude/settings.json` under `mcpServers`.
-
-### New command
-1. Create `.rulesync/commands/foo.md`
-2. Run `rulesync`
-
-## Deployment
+RTK is installed as a real OpenCode plugin that transparently rewrites commands before execution. No manual prefixing needed.
 
 ```bash
-./deploy.sh
+# Install (already done — plugin at ~/.config/opencode/plugins/rtk.ts)
+rtk init -g --opencode
+
+# Verify
+rtk --version
 ```
 
-Runs `scripts/main.py` then `sync-claude-config.sh`. Four steps:
+> **Note:** After installing the plugin, restart OpenCode. Test with `git status` — RTK rewrites it transparently.
 
-**Step 1 — Build agents config**
+## Configuration Layers
 
-Reads every `.rulesync/subagents/*.md`, extracts `name`, `tools`, and `mcpServers` from the YAML frontmatter, and writes a snapshot to `/tmp/agents-config.json`.
+| Layer | File | What it controls |
+|-------|------|-----------------|
+| Provider + MCPs | `~/.config/opencode/opencode.json` | Bifrost models (`bf`, `bf-a`, `bf-o`), MCP server endpoints |
+| OMO Slim plugin | `~/.config/opencode/opencode.jsonc` | Plugin registration, LSP, disabled default agents |
+| Agent models + MCPs | `~/.config/opencode/oh-my-opencode-slim.json` | Preset `bifrost`, per-agent model/variant/skills/MCPs, custom agents, tmux |
+| Prompt overrides | `~/.config/opencode/oh-my-opencode-slim/{agent}_append.md` | Per-agent appended instructions from rules/ |
+| Global instructions | `~/.config/opencode/AGENTS.md` | OMO Slim managed |
+| Project config | `<repo>/opencode.jsonc` | Project-level MCPs, model overrides |
 
-**Step 2 — `rulesync generate --global`**
+## How to Update
 
-Distributes everything in `.rulesync/` to the global Claude Code config:
+### Change an agent's model
 
-| Source | Destination |
-|--------|-------------|
-| `.rulesync/rules/*.md` | `~/.claude/rules/*.md` |
-| `.rulesync/subagents/*.md` | `~/.claude/agents/*.md` |
-| `.rulesync/skills/*/SKILL.md` | `~/.claude/skills/*/SKILL.md` |
-| `.rulesync/commands/*.md` | `~/.claude/commands/*.md` |
-| `.rulesync/hooks.json` | merged into `~/.claude/settings.json` |
-| `.rulesync/mcp.json` | merged into `~/.claude/settings.json` (mcpServers) |
+Edit `oh-my-opencode-slim.json` → update the `model` field under the `bifrost` preset.
 
-If `rulesync` fails (not installed, timeout), the step logs a warning and continues.
+### Add a rule
 
-**Step 3 — Patch `mcpServers` into `~/.claude/agents/`**
+1. Create `rules/<name>.md`
+2. Add its content to the relevant `{agent}_append.md` in `~/.config/opencode/oh-my-opencode-slim/`
+3. Update `openpackage.yml` if needed
 
-`rulesync` copies the `.md` files but doesn't guarantee the `mcpServers` frontmatter matches the computed config. This step re-writes that field in each `~/.claude/agents/<name>.md` and removes any stale agent files no longer in the source.
+### Change a custom agent's prompt
 
-MCP access per agent after this step:
+Edit the corresponding `agents/<name>.md` file, then copy the body (after frontmatter) into the `prompt` field in `oh-my-opencode-slim.json`.
 
-| Agent | MCPs |
-|-------|------|
-| `main` | `codebase-memory-mcp`, `context7-mcp` |
-| `browser-agent` | `mcp-server-browser`, `chrome-devtools-mcp`, `codebase-memory-mcp` |
-| `observability-and-troubleshoot` | `sentry-mcp`, `datadog-mcp`, `gcloud`, `gcloud-observability-ai-agent`, `gcloud-observability-chat`, `codebase-memory-mcp` |
-| `cortex-agent` | `cortex`, `codebase-memory-mcp` |
-| `knowledge-agent` | `notion`, `linear`, `codebase-memory-mcp` |
+## MCP Inventory
 
-**Step 4 — Verify**
+All configured in `~/.config/opencode/opencode.json`:
 
-Checks: agents-config JSON valid, settings JSON valid, no stale `agents` block in settings, all agent files present, `mcpServers` frontmatter matches config, `main.md` deployed.
+| MCP | Enabled | Assigned to |
+|-----|---------|------------|
+| codebase-memory-mcp | ✓ | Orchestrator, Oracle, Explorer, Fixer, Detective, Sage |
+| context7 | ✓ | Librarian |
+| github | ✓ | Orchestrator |
+| sentry | ✓ | Detective |
+| linear | ✓ | Librarian |
+| datadog | ❌ removed | Detective uses `pup` CLI via Bash instead |
+| gcp-logging | ✓ | Detective |
+| context-layer | ✓ | Sage |
+| notion | ✓ | Librarian |
+| rootly | ✓ | Detective |
+| mcp-server-browser | ✓ | Navigator |
+| gorgias-mcp | disabled | — |
+| figma | disabled | — |
 
-**Final — `sync-claude-config.sh`**
+**Datadog access:** via `pup` CLI (Bash), not MCP. Always call with `--agent --read-only` flags: `pup --agent --ro logs search ...`
 
-Deep-merges `custom-configs.claude.json` into `~/.claude.json` via `jq`. `mcpServers` entries are shallow-merged (right side replaces same-keyed entries wholesale, so no stale fields bleed across).
+## Provider: Bifrost
 
-**What changes where:**
+Models routed through `https://bifrost.ops.gorgias.io` with 3 provider types:
 
-```
-.rulesync/subagents/*.md   →  ~/.claude/agents/*.md  (mcpServers frontmatter patched)
-.rulesync/rules/*.md       →  ~/.claude/rules/*.md
-.rulesync/skills/**        →  ~/.claude/skills/
-.rulesync/commands/*.md    →  ~/.claude/commands/*.md
-.rulesync/hooks.json       →  ~/.claude/settings.json (hooks merged)
-.rulesync/mcp.json         →  ~/.claude/settings.json (mcpServers merged)
-custom-configs.claude.json →  ~/.claude.json (deep merged)
-```
+- `bf` — OpenAI-compatible (DeepSeek V4, Gemini, GLM)
+- `bf-a` — Anthropic (Claude Haiku/Sonnet/Opus)
+- `bf-o` — OpenAI (GPT-4o, GPT-5.x Terra/Luna/Sol)
 
-## First-Time Setup
-
-**Add SessionStart hook to `~/.claude/settings.json`:**
-
-```json
-{
-  "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "startup",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cd /Users/guilhermebomfim/developer/dotfiles/ai-rules && ./deploy.sh --quiet"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-Runs the full deploy on every Claude Code startup — distributes rules, patches agent mcpServers, verifies. Keeps agent MCP access in sync automatically.
-
-## Global MCP Server Setup
-
-Global `~/.claude/settings.json` defines mcpServers and disables plugin-based MCPs to reduce token load:
-
-**mcpServers configured:**
-
-```json
-{
-  "mcpServers": {
-    "codebase-memory-mcp": {"command": "npx", "args": ["-y", "codebase-memory-mcp"]},
-    "context7-mcp": {"type": "http", "url": "https://mcp.context7.com/mcp"},
-    "github": {"command": "gh", "args": []},
-    "mcp-server-browser": {"command": "npx", "args": ["@agent-infra/mcp-server-browser@latest"]},
-    "chrome-devtools-mcp": {"command": "npx", "args": ["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics"]},
-    "sentry-mcp": {"command": "npx", "args": ["-y", "@sentry/mcp-server@latest", "--agent"]},
-    "datadog-mcp": {"command": "/opt/homebrew/bin/pup", "args": ["mcp", "--agent", "--read-only"]},
-    "cortex": {"type": "http", "url": "https://cortex.mcp.gorgias-decision-engine.com/mcp"},
-    "linear": {"command": "npx", "args": ["-y", "@linear/sdk-mcp"]},
-    "notion": {"command": "npx", "args": ["-y", "@notion-mcp/notion-mcp"]},
-    "gcloud": {"command": "npx", "args": ["-y", "@google-cloud/gcloud-mcp"]},
-    "gcloud-observability-ai-agent": {"command": "npx", "args": ["-y", "@google-cloud/observability-mcp", "--project", "gorgias-conversations-prod"]},
-    "gcloud-observability-chat": {"command": "npx", "args": ["-y", "@google-cloud/observability-mcp", "--project", "gorgias-chat-production"]}
-  }
-}
-```
-
-**MCP plugins disabled in enabledPlugins** (replaced by mcpServers entries above):
-
-- `context7-mcp@claude-plugins-official`
-- `chrome-devtools-mcp@chrome-devtools-plugins`
-- `sentry-cli@claude-plugins-official`
-
-**Non-MCP utility plugins kept enabled:**
-
-- caveman, code-review, pr-review-toolkit, claude-md-management, skill-creator, code-simplifier, superpowers, superpowers-developing-for-claude-code
-
-MCPs load on-demand via npx instead of pre-loading as plugins. Reduces token overhead for sessions outside ai-rules.
-
-## User-Scope Claude Config
-
-`custom-configs.claude.json` is a committed partial JSON file containing all custom user-scope Claude Code settings. It is the canonical reference for what should be in `~/.claude/claude.json` (user preferences) and `.claude/settings.json` (project settings).
-
-**Contents:** `env` (API routing + model overrides), `model`, `effortLevel`, `permissions`, `mcpServers`, `enabledPlugins`, `extraKnownMarketplaces`, `statusLine`, `tui`, `theme`, and other behavioral flags.
-
-**To apply to a new machine:**
-```bash
-# Quick sync (script)
-./sync-claude-config.sh
-```
-Merges `custom-configs.claude.json` into `~/.claude.json` in one step.
-
-```bash
-# Manual merge into ~/.claude/claude.json
-jq -s '.[0] * .[1]' ~/.claude/claude.json custom-configs.claude.json > /tmp/claude.tmp \
-  && mv /tmp/claude.tmp ~/.claude/claude.json
-
-# Or copy as the project settings baseline
-cp custom-configs.claude.json .claude/settings.json
-```
-
-**Source of truth:** `.claude/settings.json` — edit there, then regenerate:
-```bash
-jq '{env,model,effortLevel,permissions,disableClaudeAiConnectors,enableAllProjectMcpServers,skipDangerousModePermissionPrompt,skipAutoPermissionPrompt,tui,editorMode,preferredNotifChannel,includeCoAuthoredBy,cleanupPeriodDays,verbose,theme,statusLine,hooks,enabledPlugins,extraKnownMarketplaces,mcpServers}' \
-  .claude/settings.json > custom-configs.claude.json
-```
-
-## Key Files Reference
-
-| File | Loaded when | Tool |
-|------|------------|------|
-| `CLAUDE.md` | Always | Claude Code |
-| `AGENTS.md` (auto-generated) | Always | Codex, Gemini |
-| `~/.claude/rules/*.md` | Always (via UserPromptSubmit hook) | Claude Code |
-| `~/.claude/agents/*.md` | When subagent spawned | Claude Code |
-| `~/.claude/skills/*/SKILL.md` | On `/skill-name` invocation | Claude Code |
-| `~/.claude/commands/*.md` | On `/command-name` invocation | Claude Code |
+Auth via `{file:/Users/guilhermebomfim/.config/gorgias-ai/bifrost-virtual-key}`.

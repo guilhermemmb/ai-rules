@@ -1,11 +1,65 @@
 {
-  "instructions": [
-    ".opencode/memories/caveman-guidance.md",
-    ".opencode/memories/claude-code-config.md",
-    ".opencode/memories/custom-rules.md",
-    ".opencode/memories/pr-workflow.md",
-    ".opencode/memories/security-scan.md",
-    ".opencode/memories/user-config.md"
-  ],
-  "mcp": {}
+  "$schema": "https://opencode.ai/config.json",
+  "shell": "zsh",
+  "mcp": {
+    "codebase-memory-mcp": {
+      "type": "local",
+      "command": [
+        "/Users/guilhermebomfim/.local/bin/codebase-memory-mcp"
+      ],
+      "enabled": true
+    },
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "enabled": true,
+      "headers": {
+        "CONTEXT7_API_KEY": "ctx7sk-5a43d734-feb8-4f4f-8c67-746ac7e3cee0"
+      }
+    },
+    "github": {
+      "type": "remote",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "enabled": true,
+      "oauth": false,
+      "headers": {
+        "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
+    },
+    "sentry": {
+      "type": "remote",
+      "url": "https://mcp.sentry.dev/mcp",
+      "enabled": true
+    },
+    "linear": {
+      "type": "remote",
+      "url": "https://mcp.linear.app/mcp",
+      "enabled": true
+    },
+    "notion": {
+      "type": "remote",
+      "url": "https://mcp.notion.com/mcp",
+      "enabled": false
+    },
+    "gorgias-mcp": {
+      "type": "remote",
+      "url": "https://mcp.gorgias.com/mcp",
+      "enabled": false
+    },
+    "context-layer": {
+      "type": "remote",
+      "url": "https://cortex.mcp.gorgias-decision-engine.com/mcp",
+      "enabled": false
+    },
+    "datadog": {
+      "type": "remote",
+      "url": "https://mcp.datadoghq.com/v1/mcp",
+      "enabled": false
+    },
+    "gcp-logging": {
+      "type": "remote",
+      "url": "https://logging.googleapis.com/mcp",
+      "enabled": false
+    }
+  }
 }

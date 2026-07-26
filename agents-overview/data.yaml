@@ -1,494 +1,669 @@
 nodes:
-  # Main Orchestrator
-  - id: main
-    label: main
+  # === PANTHEON — Built-in OMO Slim Agents ===
+
+  - id: orchestrator
+    label: Orchestrator
     type: agent
-    role: Orchestrator
+    role: Master Delegator
     color: '#60a5fa'
     parent: null
-    model: claude-sonnet-4-6[1m]
+    model: GPT-5.6 Terra (xhigh)
     orchestrates: true
     dispatches:
-      - browser-agent
-      - observability
-      - cortex-agent
-      - knowledge-agent
-      - plan-agent
-      - main (parallel)
+      - oracle
+      - explorer
+      - librarian
+      - designer
+      - fixer
+      - observer
+      - navigator
+      - detective
+      - sage
+    mcp_access: codebase-memory-mcp, github
     constraints: |
-      Cannot directly access: chrome-devtools-mcp, sentry-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat, cortex, notion, linear
-      Must dispatch to appropriate subagent for these tools
+      Hard-enforced at MCP level: no sentry/gcp-logging/rootly (→ Detective),
+      no context-layer (→ Sage), no mcp-server-browser (→ Navigator), no linear/notion (→ Librarian)
+      Must dispatch to appropriate agent for these domains
     responsibilities: |
-      • Plan & design implementation strategy
-      • Explore codebase (codebase-memory-mcp, context7-mcp)
-      • Implement core changes
-      • Run tests & verify
-      • Dispatch specialized work to subagents
-      • Self-dispatch additional main agents for independent parallel tasks
-      • Dispatch Plan agent when architecture design needs to run concurrently with implementation
+      • Plan & delegate complex tasks
+      • Coordinate background subagents
+      • Implement simple tasks directly
+      • Read security-scan rules before git commit/push/rebase
+      • Never run git commands without user confirmation
+      • RTK active via plugin (transparent rewrite)
 
-  # Specialized Agents (children of main)
-  - id: browser-agent
-    label: browser-agent
+  - id: oracle
+    label: Oracle
     type: agent
-    role: Browser Interaction
+    role: Strategic Advisor
     color: '#60a5fa'
-    parent: main
-    model: claude-sonnet-4-6[1m]
-    trigger: 'Screenshots, page analysis, UI interaction, E2E testing'
-    tools: 'mcp-server-browser, codebase-memory-mcp'
-    constraints: |
-      Cannot access: Sentry, Datadog, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat, cortex, Notion, Linear
-      Browser interaction only — no backend diagnostics
+    parent: orchestrator
+    model: DeepSeek V4 Pro (high)
+    skills: simplify
+    mcp_access: codebase-memory-mcp
+    trigger: Architecture review, hard debugging, trade-offs, code review
+    constraints: Read-heavy analysis. No sentry/datadog/context-layer MCPs.
     responsibilities: |
-      • Take screenshots & record page state
-      • Navigate & interact with pages
-      • Analyze DOM & UI elements
-      • Test UI flows & interactions
-      • Validate page rendering
+      • Architecture review & trade-off analysis
+      • Hard debugging & root cause from code
+      • Code review with simplify skill
+      • Strategic technical decisions
 
-  - id: observability
-    label: observability-and-troubleshoot
+  - id: explorer
+    label: Explorer
+    type: agent
+    role: Codebase Reconnaissance
+    color: '#60a5fa'
+    parent: orchestrator
+    model: DeepSeek V4 Flash (low)
+    mcp_access: codebase-memory-mcp
+    trigger: Broad codebase searches, pattern discovery, unfamiliar repos
+    constraints: Read-only exploration. Uses RTK for efficiency.
+    responsibilities: |
+      • Broad codebase scouting & pattern discovery
+      • Find definitions, callers, dependencies
+      • Map unfamiliar repos quickly
+      • Prefer codebase-memory-mcp over grep/glob
+
+  - id: librarian
+    label: Librarian
+    type: agent
+    role: Knowledge Retrieval
+    color: '#60a5fa'
+    parent: orchestrator
+    model: DeepSeek V4 Flash (low)
+    mcp_access: websearch, context7, gh_grep, linear, notion
+    trigger: Library docs, web research, Linear issues, Notion design docs, GitHub code search
+    constraints: Read-only. Linear/Notion: never create, update, or delete.
+    responsibilities: |
+      • Fetch current library/API documentation (context7)
+      • Web search for external knowledge
+      • GitHub code search across repos (gh_grep)
+      • Search Linear issues/epics/cycles
+      • Retrieve Notion design docs, specs, runbooks
+      • Cross-reference Linear issues with Notion specs
+      • Absorbed former knowledge-agent role
+
+  - id: designer
+    label: Designer
+    type: agent
+    role: UI/UX Excellence
+    color: '#60a5fa'
+    parent: orchestrator
+    model: GPT-5.6 Luna (medium)
+    mcp_access: codebase-memory-mcp, figma
+    trigger: UI/UX implementation, visual components, frontend polish
+    constraints: UI/UX focused. No backend/production tooling.
+    responsibilities: |
+      • Implement UI components & layouts
+      • Visual polish & design system adherence
+      • Front-end patterns and animations
+      • Read design system conventions via codebase-memory-mcp
+      • Access Figma designs via figma MCP
+
+  - id: fixer
+    label: Fixer
+    type: agent
+    role: Implementation Specialist
+    color: '#60a5fa'
+    parent: orchestrator
+    model: Claude Sonnet 4.6 (xhigh)
+    mcp_access: codebase-memory-mcp
+    trigger: Scoped implementation tasks, bug fixes, code changes
+    constraints: Receives concrete plan from Orchestrator. RTK for commands.
+    responsibilities: |
+      • Fast, scoped code implementation
+      • Bug fixes with clear reproduction steps
+      • Single-file or bounded multi-file changes
+      • Run lint after changes
+      • Conventional commits format
+
+  - id: observer
+    label: Observer
+    type: agent
+    role: Visual Analysis
+    color: '#60a5fa'
+    parent: orchestrator
+    model: Gemini 2.5 Flash
+    trigger: Images, screenshots, PDFs, diagrams (auto-routed from Orchestrator)
+    constraints: Read-only visual analysis. Returns structured observations.
+    responsibilities: |
+      • Read images & screenshots
+      • Parse PDFs & diagrams
+      • Return observations to Orchestrator
+      • Enabled because Orchestrator model is not multimodal
+
+  # === CUSTOM AGENTS ===
+
+  - id: navigator
+    label: Navigator
+    type: agent
+    role: Browser Automation
+    color: '#f59e0b'
+    parent: orchestrator
+    model: Claude Sonnet 4.6
+    mcp_access: mcp-server-browser
+    trigger: Browser navigation, screenshots, DOM analysis, form fills, UI automation
+    constraints: |
+      Browser interaction only — no backend diagnostics or code editing.
+      Always headless unless told otherwise.
+    responsibilities: |
+      • Navigate to URLs & interact with pages
+      • Take screenshots & capture page state
+      • Fill forms & click elements
+      • Extract page content (text, markdown)
+      • Execute JavaScript in browser console
+
+  - id: detective
+    label: Detective
     type: agent
     role: Production Diagnostics
-    color: '#60a5fa'
-    parent: main
-    model: claude-sonnet-4-6
-    trigger: 'Production errors, logs, metrics, traces, root-cause analysis'
-    tools: 'Sentry, pup skills (Datadog), gcloud, gcloud-observability-ai-agent, gcloud-observability-chat, codebase-memory-mcp'
+    color: '#f59e0b'
+    parent: orchestrator
+    model: Claude Sonnet 4.6
+    mcp_access: sentry, gcp-logging, rootly, codebase-memory-mcp
+    trigger: Production errors, logs, metrics, traces, incidents, root cause analysis
     constraints: |
-      Cannot access: chrome-devtools-mcp, cortex, Notion, Linear
-      Production diagnostics only — no UI interaction
-      Datadog accessed via pup skills (Bash), not MCP
-      codebase-memory-mcp is read-only: map telemetry to code, don't infer runtime behavior from it
+      All tools read-only. NEVER resolve/assign/mutate issues or logs.
+      Start with narrowest time range (last 1h).
+      Base findings solely on tool output — never infer telemetry.
+      Datadog: pup CLI (--agent --ro) via Bash — no Datadog MCP.
     responsibilities: |
-      • Query Sentry for error details & events
-      • Fetch logs via pup skills (Datadog), gcloud & gcloud-observability-{conversations,chat}
-      • Analyze metrics & APM traces
-      • Trace request paths & dependencies
-      • Correlate stack traces to source via codebase-memory-mcp
-      • Root cause analysis & incident response
+      • Query Sentry for error issues & events
+      • Query Datadog via pup CLI: logs, metrics, APM traces, monitors
+      • Read GCP Cloud Logging
+      • Access Rootly incident data
+      • Correlate telemetry to source code via codebase-memory-mcp
+      • Root cause analysis & incident investigation
 
-  - id: cortex-agent
-    label: cortex-agent
+  - id: sage
+    label: Sage
     type: agent
     role: Domain Knowledge
-    color: '#60a5fa'
-    parent: main
-    model: claude-haiku-4-5
-    trigger: 'Gorgias metrics, schemas, definitions, business rules, data analysis'
-    tools: 'cortex-mcp, BigQuery, codebase-memory-mcp'
+    color: '#f59e0b'
+    parent: orchestrator
+    model: Claude Haiku 4.5
+    mcp_access: context-layer, codebase-memory-mcp
+    trigger: Gorgias metrics, table schemas, business rules, data definitions
     constraints: |
-      Cannot access: chrome-devtools-mcp, Sentry/Datadog, Notion, Linear
-      Gorgias domain knowledge only — no external docs
-      codebase-memory-mcp optional & read-only: cortex stays source of truth for definitions
+      Always call get_instruction first. Cortex read-only — never mutate.
+      Map metrics to code via codebase-memory-mcp only. Cortex is source of truth.
     responsibilities: |
-      • Access Gorgias metric definitions
-      • Query BigQuery data & schemas
-      • Provide business context & rules
-      • Analyze business metrics & KPIs
-      • Map metrics/pipelines to code via codebase-memory-mcp
-      • Explain domain concepts
+      • Access Gorgias metric definitions (MRR, ARR, churn, NPS, LTV)
+      • Query table schemas & column mappings
+      • Retrieve business rules & calculations
+      • Map domain concepts to implementation code
+      • Explain Gorgias business domain concepts
 
-  - id: knowledge-agent
-    label: knowledge-agent
-    type: agent
-    role: External Docs & Issues
-    color: '#60a5fa'
-    parent: main
-    model: claude-haiku-4-5
-    trigger: 'Design docs, specs, Linear issues, Notion pages, external docs'
-    tools: 'notion-mcp, linear-mcp, codebase-memory-mcp'
-    constraints: |
-      Cannot access: chrome-devtools-mcp, Sentry/Datadog, cortex
-      External documentation only — no backend systems
-    responsibilities: |
-      • Fetch design docs & specs from Notion
-      • Read Linear issues & epics
-      • Search external documentation
-      • Retrieve project context & decisions
-      • Link requirements to implementation
+  # === MCPs ===
 
-  - id: plan-agent
-    label: Plan
-    type: agent
-    role: Architecture Planner
-    color: '#60a5fa'
-    parent: main
-    model: claude-sonnet-4-6[1m]
-    trigger: 'Architecture planning — only when running concurrently with implementation tasks'
-    tools: 'Read-only (no Edit/Write)'
-    constraints: |
-      Read-only — cannot edit or write files
-      Only worth dispatching during parallel work; use superpowers:writing-plans for sequential planning
-    responsibilities: |
-      • Design implementation approach for a task
-      • Identify critical files and call paths
-      • Consider architectural trade-offs
-      • Return step-by-step plan for main to execute
-
-  # MCPs (owned by agents)
   - id: codebase-memory
     label: codebase-memory-mcp
     type: mcp
-    role: Code Search & Graph
+    role: Code Intelligence
     color: '#a78bfa'
-    parent: main
+    parent: null
 
   - id: context7-mcp
-    label: context7-mcp
+    label: context7
     type: mcp
     role: Library Docs
     color: '#a78bfa'
-    parent: main
+    parent: librarian
+
+  - id: websearch-mcp
+    label: websearch
+    type: mcp
+    role: Web Search (Exa)
+    color: '#a78bfa'
+    parent: librarian
+
+  - id: gh-grep-mcp
+    label: gh_grep
+    type: mcp
+    role: GitHub Code Search
+    color: '#a78bfa'
+    parent: librarian
+
+  - id: linear-mcp
+    label: linear
+    type: mcp
+    role: Issues & Epics
+    color: '#a78bfa'
+    parent: librarian
+
+  - id: notion-mcp
+    label: notion
+    type: mcp
+    role: Docs & Specs
+    color: '#a78bfa'
+    parent: librarian
 
   - id: mcp-server-browser
     label: mcp-server-browser
     type: mcp
     role: Browser Automation
     color: '#a78bfa'
-    parent: browser-agent
+    parent: navigator
 
   - id: sentry-mcp
-    label: sentry-mcp
+    label: sentry
     type: mcp
     role: Error Monitoring
     color: '#a78bfa'
-    parent: observability
+    parent: detective
 
-  - id: gcloud
-    label: gcloud
+  - id: pup-cli
+    label: pup CLI
+    type: tool
+    role: Datadog CLI (--agent --ro)
+    color: '#34d399'
+    parent: detective
+
+  - id: gcp-logging-mcp
+    label: gcp-logging
     type: mcp
     role: GCP Logs
     color: '#a78bfa'
-    parent: observability
+    parent: detective
 
-  - id: gcloud-observability-ai-agent
-    label: gcloud-observability-ai-agent
+  - id: rootly-mcp
+    label: rootly
     type: mcp
-    role: GCP Observability (conversations-prod)
+    role: Incident Management
     color: '#a78bfa'
-    parent: observability
+    parent: detective
 
-  - id: gcloud-observability-chat
-    label: gcloud-observability-chat
+  - id: context-layer-mcp
+    label: context-layer
     type: mcp
-    role: GCP Observability (chat-production)
+    role: Gorgias Domain Data
     color: '#a78bfa'
-    parent: observability
+    parent: sage
 
-  - id: cortex
-    label: cortex-mcp
+  - id: figma-mcp
+    label: figma
     type: mcp
-    role: Gorgias Data
+    role: Design Files
     color: '#a78bfa'
-    parent: cortex-agent
+    parent: designer
 
-  - id: notion
-    label: notion-mcp
+  - id: github-mcp
+    label: github
     type: mcp
-    role: Knowledge Docs
+    role: PRs, Issues, Repos
     color: '#a78bfa'
-    parent: knowledge-agent
+    parent: orchestrator
 
-  - id: linear
-    label: linear-mcp
-    type: mcp
-    role: Issues & Epics
-    color: '#a78bfa'
-    parent: knowledge-agent
+  # === Skills ===
 
-  # Tools (shared)
-  - id: bash
+  - id: skill-codemap
+    label: codemap
+    type: skill
+    role: Repository Cartography
+    color: '#34d399'
+    parent: orchestrator
+
+  - id: skill-deepwork
+    label: deepwork
+    type: skill
+    role: Heavy Session Workflow
+    color: '#34d399'
+    parent: orchestrator
+
+  - id: skill-verification
+    label: verification-planning
+    type: skill
+    role: Evidence Before Code
+    color: '#34d399'
+    parent: orchestrator
+
+  - id: skill-simplify
+    label: simplify
+    type: skill
+    role: Behavior-Preserving Refactors
+    color: '#34d399'
+    parent: oracle
+
+  - id: skill-worktrees
+    label: worktrees
+    type: skill
+    role: Isolated Coding Lanes
+    color: '#34d399'
+    parent: orchestrator
+
+  - id: skill-clonedeps
+    label: clonedeps
+    type: skill
+    role: Dependency X-Ray
+    color: '#34d399'
+    parent: orchestrator
+
+  - id: skill-reflect
+    label: reflect
+    type: skill
+    role: Workflow Self-Improvement
+    color: '#34d399'
+    parent: orchestrator
+
+  - id: skill-omo-slim
+    label: oh-my-opencode-slim
+    type: skill
+    role: Plugin Self-Configuration
+    color: '#34d399'
+    parent: orchestrator
+
+  - id: skill-project-context
+    label: project-context
+    type: skill
+    role: Project Summaries
+    color: '#34d399'
+    parent: orchestrator
+
+  - id: skill-dd-pup
+    label: dd-pup
+    type: skill
+    role: Datadog CLI Reference
+    color: '#34d399'
+    parent: detective
+
+  - id: skill-dd-apm
+    label: dd-apm
+    type: skill
+    role: APM Traces & Services
+    color: '#34d399'
+    parent: detective
+
+  - id: skill-dd-logs
+    label: dd-logs
+    type: skill
+    role: Log Search & Management
+    color: '#34d399'
+    parent: detective
+
+  - id: skill-dd-monitors
+    label: dd-monitors
+    type: skill
+    role: Monitor Alerting
+    color: '#34d399'
+    parent: detective
+
+  - id: skill-dd-debugger
+    label: dd-debugger
+    type: skill
+    role: Live Debugger Probes
+    color: '#34d399'
+    parent: detective
+
+  - id: skill-incident-response
+    label: incident-response
+    type: skill
+    role: Incident Tracking & On-call
+    color: '#34d399'
+    parent: detective
+
+  # === Tools ===
+
+  - id: tool-bash
     label: Bash
     type: tool
     role: Command Execution
-    color: '#34d399'
+    color: '#f472b6'
     parent: null
-    description: Execute shell commands, run tests, git operations, package managers
-    used_by: 'All agents'
+    used_by: All agents
 
-  - id: read-edit
+  - id: tool-read-edit
     label: Read/Edit/Write
     type: tool
     role: File Operations
-    color: '#34d399'
+    color: '#f472b6'
     parent: null
-    description: Read files, edit code, create new files, modify configs
-    used_by: 'main agent'
+    used_by: Orchestrator, Fixer, Designer
 
-  - id: git
+  - id: tool-git
     label: Git
     type: tool
     role: Version Control
-    color: '#34d399'
+    color: '#f472b6'
     parent: null
-    description: Git operations, commit, push, rebase, branch management
-    used_by: 'main agent'
+    used_by: Orchestrator
 
-  - id: gh-cli
+  - id: tool-gh
     label: gh CLI
     type: tool
     role: GitHub Integration
-    color: '#34d399'
-    parent: null
-    description: Query PRs, issues, checks; create/view GitHub resources
-    used_by: 'main agent'
-
-  # Skills (invoked by main)
-  - id: superpowers
-    label: superpowers
-    type: skill
-    role: Planning & Debugging
-    color: '#f59e0b'
-    parent: null
-    description: Brainstorming, systematic debugging, test-driven development, planning
-    when: 'Before feature work, bug fixes, or architectural decisions'
-
-  - id: code-review
-    label: code-review
-    type: skill
-    role: PR Analysis
-    color: '#f59e0b'
-    parent: null
-    description: Review code for style, tests, security, best practices
-    when: 'Before finalizing PRs or committing changes'
-
-  - id: caveman
-    label: caveman
-    type: skill
-    role: Terse Communication
-    color: '#f59e0b'
-    parent: null
-    description: Compress output, drop filler, optimize token usage
-    when: 'Always active for communication'
-
-  # Infrastructure
-  - id: claude-code
-    label: Claude Code
-    type: infra
-    role: IDE Integration
     color: '#f472b6'
     parent: null
-    description: Main entry point, runs agents via Claude SDK
-    location: '~/.claude/settings.json'
-    config: |
-      • MCPs: codebase-memory-mcp, context7-mcp
-      • Model: Sonnet 4.6 1M
-      • Permissions: auto mode
+    used_by: Orchestrator
 
-  - id: settings
-    label: settings.json
+  # === Infrastructure ===
+
+  - id: opencode
+    label: OpenCode
     type: infra
-    role: Configuration
-    color: '#f472b6'
+    role: Entry Point · OMO Slim Plugin
+    color: '#f59e0b'
     parent: null
-    description: Configure MCPs, tools, permissions, hooks
-    location: '~/.claude/settings.json or .claude/settings.json'
     config: |
-      • MCP servers (codebase-memory, context7-mcp, etc)
-      • Tool permissions
-      • Environment variables
-      • Editor integrations
+      • Shell: zsh
+      • Providers: bf (Bifrost), bf-a (Anthropic), bf-o (OpenAI)
+      • Models via Bifrost (https://bifrost.ops.gorgias.io)
+      • Plugin: oh-my-opencode-slim
+      • LSP integration: enabled
+      • Tmux: main-vertical layout
 
-  - id: zsh
+  - id: omo-slim
+    label: Oh My OpenCode Slim
+    type: infra
+    role: Agent Orchestration
+    color: '#f59e0b'
+    parent: opencode
+    config: |
+      • Preset: bifrost
+      • 7 built-in agents (council disabled)
+      • 3 custom agents (Navigator, Detective, Sage)
+      • 8 bundled skills + project-context
+      • Image routing: auto (Observer)
+
+  - id: zsh-env
     label: zsh Environment
     type: infra
     role: Shell Config
     color: '#f472b6'
     parent: null
-    description: Shell environment, aliases, functions, PATH
-    location: '~/.zshrc'
     config: |
-      • VOLTA_HOME, GORGIAS_ROOT, etc
-      • Git aliases (gpo, grbm, etc)
+      • Shell: zsh (always source ~/.zshrc)
+      • VOLTA_HOME, GORGIAS_ROOT, NPM_TOKEN
+      • Git aliases (gpo, grbm, etc.)
       • Project aliases (g:chat, g:gorgias)
-      • Shell functions (dbproxy, etc)
 
   - id: rtk
     label: RTK
     type: infra
-    role: Token Optimization
+    role: Token Optimization (Plugin)
     color: '#f472b6'
-    parent: null
-    description: Rust Token Killer — optimizes CLI output to reduce token usage
-    location: 'Via Claude Code hook'
+    parent: opencode
     config: |
-      • Automatically wraps bash commands
-      • Filters output (60-90% reduction)
-      • Enabled via PreToolUse hook
+      • Rust Token Killer — 60-90% token reduction
+      • Active OpenCode plugin: ~/.config/opencode/plugins/rtk.ts
+      • Transparently rewrites commands before execution (tool.execute.before hook)
+      • Install: rtk init -g --opencode
+      • /opt/homebrew/bin/rtk
 
-  - id: context-mode
-    label: context-mode
-    type: mcp
-    role: Context Compression
-    color: '#a78bfa'
-    parent: null
-    description: Token-optimized context compression (60–90% reduction). Available to all agents. Diagnostics via /context-mode:ctx-doctor and /context-mode:ctx-stats.
+  - id: bifrost
+    label: Bifrost
+    type: infra
+    role: Model Gateway
+    color: '#f472b6'
+    parent: opencode
+    config: |
+      • URL: https://bifrost.ops.gorgias.io
+      • Providers: OpenAI-compatible, Anthropic, OpenAI
+      • bf: DeepSeek V4, Gemini, GLM
+      • bf-a: Claude Haiku/Sonnet/Opus
+      • bf-o: GPT-4o, GPT-5.x (Luna, Sol, Terra)
 
 links:
-  # Main orchestrator
-  - source: main
+  # Orchestrator dispatches to all agents
+  - source: orchestrator
+    target: oracle
+    label: dispatches
+  - source: orchestrator
+    target: explorer
+    label: dispatches
+  - source: orchestrator
+    target: librarian
+    label: dispatches
+  - source: orchestrator
+    target: designer
+    label: dispatches
+  - source: orchestrator
+    target: fixer
+    label: dispatches
+  - source: orchestrator
+    target: observer
+    label: auto-routes (images)
+  - source: orchestrator
+    target: navigator
+    label: dispatches
+  - source: orchestrator
+    target: detective
+    label: dispatches
+  - source: orchestrator
+    target: sage
+    label: dispatches
+
+  # Orchestrator → MCPs
+  - source: orchestrator
     target: codebase-memory
     label: uses
+  - source: orchestrator
+    target: github-mcp
+    label: uses
 
-  - source: main
+  # Librarian → MCPs
+  - source: librarian
     target: context7-mcp
     label: uses
-
-  - source: main
-    target: bash
+  - source: librarian
+    target: websearch-mcp
+    label: uses
+  - source: librarian
+    target: gh-grep-mcp
+    label: uses
+  - source: librarian
+    target: linear-mcp
+    label: uses
+  - source: librarian
+    target: notion-mcp
     label: uses
 
-  - source: main
-    target: read-edit
+  # Navigator → MCPs
+  # Designer → MCPs
+  - source: designer
+    target: codebase-memory
+    label: uses
+  - source: designer
+    target: figma-mcp
     label: uses
 
-  - source: main
-    target: git
-    label: uses
-
-  # Agent dispatching
-  - source: main
-    target: browser-agent
-    label: dispatches
-
-  - source: main
-    target: observability
-    label: dispatches
-
-  - source: main
-    target: cortex-agent
-    label: dispatches
-
-  - source: main
-    target: knowledge-agent
-    label: dispatches
-
-  - source: main
-    target: plan-agent
-    label: dispatches (parallel only)
-
-  - source: main
-    target: main
-    label: self-dispatch (parallel)
-
-  # Browser agent
-  - source: browser-agent
+  # Navigator → MCPs
+  - source: navigator
     target: mcp-server-browser
     label: uses
 
-  - source: browser-agent
-    target: codebase-memory
-    label: uses
-
-  # Observability agent
-  - source: observability
+  # Detective → MCPs
+  - source: detective
     target: sentry-mcp
     label: uses
-
-  - source: observability
-    target: gcloud
+  - source: detective
+    target: pup-cli
+    label: uses (Bash)
+  - source: detective
+    target: gcp-logging-mcp
     label: uses
-
-  - source: observability
-    target: gcloud-observability-ai-agent
+  - source: detective
+    target: rootly-mcp
     label: uses
-
-  - source: observability
-    target: gcloud-observability-chat
-    label: uses
-
-  - source: observability
+  - source: detective
     target: codebase-memory
     label: uses
 
-  # Cortex agent
-  - source: cortex-agent
-    target: cortex
+  # Sage → MCPs
+  - source: sage
+    target: context-layer-mcp
     label: uses
-
-  - source: cortex-agent
+  - source: sage
     target: codebase-memory
     label: uses
 
-  # Knowledge agent
-  - source: knowledge-agent
-    target: notion
-    label: uses
-
-  - source: knowledge-agent
-    target: linear
-    label: uses
-
-  - source: knowledge-agent
+  # Oracle, Explorer, Fixer → codebase-memory
+  - source: oracle
     target: codebase-memory
+    label: uses
+  - source: explorer
+    target: codebase-memory
+    label: uses
+  - source: fixer
+    target: codebase-memory
+    label: uses
+
+  # Skills → agents
+  - source: orchestrator
+    target: skill-codemap
+    label: invokes
+  - source: orchestrator
+    target: skill-deepwork
+    label: invokes
+  - source: orchestrator
+    target: skill-verification
+    label: invokes
+  - source: orchestrator
+    target: skill-worktrees
+    label: invokes
+  - source: orchestrator
+    target: skill-clonedeps
+    label: invokes
+  - source: orchestrator
+    target: skill-reflect
+    label: invokes
+  - source: orchestrator
+    target: skill-omo-slim
+    label: invokes
+  - source: orchestrator
+    target: skill-project-context
+    label: invokes
+  - source: oracle
+    target: skill-simplify
+    label: invokes
+
+  # Tools → agents
+  - source: orchestrator
+    target: tool-bash
+    label: uses
+  - source: orchestrator
+    target: tool-read-edit
+    label: uses
+  - source: orchestrator
+    target: tool-git
+    label: uses
+  - source: orchestrator
+    target: tool-gh
     label: uses
 
   # Infrastructure
-  - source: claude-code
-    target: main
+  - source: opencode
+    target: orchestrator
     label: runs
-
-  - source: claude-code
-    target: settings
-    label: configured by
-
-  - source: settings
-    target: codebase-memory
-    label: enables
-
-  - source: settings
-    target: context7-mcp
-    label: enables
-
-  - source: zsh
-    target: bash
+  - source: opencode
+    target: omo-slim
+    label: plugin
+  - source: omo-slim
+    target: bifrost
+    label: models via
+  - source: zsh-env
+    target: tool-bash
     label: provides
-
   - source: rtk
-    target: bash
+    target: tool-bash
     label: wraps
-
-  # context-mode (all agents)
-  - source: main
-    target: context-mode
-    label: uses
-
-  - source: browser-agent
-    target: context-mode
-    label: uses
-
-  - source: observability
-    target: context-mode
-    label: uses
-
-  - source: cortex-agent
-    target: context-mode
-    label: uses
-
-  - source: knowledge-agent
-    target: context-mode
-    label: uses
-
-  - source: settings
-    target: context-mode
-    label: enables
-
-  # GitHub
-  - source: main
-    target: gh-cli
-    label: uses
-
-  # Skills
-  - source: main
-    target: superpowers
-    label: invokes
-
-  - source: main
-    target: code-review
-    label: invokes
-
-  - source: main
-    target: caveman
-    label: uses
