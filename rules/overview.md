@@ -1,3 +1,7 @@
+---
+globs: ["**/*"]
+---
+
 # Global Instructions
 
 ## Branch Naming
@@ -54,3 +58,4 @@ gh pr edit <number> \
   --title "$(head -1 <file> | sed 's/^# //')" \
   --body-file <(tail -n +3 <file>)
 ```
+

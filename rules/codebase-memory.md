@@ -1,10 +1,3 @@
----
-name: codebase-memory
-description: Use Codebase Memory MCP graph tools first — before reading files or making code changes
-metadata:
-  type: rule
----
-
 # Codebase Memory MCP
 
 **MANDATORY: use Codebase Memory MCP graph tools FIRST — before reading files or making code changes.**
@@ -64,3 +57,4 @@ Not for: writing code, running tests, git ops, external library docs (use contex
 - Project name = absolute `root_path` slugified: replace `/` with `-`, drop leading `-`. Applies to all projects, not just worktrees. e.g. `/Users/foo/developer/gorgias-chat` → `Users-foo-developer-gorgias-chat`.
 - Config in `.codebase-memory.json` (custom extensions) and `.cbmignore` (ignore rules). Env: `CBM_CACHE_DIR`, `CBM_WORKERS`, `CBM_ALLOWED_ROOT`, `CBM_LOG_LEVEL`.
 - Repo: https://github.com/DeusData/codebase-memory-mcp
+

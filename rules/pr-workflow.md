@@ -1,10 +1,3 @@
----
-name: pr-workflow
-description: PR workflow rules — git command safety, PR creation/updates, title format, description format
-metadata:
-  type: rule
----
-
 # Pull Request Workflow
 
 ## Git Command Safety
@@ -70,3 +63,4 @@ gh pr edit 42 \
   --title "$(head -1 /tmp/pr-feature-name.md | sed 's/^# //')" \
   --body-file <(tail -n +3 /tmp/pr-feature-name.md)
 ```
+

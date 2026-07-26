@@ -1,10 +1,3 @@
----
-name: git-remote-confirmation
-description: Block or confirm before any git/gh command that writes to or alters the remote
-metadata:
-  type: rule
----
-
 # Git Remote & GitHub — Confirm Before Acting
 
 ## gh CLI — blocked commands
@@ -51,3 +44,4 @@ Only proceed after the user explicitly says yes / go / confirm.
 
 - `git status`, `git log`, `git diff`, `git fetch`
 - Any other read-only `git` command
+

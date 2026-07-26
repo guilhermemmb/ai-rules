@@ -1,10 +1,3 @@
----
-name: custom-rules
-description: Custom rules always applied — machine config, workflow, superpowers persistence, git safety, testing, monorepo paths
-metadata:
-  type: rule
----
-
 # Custom Rules (always applied)
 
 ## Machine Configuration
@@ -75,3 +68,4 @@ Subagents execute directly — no planning step required.
 ## Commit / Push Safety
 - Before any `git commit`, `git push`, or `git rebase` (and on branch switch, or when working on
   a branch with an open PR), read and apply security-scan rules.
+

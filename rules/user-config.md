@@ -1,10 +1,3 @@
----
-name: user-config
-description: Git configuration, environment variables, PATH components, and shell functions
-metadata:
-  type: rule
----
-
 ## Git Configuration
 
 - Git user: Guilherme Bomfim (guilherme.bomfim@gorgias.com)
@@ -65,3 +58,4 @@ metadata:
 - `gcp` — git cherry-pick
 - `grbi` — git rebase -i
 - `grbc` — git rebase --continue
+

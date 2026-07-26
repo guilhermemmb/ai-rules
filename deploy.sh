@@ -1,29 +1,64 @@
 #!/usr/bin/env bash
-# deploy.sh — thin wrapper for Python deployment orchestrator
-# Usage: ./deploy.sh [--verbose] [--quiet] [--output /path/to/agents-config.json]
-
 set -euo pipefail
+cd "$(dirname "$0")"
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+echo "=== Deploying agents → ~/.claude/agents/ ==="
+cp -f agents/*.md ~/.claude/agents/
 
-# Check Python exists
-if ! command -v python3 &>/dev/null; then
-  echo "ERROR: python3 not found" >&2
-  exit 1
-fi
+echo "=== Deploying agents → ~/.config/opencode/agents/ ==="
+mkdir -p ~/.config/opencode/agents/
+cp -f agents/*.md ~/.config/opencode/agents/
 
-# Check pyyaml is available
-if ! python3 -c "import yaml" 2>/dev/null; then
-  echo "ERROR: pyyaml not installed. Install with: pip install pyyaml" >&2
-  exit 1
-fi
+echo "=== Deploying rules → ~/.claude/rules/ ==="
+mkdir -p ~/.claude/rules/
+cp -f rules/*.md ~/.claude/rules/
 
-# Call Python orchestrator, passing all arguments
-cd "$SCRIPT_DIR"
-python3 scripts/main.py "$@"
+echo "=== Deploying skills → ~/.claude/skills/ ==="
+mkdir -p ~/.claude/skills/
+for skill in skills/*/; do
+  name=$(basename "$skill")
+  echo "  skills/$name"
+  mkdir -p ~/.claude/skills/"$name"
+  cp -f "$skill"/* ~/.claude/skills/"$name"/
+done
 
-# 3rd-party scripts
-pup skills install claude
+echo "=== Deploying commands → ~/.claude/commands/ ==="
+mkdir -p ~/.claude/commands/
+cp -f commands/*.md ~/.claude/commands/
 
-# Sync claude config as final step
-"$SCRIPT_DIR/sync-claude-config.sh"
+echo "=== Building AGENTS.md (global instructions) ==="
+python3 -c "
+import os
+out = []
+for f in sorted(os.listdir('rules')):
+    if not f.endswith('.md'):
+        continue
+    with open(f'rules/{f}') as fh:
+        content = fh.read()
+    if content.startswith('---'):
+        idx = content.find('---', 4)
+        body = content[idx+4:].strip() if idx >= 0 else content.strip()
+    else:
+        body = content.strip()
+    out.append(body)
+    out.append('')
+with open('/tmp/AGENTS-build.md', 'w') as fh:
+    fh.write('\n'.join(out) + '\n')
+print('  Generated /tmp/AGENTS-build.md')
+"
+cp -f /tmp/AGENTS-build.md ~/.config/opencode/AGENTS.md
+echo "  → ~/.config/opencode/AGENTS.md"
+
+echo "=== Deploying ~/.claude/settings.json ==="
+cp -f claude/settings.json ~/.claude/settings.json
+
+echo "=== Deploying opencode.jsonc ==="
+cp -f opencode.jsonc ~/.config/opencode/opencode.jsonc
+
+echo "=== Installing Datadog pup skills ==="
+pup skills install claude 2>/dev/null || echo "  WARNING: pup not installed"
+
+echo ""
+echo "Done. Deployed to:"
+echo "  ~/.claude/          (agents, rules, skills, commands, settings.json)"
+echo "  ~/.config/opencode/ (agents, AGENTS.md, opencode.jsonc)"

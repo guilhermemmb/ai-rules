@@ -1,0 +1,218 @@
+{
+  "model": "claude-sonnet-4-6[1m]",
+  "effortLevel": "high",
+  "cleanupPeriodDays": 7,
+  "includeCoAuthoredBy": false,
+  "verbose": true,
+  "tui": "fullscreen",
+  "theme": "dark-daltonized",
+  "editorMode": "normal",
+  "preferredNotifChannel": "auto",
+  "disableClaudeAiConnectors": true,
+  "enableAllProjectMcpServers": false,
+  "skipDangerousModePermissionPrompt": true,
+  "skipAutoPermissionPrompt": true,
+  "permissions": {
+    "allow": [],
+    "deny": [],
+    "defaultMode": "manual"
+  },
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://bifrost.ops.gorgias.io/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "sk-bf-9a345580-467f-4fa6-ad1b-b01f92289d7f",
+    "ANTHROPIC_MODEL": "claude-sonnet-4-6[1m]",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6[1m]",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8[1m]"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "rtk hook claude"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/guilhermebomfim/.claude/hooks/context-mode-cache-heal.mjs\""
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y ccstatusline@latest",
+    "refreshInterval": 15
+  },
+  "enabledPlugins": {
+    "context7-mcp@claude-plugins-official": false,
+    "claude-md-management@claude-plugins-official": true,
+    "pr-review-toolkit@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "chrome-devtools-mcp@chrome-devtools-plugins": false,
+    "superpowers@superpowers-marketplace": true,
+    "superpowers-developing-for-claude-code@superpowers-marketplace": true,
+    "shopify-ai-toolkit@claude-plugins-official": false,
+    "caveman@caveman": true,
+    "superpowers-chrome@superpowers-marketplace": false,
+    "skill-creator@claude-plugins-official": false,
+    "sentry-cli@claude-plugins-official": false,
+    "code-simplifier@claude-plugins-official": true,
+    "context-mode@context-mode": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-code-warp": {
+      "source": {
+        "source": "github",
+        "repo": "warpdotdev/claude-code-warp"
+      }
+    },
+    "chrome-devtools-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "ChromeDevTools/chrome-devtools-mcp"
+      }
+    },
+    "superpowers-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "obra/superpowers-marketplace"
+      }
+    },
+    "caveman": {
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman"
+      }
+    },
+    "context-mode": {
+      "source": {
+        "source": "github",
+        "repo": "mksglu/context-mode"
+      }
+    }
+  },
+  "mcpServers": {
+    "HomeAssistant": {
+      "command": "/opt/homebrew/bin/uvx",
+      "args": [
+        "--refresh",
+        "ha-mcp@latest"
+      ],
+      "env": {
+        "HOMEASSISTANT_URL": "https://homeassistant.patylherme.com.br",
+        "HOMEASSISTANT_TOKEN": "${HOMEASSISTANT_TOKEN}"
+      }
+    },
+    "codebase-memory-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "codebase-memory-mcp"
+      ]
+    },
+    "context7-mcp": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"
+      }
+    },
+    "github": {
+      "command": "gh",
+      "args": []
+    },
+    "mcp-server-browser": {
+      "command": "npx",
+      "args": [
+        "@agent-infra/mcp-server-browser@latest",
+        "--headless"
+      ]
+    },
+    "chrome-devtools-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest",
+        "--no-usage-statistics"
+      ]
+    },
+    "sentry-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@sentry/mcp-server@latest",
+        "--agent"
+      ],
+      "env": {
+        "SENTRY_ACCESS_TOKEN": "${SENTRY_ACCESS_TOKEN}"
+      }
+    },
+    "datadog-mcp": {
+      "command": "/opt/homebrew/bin/pup",
+      "args": [
+        "mcp",
+        "--agent",
+        "--read-only"
+      ]
+    },
+    "cortex": {
+      "type": "http",
+      "url": "https://cortex.mcp.gorgias-decision-engine.com/mcp"
+    },
+    "linear": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@linear/sdk-mcp"
+      ],
+      "env": {
+        "LINEAR_API_KEY": "${LINEAR_API_KEY}"
+      }
+    },
+    "notion": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@notion-mcp/notion-mcp"
+      ]
+    },
+    "gcloud": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@google-cloud/gcloud-mcp"
+      ]
+    },
+    "gcloud-observability-ai-agent": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@google-cloud/observability-mcp",
+        "--project",
+        "gorgias-conversations-prod"
+      ]
+    },
+    "gcloud-observability-chat": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@google-cloud/observability-mcp",
+        "--project",
+        "gorgias-chat-production"
+      ]
+    },
+    "context-mode": {
+      "command": "context-mode"
+    }
+  }
+}

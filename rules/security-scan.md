@@ -1,10 +1,3 @@
----
-name: security-scan
-description: Commit/push safety checklist — scan for debug code, credentials, mock data before committing
-metadata:
-  type: rule
----
-
 # Commit / Push Safety Scan
 
 On-demand checklist. Read and apply this before any `git commit`, `git push`, or `git rebase`
@@ -69,3 +62,4 @@ export const getThings = async (req, res) => {
     res.json(await db.things.findAll())
 }
 ```
+

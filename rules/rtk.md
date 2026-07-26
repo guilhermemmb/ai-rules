@@ -1,10 +1,3 @@
----
-name: rtk
-description: RTK (Rust Token Killer) — token-optimized CLI proxy. Hook rewrites dev commands transparently for 60-90% token savings.
-metadata:
-  type: rule
----
-
 # RTK — Rust Token Killer
 
 RTK is a token-optimized CLI proxy. It intercepts dev commands (git, pnpm, etc.) and filters output to reduce token usage by 60-90%.
@@ -29,3 +22,4 @@ which rtk       # Verify binary location
 ```
 
 Name collision: `rtk gain` failing may mean `reachingforthejack/rtk` (Rust Type Kit) is installed instead of the correct binary.
+
