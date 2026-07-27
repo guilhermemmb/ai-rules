@@ -3,8 +3,8 @@
   "preset": "bifrost",
   "disabled_agents": ["council"],
   "image_routing": "auto",
-  "tmux": {
-    "enabled": true,
+  "multiplexer": {
+    "type": "tmux",
     "layout": "main-vertical",
     "main_pane_size": 60
   },
