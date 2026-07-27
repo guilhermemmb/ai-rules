@@ -11,13 +11,13 @@
   "presets": {
     "bifrost": {
       "orchestrator": {
-        "model": "bf-o/gpt-5.6-terra",
+        "model": "bf-a/claude-sonnet-4-6",
         "variant": "xhigh",
         "skills": ["*", "!context7"],
         "mcps": ["codebase-memory-mcp", "github"]
       },
       "oracle": {
-        "model": "bf-o/gpt-5.4",
+        "model": "bf-a/claude-sonnet-4-6",
         "variant": "high",
         "skills": ["simplify"],
         "mcps": ["codebase-memory-mcp"]
@@ -35,13 +35,13 @@
         "mcps": ["websearch", "context7", "gh_grep", "linear", "notion"]
       },
       "designer": {
-        "model": "bf-o/gpt-5.6-sol",
+        "model": "bf/gemini/gemini-3-pro-preview",
         "variant": "medium",
         "skills": [],
         "mcps": ["codebase-memory-mcp", "figma"]
       },
       "fixer": {
-        "model": "bf-o/gpt-5.4",
+        "model": "bf-a/claude-sonnet-4-6",
         "variant": "xhigh",
         "skills": [],
         "mcps": ["codebase-memory-mcp"]
@@ -60,14 +60,14 @@
       "orchestratorPrompt": "@navigator\n- Role: Browser interaction specialist\n- Delegates all browser automation via mcp-server-browser\n- Dispatch when: navigation, screenshots, DOM analysis, form fills, UI automation, E2E testing\n- Don't dispatch when: code implementation, debugging, architecture, production issues"
     },
     "detective": {
-      "model": "bf-o/gpt-5.4",
+      "model": "bf-a/claude-sonnet-4-6",
       "mcps": ["sentry", "gcp-logging", "rootly"],
       "skills": ["dd-pup", "dd-apm", "dd-logs", "dd-monitors", "dd-debugger", "dd-symdb", "dd-triage-flaky-test", "dd-unblock-pr", "incident-response", "traces", "logs"],
       "prompt": "You are Detective, the production diagnostics specialist. Investigate production issues using Sentry, Datadog (via pup CLI), GCP Logs, and Rootly.\n\nDo NOT invoke planning skills or enter plan mode. Execute the investigation directly.\n\n## STRICT RULES\n1. Sentry MCP: read-only (issues, events, replays). NEVER resolve, assign, or mutate.\n2. GCP Logs: read only. NEVER write or modify logs.\n3. Datadog: use `pup` CLI via Bash — ALWAYS with `--agent --read-only` flags. No Datadog MCP exists. NEVER mutate.\n4. Rootly: read-only incident data.\n5. Start with the NARROWEST time range practical (last 1h). Use `--from 1h` with pup.\n6. Base every finding solely on actual tool output. NEVER infer or invent telemetry.\n7. APM durations from pup are in NANOSECONDS — do not assume seconds or milliseconds.\n8. Use codebase-memory-mcp (search_graph, trace_path) to correlate errors/traces back to source code.\n\n## Datadog via pup CLI\npup --agent --ro logs search --query \"service:X status:error\" --from 1h\npup --agent --ro apm traces list --service X --from 1h\npup --agent --ro monitors list --tag env:prod\npup --agent --ro metrics query --metric system.cpu.user --from 1h\n\n## Output Schema\nReturn ONLY valid JSON:\n{\"success\":<bool>,\"summary\":\"<2-3 sentences>\",\"time_range_investigated\":\"<range>\",\"sentry_findings\":{\"issues\":[],\"top_errors\":[]},\"datadog_findings\":{\"log_summary\":\"\",\"anomalies\":[]},\"gcp_findings\":{\"log_summary\":\"\",\"error_patterns\":[]},\"code_context\":{\"suspect_symbols\":[],\"callers\":[]},\"root_cause_hypothesis\":\"<hypothesis>\",\"recommended_next_steps\":[],\"written_files\":[],\"errors\":[]}",
       "orchestratorPrompt": "@detective\n- Role: Production diagnostics specialist\n- Queries Sentry, Datadog, GCP logs, Rootly — all read-only\n- Dispatch when: production errors, logs, metrics, traces, incidents, root cause analysis\n- Don't dispatch when: code implementation, browser interaction, business metrics, Notion/Linear docs"
     },
     "sage": {
-      "model": "bf-o/gpt-4o-mini",
+      "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash",
       "mcps": ["context-layer"],
       "skills": [],
       "prompt": "You are Sage, the Gorgias domain knowledge specialist. Answer questions about Gorgias business metrics, table schemas, business rules, and domain concepts using the Context Layer (cortex) MCP.\n\nDo NOT invoke planning skills or enter plan mode. Execute the task directly.\n\n## STRICT RULES\n1. **Always call `get_instruction` first.**\n2. Cortex read-only. NEVER mutate data.\n3. Base findings solely on actual tool output.\n4. codebase-memory-mcp: use only to map metrics/pipelines to code implementation.\n5. Write detailed output to `/tmp/sage/`.\n6. Return structured JSON only.\n\n## Output Schema\n{\"success\":<bool>,\"summary\":\"<answer>\",\"metric_definitions\":[],\"table_schemas\":[],\"business_rules\":[],\"code_references\":[],\"raw_data\":[],\"written_files\":[],\"errors\":[]}",
