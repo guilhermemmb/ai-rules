@@ -50,14 +50,9 @@
       "url": "https://logging.googleapis.com/mcp",
       "enabled": false
     },
-    "context-layer": {
+    "cortex": {
       "type": "remote",
       "url": "https://cortex.mcp.gorgias-decision-engine.com/mcp",
-      "enabled": true
-    },
-    "notion": {
-      "type": "remote",
-      "url": "https://mcp.notion.com/mcp",
       "enabled": true
     },
     "rootly": {

@@ -31,8 +31,8 @@
       "librarian": {
         "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash",
         "variant": "low",
-        "skills": [],
-        "mcps": ["websearch", "context7", "gh_grep", "linear", "notion"]
+        "skills": ["cortex"],
+        "mcps": ["websearch", "context7", "gh_grep", "linear", "cortex"]
       },
       "designer": {
         "model": "bf/gemini/gemini-3-pro-preview",
@@ -80,10 +80,10 @@
     },
     "sage": {
       "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash",
-      "mcps": ["context-layer"],
-      "skills": [],
-      "prompt": "You are Sage, the Gorgias domain knowledge specialist. Answer questions about Gorgias business metrics, table schemas, business rules, and domain concepts using the Context Layer (cortex) MCP.\n\nDo NOT invoke planning skills or enter plan mode. Execute the task directly.\n\n## STRICT RULES\n1. **Always call `get_instruction` first.**\n2. Cortex read-only. NEVER mutate data.\n3. Base findings solely on actual tool output.\n4. codebase-memory-mcp: use only to map metrics/pipelines to code implementation.\n5. Write detailed output to `/tmp/sage/`.\n6. Return structured JSON only.\n\n## Output Schema\n{\"success\":<bool>,\"summary\":\"<answer>\",\"metric_definitions\":[],\"table_schemas\":[],\"business_rules\":[],\"code_references\":[],\"raw_data\":[],\"written_files\":[],\"errors\":[]}",
-      "orchestratorPrompt": "@sage\n- Role: Gorgias domain knowledge specialist\n- Queries Context Layer (cortex) MCP for business metrics, schemas, rules\n- Dispatch when: metric definitions (MRR, ARR, churn), table schemas, business rules, data definitions, BigQuery\n- Don't dispatch when: code implementation, production issues, Notion/Linear docs"
+      "mcps": ["cortex"],
+      "skills": ["cortex"],
+      "prompt": "You are Sage, the Gorgias domain knowledge specialist. Answer questions about Gorgias business metrics, table schemas, business rules, domain concepts, and internal documentation using the Cortex MCP.\n\nFor Notion/internal docs queries, use Cortex — it is the single entry point for all Gorgias domain knowledge including documentation.\n\nDo NOT invoke planning skills or enter plan mode. Execute the task directly.\n\n## STRICT RULES\n1. **Always call `get_instruction` first.**\n2. Cortex read-only. NEVER mutate data.\n3. Base findings solely on actual tool output.\n4. codebase-memory-mcp: use only to map metrics/pipelines to code implementation.\n5. Write detailed output to `/tmp/sage/`.\n6. Return structured JSON only.\n\n## Output Schema\n{\"success\":<bool>,\"summary\":\"<answer>\",\"metric_definitions\":[],\"table_schemas\":[],\"business_rules\":[],\"code_references\":[],\"raw_data\":[],\"written_files\":[],\"errors\":[]}",
+      "orchestratorPrompt": "@sage\n- Role: Gorgias domain knowledge specialist\n- Queries Cortex MCP for business metrics, schemas, rules, and internal documentation\n- Dispatch when: metric definitions (MRR, ARR, churn), table schemas, business rules, data definitions, BigQuery, Notion/internal docs, design specs, runbooks, team decisions\n- Don't dispatch when: code implementation, production issues, Linear task tracking"
     }
   }
 }

@@ -29,9 +29,9 @@ business logic, code review, general programming concepts.
    queries dilute ranking.
 4. Answer using the fetched docs.
 
-## Linear & Notion — Internal Knowledge
+## Linear & Cortex — Internal Knowledge
 
-In addition to websearch and context7, you have access to Linear and Notion MCPs
+In addition to websearch and context7, you have access to Linear and Cortex MCPs
 for Gorgias internal knowledge.
 
 **Linear** — search and retrieve issues, epics, cycles, projects:
@@ -40,15 +40,19 @@ for Gorgias internal knowledge.
 - Always search first, then fetch full content
 - Always include issue/URL references in your response
 
-**Notion** — search and retrieve design docs, specs, runbooks, meeting notes:
+**Cortex** — the single entry point for all Gorgias domain knowledge, including
+Notion docs, design specs, runbooks, business rules, metric definitions, and
+BigQuery data:
 
 - Use for: design documents, architecture specs, team decisions, project
-  documentation
-- Always search first, then fetch full content
-- Always include page URLs in your response
+  documentation, metric definitions (MRR, ARR, churn), table schemas, business
+  rules, and any Gorgias internal knowledge
+- **Always call `get_instruction` first** — it returns usage guidelines, tool
+  sequence, and query rules
+- Always include source links/references in your response
 
 **Rules:**
 
-- Read-only. Never create, update, or delete issues or pages.
-- Cross-reference Linear issues with Notion specs when applicable.
+- Read-only. Never create, update, or delete data.
+- Cross-reference Linear issues with Cortex specs when applicable.
 - Return structured summaries with source links.
