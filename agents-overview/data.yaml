@@ -92,7 +92,7 @@ nodes:
     color: '#60a5fa'
     parent: orchestrator
     model: GPT-5.6 Sol (medium)
-    mcp_access: codebase-memory-mcp, figma
+    mcp_access: codebase-memory-mcp, figma-desktop
     trigger: UI/UX implementation, visual components, frontend polish
     constraints: UI/UX focused. No backend/production tooling.
     responsibilities: |
@@ -100,7 +100,7 @@ nodes:
       • Visual polish & design system adherence
       • Front-end patterns and animations
       • Read design system conventions via codebase-memory-mcp
-      • Access Figma designs via figma MCP
+      • Access Figma designs via figma-desktop MCP
 
   - id: fixer
     label: Fixer
@@ -278,8 +278,8 @@ nodes:
     parent: detective
 
 
-  - id: figma-mcp
-    label: figma
+  - id: figma-desktop-mcp
+    label: figma-desktop
     type: mcp
     role: Design Files
     color: '#a78bfa'
@@ -609,7 +609,7 @@ links:
     target: codebase-memory
     label: uses
   - source: designer
-    target: figma-mcp
+    target: figma-desktop-mcp
     label: uses
 
   # Navigator → MCPs

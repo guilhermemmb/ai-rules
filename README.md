@@ -121,7 +121,7 @@ All configured in `~/.config/opencode/opencode.json`:
 | rootly | ✓ | Detective |
 | mcp-server-browser | ✓ | Navigator |
 | gorgias-mcp | disabled | — |
-| figma | disabled | — |
+| figma | ✓ | — |
 
 **Datadog access:** via `pup` CLI (Bash), not MCP. Always call with `--agent --read-only` flags: `pup --agent --ro logs search ...`
 

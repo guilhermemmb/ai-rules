@@ -38,7 +38,7 @@
         "model": "bf/gemini/gemini-3-pro-preview",
         "variant": "medium",
         "skills": [],
-        "mcps": ["codebase-memory-mcp", "figma"]
+        "mcps": ["codebase-memory-mcp", "figma-desktop"]
       },
       "fixer": {
         "model": "bf-a/claude-sonnet-4-6",

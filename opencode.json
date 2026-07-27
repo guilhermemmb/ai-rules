@@ -65,9 +65,9 @@
       "url": "https://mcp.gorgias.com/mcp",
       "enabled": false
     },
-    "figma": {
+    "figma-desktop": {
       "type": "remote",
-      "url": "https://mcp.figma.com/mcp",
+      "url": "http://127.0.0.1:3845/mcp",
       "enabled": true
     },
     "mcp-server-browser": {

@@ -171,7 +171,7 @@ No code needed—YAML drives everything.
 - **oracle** — Strategic advisor; architecture review, hard debugging, code review
 - **explorer** — Codebase reconnaissance; broad searches, pattern discovery
 - **librarian** — Knowledge retrieval; library docs (context7), web search, Linear, Notion, GitHub code search
-- **designer** — UI/UX implementation; visual components, frontend polish, Figma
+- **designer** — UI/UX implementation; visual components, frontend polish, Figma Desktop
 - **fixer** — Bounded implementation; scoped bug fixes, mechanical code changes
 - **observer** — Visual analysis; images, screenshots, PDFs (auto-routed from orchestrator)
 
@@ -194,7 +194,7 @@ No code needed—YAML drives everything.
 - **notion** — Design docs, specs, runbooks (read-only)
 
 **designer:**
-- **figma** — Design files
+- **figma-desktop** — Design files (local Figma Desktop app, http://127.0.0.1:3845/mcp)
 
 **navigator:**
 - **mcp-server-browser** — Browser navigation, screenshots, interaction
