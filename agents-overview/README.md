@@ -165,65 +165,92 @@ No code needed—YAML drives everything.
 ## Architecture
 
 ### Agents
-- **main** — Orchestrator, dispatches work to specialized agents
-- **browser-agent** — Browser interaction (screenshots, automation)
-- **observability-and-troubleshoot** — Production diagnostics (logs, metrics, errors)
-- **cortex-agent** — Gorgias domain knowledge (metrics, schemas)
-- **knowledge-agent** — External docs (Notion, Linear)
+
+**Built-in (Pantheon):**
+- **orchestrator** — Master delegator; plans, implements directly, dispatches subagents
+- **oracle** — Strategic advisor; architecture review, hard debugging, code review
+- **explorer** — Codebase reconnaissance; broad searches, pattern discovery
+- **librarian** — Knowledge retrieval; library docs (context7), web search, Linear, Notion, GitHub code search
+- **designer** — UI/UX implementation; visual components, frontend polish, Figma
+- **fixer** — Bounded implementation; scoped bug fixes, mechanical code changes
+- **observer** — Visual analysis; images, screenshots, PDFs (auto-routed from orchestrator)
+
+**Custom:**
+- **navigator** — Browser automation; navigation, screenshots, DOM, form fills
+- **detective** — Production diagnostics; Sentry, Datadog (pup CLI), GCP logs, Rootly, root cause analysis
+- **sage** — Domain knowledge; Gorgias metrics, table schemas, business rules (cortex/context-layer)
 
 ### MCPs (Model Context Protocol)
 
-**main agent:**
-
-- **codebase-memory-mcp** — Code search, graph-based exploration
-- **context7-mcp** — Current library documentation
+**orchestrator:**
+- **codebase-memory-mcp** — Code search, graph-based exploration (shared by oracle, explorer, fixer, designer, detective, sage)
 - **github** — GitHub CLI integration (PRs, issues, checks)
 
-**browser-agent:**
+**librarian:**
+- **context7** — Current library documentation
+- **websearch** — Web search via Exa
+- **gh_grep** — GitHub code search across repos
+- **linear** — Issues, epics, cycles (read-only)
+- **notion** — Design docs, specs, runbooks (read-only)
 
-- **mcp-server-browser** — Browser navigation, screenshots, interaction (tier 1)
-- **chrome-devtools-mcp** — Performance profiling, Lighthouse, network inspection (tier 2)
+**designer:**
+- **figma** — Design files
 
-**observability-and-troubleshoot:**
+**navigator:**
+- **mcp-server-browser** — Browser navigation, screenshots, interaction
 
-- **sentry-mcp** — Error monitoring (read-only)
-- **datadog-mcp** — APM, logs, metrics (read-only)
-- **gcloud** — GCP Cloud Logging
-- **gcloud-observability-ai-agent** — GCP Observability for gorgias-conversations-prod (always paired with gcloud)
-- **gcloud-observability-chat** — GCP Observability for gorgias-chat-production (always paired with gcloud)
+**detective:**
+- **sentry** — Error monitoring (read-only)
+- **pup CLI** — Datadog CLI (--agent --ro): logs, metrics, APM, monitors
+- **gcp-logging** — GCP Cloud Logging
+- **rootly** — Incident management data
 
-**cortex-agent:**
-
-- **cortex** — Gorgias domain knowledge, metrics, BigQuery
-
-**knowledge-agent:**
-
-- **notion** — Knowledge base docs
-- **linear** — Issues and epics
+**sage:**
+- **context-layer** — Gorgias domain knowledge, metrics, BigQuery
 
 ### Tools
-- **Bash** — Command execution
-- **Read/Edit/Write** — File operations
-- **Git** — Version control
-- **gh CLI** — GitHub integration
+- **Bash** — Command execution (all agents)
+- **Read/Edit/Write** — File operations (orchestrator, fixer, designer)
+- **Git** — Version control (orchestrator)
+- **gh CLI** — GitHub integration (orchestrator)
 
 ### Skills
-- **superpowers** — Planning, debugging, brainstorming
-- **code-review** — PR analysis and code review
-- **caveman** — Terse communication mode
+
+**Orchestrator:**
+- **codemap** — Repository cartography
+- **deepwork** — Heavy session workflow
+- **verification-planning** — Evidence before code
+- **worktrees** — Isolated coding lanes
+- **clonedeps** — Dependency X-ray
+- **reflect** — Workflow self-improvement
+- **oh-my-opencode-slim** — Plugin self-configuration
+- **project-context** — Project summaries
+- **openspec-propose / apply / archive / explore / update / sync** — SDD workflow
+
+**Oracle:**
+- **simplify** — Behavior-preserving refactors
+
+**Detective:**
+- **dd-pup** — Datadog CLI reference
+- **dd-apm** — APM traces & services
+- **dd-logs** — Log search & management
+- **dd-monitors** — Monitor alerting
+- **dd-debugger** — Live debugger probes
+- **incident-response** — Incident tracking & on-call
 
 ### Infrastructure
-- **Claude Code** — IDE integration
-- **settings.json** — MCP and tool configuration
-- **zsh Environment** — Shell configuration
-- **RTK** — Token optimization for CLI commands
+- **OpenCode** — Entry point, OMO Slim plugin host
+- **Oh My OpenCode Slim** — Agent orchestration (preset: bifrost)
+- **Bifrost** — Model gateway (https://bifrost.ops.gorgias.io)
+- **RTK** — Token optimization plugin (~60-90% reduction)
+- **zsh Environment** — Shell config (VOLTA_HOME, GORGIAS_ROOT, aliases)
 
 ## Constraints
 
-**Main agent cannot directly access:**
-- mcp-server-browser, chrome-devtools-mcp (→ dispatch to browser-agent)
-- sentry-mcp, datadog-mcp, gcloud, gcloud-observability-ai-agent, gcloud-observability-chat (→ dispatch to observability-and-troubleshoot)
-- cortex (→ dispatch to cortex-agent)
-- notion, linear (→ dispatch to knowledge-agent)
+**Orchestrator hard-enforced dispatch rules (no direct access):**
+- mcp-server-browser → dispatch to navigator
+- sentry, gcp-logging, rootly → dispatch to detective
+- context-layer → dispatch to sage
+- linear, notion → dispatch to librarian
 
 This enforces proper tool isolation and prevents unauthorized access.

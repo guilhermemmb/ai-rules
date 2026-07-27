@@ -182,7 +182,7 @@ nodes:
     role: Domain Knowledge
     color: '#f59e0b'
     parent: orchestrator
-    model: GPT-4o-mini
+    model: DeepSeek V4 Flash (low)
     mcp_access: context-layer, codebase-memory-mcp
     trigger: Gorgias metrics, table schemas, business rules, data definitions
     constraints: |
@@ -402,6 +402,48 @@ nodes:
     color: '#34d399'
     parent: detective
 
+  - id: skill-openspec-propose
+    label: openspec-propose
+    type: skill
+    role: SDD Proposal Workflow
+    color: '#34d399'
+    parent: orchestrator
+
+  - id: skill-openspec-apply
+    label: openspec-apply-change
+    type: skill
+    role: SDD Implementation Workflow
+    color: '#34d399'
+    parent: orchestrator
+
+  - id: skill-openspec-archive
+    label: openspec-archive-change
+    type: skill
+    role: SDD Archive Workflow
+    color: '#34d399'
+    parent: orchestrator
+
+  - id: skill-openspec-explore
+    label: openspec-explore
+    type: skill
+    role: SDD Exploration Mode
+    color: '#34d399'
+    parent: orchestrator
+
+  - id: skill-openspec-update
+    label: openspec-update-change
+    type: skill
+    role: SDD Plan Update
+    color: '#34d399'
+    parent: orchestrator
+
+  - id: skill-openspec-sync
+    label: openspec-sync-specs
+    type: skill
+    role: SDD Spec Sync
+    color: '#34d399'
+    parent: orchestrator
+
   # === Tools ===
 
   - id: tool-bash
@@ -558,7 +600,6 @@ links:
     target: notion-mcp
     label: uses
 
-  # Navigator → MCPs
   # Designer → MCPs
   - source: designer
     target: codebase-memory
@@ -635,6 +676,24 @@ links:
     label: invokes
   - source: oracle
     target: skill-simplify
+    label: invokes
+  - source: detective
+    target: skill-dd-pup
+    label: invokes
+  - source: detective
+    target: skill-dd-apm
+    label: invokes
+  - source: detective
+    target: skill-dd-logs
+    label: invokes
+  - source: detective
+    target: skill-dd-monitors
+    label: invokes
+  - source: detective
+    target: skill-dd-debugger
+    label: invokes
+  - source: detective
+    target: skill-incident-response
     label: invokes
 
   # Tools → agents

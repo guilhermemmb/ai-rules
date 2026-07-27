@@ -171,7 +171,7 @@
         }
 
         .agent-details { max-height: 0; overflow: hidden; transition: max-height 0.35s ease, margin 0.35s ease; }
-        .agent-card.expanded .agent-details { max-height: 600px; margin-top: 1rem; }
+        .agent-card.expanded .agent-details { max-height: 1200px; margin-top: 1rem; }
 
         .detail-section { margin-bottom: 0.75rem; }
         .detail-label {
@@ -270,6 +270,16 @@
 
         /* Skills section */
         .skill-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+        .skill-group { margin-bottom: 1rem; }
+        .skill-group-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #64748b;
+            margin-bottom: 0.4rem;
+        }
 
         .skill-chip {
             font-family: ui-monospace, monospace;
@@ -427,16 +437,31 @@
                 return g;
             }));
 
-            // Skills
+            // Skills grouped by owner
             const skills = nodes.filter(n => n.type === 'skill');
             main.appendChild(section('💡 Skills', skills.length, () => {
-                const s = el('div', { className: 'skill-list' });
+                const container = el('div');
+                // Group by parent
+                const groups = {};
                 skills.forEach(sk => {
-                    const c = el('span', { className: 'skill-chip' });
-                    c.textContent = sk.label;
-                    s.appendChild(c);
+                    const parentId = sk.parent || 'other';
+                    if (!groups[parentId]) groups[parentId] = [];
+                    groups[parentId].push(sk);
                 });
-                return s;
+                Object.entries(groups).forEach(([parentId, group]) => {
+                    const parentAgent = agents.find(a => a.id === parentId);
+                    const groupEl = el('div', { className: 'skill-group' });
+                    groupEl.innerHTML = `<div class="skill-group-label">${parentAgent ? parentAgent.label : parentId}</div>`;
+                    const list = el('div', { className: 'skill-list' });
+                    group.forEach(sk => {
+                        const c = el('span', { className: 'skill-chip' });
+                        c.textContent = sk.label;
+                        list.appendChild(c);
+                    });
+                    groupEl.appendChild(list);
+                    container.appendChild(groupEl);
+                });
+                return container;
             }));
 
             // Infrastructure
@@ -453,6 +478,23 @@
                 });
                 return g;
             }));
+
+            // Tools
+            const tools = nodes.filter(n => n.type === 'tool');
+            if (tools.length) {
+                main.appendChild(section('🛠️ Tools', tools.length, () => {
+                    const g = el('div', { className: 'infra-grid' });
+                    tools.forEach(t => {
+                        const c = el('div', { className: 'infra-card' });
+                        c.innerHTML = `
+                            <div class="infra-name" style="color:#f472b6">${t.label}</div>
+                            <div class="infra-config">${(t.role || '').trim()}${t.used_by ? '\nUsed by: ' + t.used_by : ''}</div>
+                        `;
+                        g.appendChild(c);
+                    });
+                    return g;
+                }));
+            }
         }
 
         function section(title, count, renderFn) {

@@ -108,11 +108,14 @@ When asked to "create PR", "open PR", "update PR", "draft PR", or similar:
 ## Workflow
 
 **Simple / straightforward tasks** — implement directly. Write a short inline
-plan (numbered steps), then execute without waiting for approval. **Non-trivial
-tasks** (new features, multi-area changes, unclear root cause) — create a full
-plan first, show in digestible chunks, and wait for "go" before applying.
+plan (numbered steps), then execute without waiting for approval.
 
-## SDD Default Workflow (OpenSpec)
+**Non-trivial tasks** (new features, multi-area changes, unclear root cause) —
+follow the **Spec Driven Development (SDD) workflow** defined below. Do NOT
+create an ad-hoc inline plan; load the skill and generate the proper artifacts
+instead.
+
+## Spec Driven Development (SDD) Default Workflow — OpenSpec
 
 **This is the default for all non-trivial work. Run it automatically — no user
 command needed.**
@@ -125,24 +128,42 @@ command needed.**
   decision
 - Explicit hotfix or incident response
 
+**OpenSpec location — NEVER inside the repo:**
+
+All OpenSpec artifacts live exclusively at
+`/Users/guilhermebomfim/developer/gorgias-power-project/<repo>/openspec/`
+where `<repo>` is the basename of the repo being worked on.
+**Never create or write an `openspec/` folder inside the working repo.** The
+repo must stay clean; the spec chain of thought lives outside it.
+
 **For everything else, follow this workflow automatically:**
 
-1. **Init** — check for `openspec/` in the project root. If absent, run
-   `openspec init --tools opencode` silently (no user prompt needed).
+1. **Init** — derive `<repo>` from the current repo's directory basename. Check
+   if a store already exists:
+   ```bash
+   openspec store list --json
+   ```
+   If no store with id `<repo>` exists, create one at the external path:
+   ```bash
+   openspec store setup <repo> --path ~/developer/gorgias-power-project/<repo> --no-init-git
+   ```
+   This registers the external directory as the openspec home for this repo.
+   **Never run `openspec init` inside the working repo.**
 
-2. **Propose** — load skill `openspec-propose`. This creates the change
-   directory with proposal.md, specs/, design.md, and tasks.md. Show the user
-   the artifacts and pause for approval before implementing.
+2. **Propose** — load skill `openspec-propose` and tell it to use
+   `--store <repo>`. All artifacts (proposal.md, specs/, design.md, tasks.md)
+   are written to the registered store path, not the repo. Show the user the
+   artifacts and pause for approval before implementing.
 
-3. **Apply** — load skill `openspec-apply-change`. Work through tasks.md using
-   the normal delegation model: @fixer for code changes, @designer for UI/UX,
-   @oracle for architecture decisions.
+3. **Apply** — load skill `openspec-apply-change` with `--store <repo>`. Work
+   through tasks.md using the normal delegation model: @fixer for code changes,
+   @designer for UI/UX, @oracle for architecture decisions.
 
-4. **Archive** — load skill `openspec-archive-change`. After archive, copy the
-   archived change directory to
-   `/Users/guilhermebomfim/developer/gorgias-power-project/<repo>/openspec/` for
-   cross-session memory. (`<repo>` = the repo currently being worked on; create
-   the dir if absent.)
+4. **Archive** — load skill `openspec-archive-change`. When invoking, explicitly
+   tell the skill: "Archive using store `<repo>`. Pass `--store <repo>` on every
+   openspec command. The archive must land at
+   `~/developer/gorgias-power-project/<repo>/openspec/changes/archive/`, never
+   inside the working repo."
 
 **Optional explore step:** If the task is ambiguous or codebase impact is
 unclear, load `openspec-explore` before proposing. This is

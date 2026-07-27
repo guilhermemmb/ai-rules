@@ -13,6 +13,12 @@ repo registered on this machine) or the work lives in one, run
 commands already carry the flag; keep it on follow-ups. Without a store,
 commands act on the nearest local `openspec/` root.
 
+**Store required for SDD workflow:** When invoked by the orchestrator SDD
+workflow, a store is always provided. If no store is given and no registered
+store is found, run `openspec store list --json` and prompt the user to select
+one. **Never fall back to a local `openspec/` directory** — the archive must
+land in the same external store where the change's specs were created.
+
 **Input**: Optionally specify a change name after `/opsx-archive` (e.g.,
 `/opsx-archive add-auth`). If omitted, check if it can be inferred from
 conversation context. If vague or ambiguous you MUST prompt for available
@@ -33,7 +39,9 @@ changes.
 
 2. **Check artifact completion status**
 
-   Run `openspec status --change "<name>" --json` to check artifact completion.
+   Run `openspec status --change "<name>" --store <id> --json` to check artifact
+   completion. Always include `--store <id>` when a store was identified in the
+   Store selection step above.
 
    Parse the JSON to understand:
    - `schemaName`: The workflow being used
