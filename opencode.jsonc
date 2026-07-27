@@ -39,7 +39,7 @@
     "gcp-logging": {
       "type": "remote",
       "url": "https://logging.googleapis.com/mcp",
-      "enabled": true
+      "enabled": false
     },
     "context-layer": {
       "type": "remote",
