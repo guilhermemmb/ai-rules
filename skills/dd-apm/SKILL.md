@@ -76,7 +76,8 @@ pup apm flow-map --query "service:api-gateway" --env production
 
 Traces are searched via the top-level `traces` command (not under `apm`).
 
-**Important:** APM durations are in **nanoseconds**: 1 second = 1,000,000,000 ns.
+**Important:** APM durations are in **nanoseconds**: 1 second = 1,000,000,000
+ns.
 
 ### Search Traces
 
@@ -120,29 +121,29 @@ pup traces aggregate \
 
 ## Key Metrics
 
-| Metric | What It Measures |
-|--------|------------------|
-| `trace.http.request.hits` | Request count |
-| `trace.http.request.duration` | Latency |
-| `trace.http.request.errors` | Error count |
-| `trace.http.request.apdex` | User satisfaction |
+| Metric                        | What It Measures  |
+| ----------------------------- | ----------------- |
+| `trace.http.request.hits`     | Request count     |
+| `trace.http.request.duration` | Latency           |
+| `trace.http.request.errors`   | Error count       |
+| `trace.http.request.apdex`    | User satisfaction |
 
 ## ⚠️ Trace Sampling
 
 **Not all traces are kept.** Understand sampling:
 
-| Mode | What's Kept |
-|------|-------------|
-| **Head-based** | Random % at start |
+| Mode           | What's Kept             |
+| -------------- | ----------------------- |
+| **Head-based** | Random % at start       |
 | **Error/Slow** | All errors, slow traces |
-| **Retention** | What's indexed (billed) |
+| **Retention**  | What's indexed (billed) |
 
 ### Trace Retention Costs
 
-| Retention | Cost |
-|-----------|------|
-| Indexed spans | $$$ per million |
-| Ingested spans | $ per million |
+| Retention      | Cost            |
+| -------------- | --------------- |
+| Indexed spans  | $$$ per million |
+| Ingested spans | $ per million   |
 
 **Best practice:** Only index what you need for search.
 
@@ -156,16 +157,16 @@ pup slos create --file slo.json
 
 ## Common Queries
 
-| Goal | Query |
-|------|-------|
-| Slowest endpoints | `pup traces aggregate --query="service:api" --compute="avg(@duration)" --group-by="resource_name" --from="1h"` |
-| Error rate by service | `pup traces aggregate --query="status:error" --compute="count" --group-by="service" --from="1h"` |
-| Throughput | `pup traces aggregate --query="service:api" --compute="count" --group-by="resource_name" --from="1h"` |
+| Goal                  | Query                                                                                                          |
+| --------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Slowest endpoints     | `pup traces aggregate --query="service:api" --compute="avg(@duration)" --group-by="resource_name" --from="1h"` |
+| Error rate by service | `pup traces aggregate --query="status:error" --compute="count" --group-by="service" --from="1h"`               |
+| Throughput            | `pup traces aggregate --query="service:api" --compute="count" --group-by="resource_name" --from="1h"`          |
 
 ## Service Config
 
-Query service instance metadata — instance IDs, hostnames, and config IDs for all
-running instances of a service. Returns up to 100 instances.
+Query service instance metadata — instance IDs, hostnames, and config IDs for
+all running instances of a service. Returns up to 100 instances.
 
 ```bash
 # Get instance metadata for a service
@@ -178,14 +179,14 @@ pup apm service-config get --service-name my-service --env prod
 pup apm service-config get --service-name my-service --service-instance-ids "id-1,id-2"
 ```
 
-> **Note on service identity:** `service_name` and `env` come from the SDK telemetry
-> pipeline and may differ from values in the Service Catalog.
+> **Note on service identity:** `service_name` and `env` come from the SDK
+> telemetry pipeline and may differ from values in the Service Catalog.
 
 ## Service Library Config
 
-Query the APM tracer configuration deployed across all running instances of a service.
-Useful for auditing config drift — finding instances where tracing, profiling, or AppSec
-is misconfigured relative to the rest of the fleet.
+Query the APM tracer configuration deployed across all running instances of a
+service. Useful for auditing config drift — finding instances where tracing,
+profiling, or AppSec is misconfigured relative to the rest of the fleet.
 
 ```bash
 # Get tracer config for a service
@@ -201,19 +202,20 @@ pup apm service-library-config get --service-name my-service --env prod --langua
 pup apm service-library-config get --service-name my-service --mixed
 ```
 
-> **Note on service identity:** `service_name`, `env`, and `language_name` come from the
-> SDK telemetry pipeline and reflect what the tracer reports at runtime. These may differ
-> from values in the Service Catalog, which aggregates data from multiple sources (APM
-> spans, USM, infrastructure tags, manual definitions).
+> **Note on service identity:** `service_name`, `env`, and `language_name` come
+> from the SDK telemetry pipeline and reflect what the tracer reports at
+> runtime. These may differ from values in the Service Catalog, which aggregates
+> data from multiple sources (APM spans, USM, infrastructure tags, manual
+> definitions).
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| No traces | Check ddtrace installed, DD_TRACE_ENABLED=true |
-| Missing service | Verify DD_SERVICE env var |
-| Traces not linked | Check trace headers propagated |
-| High cardinality | Don't tag with user_id/request_id |
+| Problem                | Fix                                            |
+| ---------------------- | ---------------------------------------------- |
+| No traces              | Check ddtrace installed, DD_TRACE_ENABLED=true |
+| Missing service        | Verify DD_SERVICE env var                      |
+| Traces not linked      | Check trace headers propagated                 |
+| High cardinality       | Don't tag with user_id/request_id              |
 | `--env` required error | Always pass `--env` to `apm services` commands |
 
 ## References/Docs
@@ -221,4 +223,3 @@ pup apm service-library-config get --service-name my-service --mixed
 - [APM Setup](https://docs.datadoghq.com/tracing/)
 - [Trace Search](https://docs.datadoghq.com/tracing/trace_explorer/)
 - [Retention Filters](https://docs.datadoghq.com/tracing/trace_pipeline/trace_retention/)
-

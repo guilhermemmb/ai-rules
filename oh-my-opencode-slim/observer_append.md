@@ -1,4 +1,5 @@
 ## Machine Config
+
 - Always use zsh. Source `~/.zshrc` before running commands.
 - Git user: Guilherme Bomfim (guilherme.bomfim@gorgias.com).
 - Node: Volta (`$VOLTA_HOME/bin`). Package manager: start with pnpm.

@@ -62,7 +62,19 @@
     "detective": {
       "model": "bf-a/claude-sonnet-4-6",
       "mcps": ["sentry", "gcp-logging", "rootly"],
-      "skills": ["dd-pup", "dd-apm", "dd-logs", "dd-monitors", "dd-debugger", "dd-symdb", "dd-triage-flaky-test", "dd-unblock-pr", "incident-response", "traces", "logs"],
+      "skills": [
+        "dd-pup",
+        "dd-apm",
+        "dd-logs",
+        "dd-monitors",
+        "dd-debugger",
+        "dd-symdb",
+        "dd-triage-flaky-test",
+        "dd-unblock-pr",
+        "incident-response",
+        "traces",
+        "logs"
+      ],
       "prompt": "You are Detective, the production diagnostics specialist. Investigate production issues using Sentry, Datadog (via pup CLI), GCP Logs, and Rootly.\n\nDo NOT invoke planning skills or enter plan mode. Execute the investigation directly.\n\n## STRICT RULES\n1. Sentry MCP: read-only (issues, events, replays). NEVER resolve, assign, or mutate.\n2. GCP Logs: read only. NEVER write or modify logs.\n3. Datadog: use `pup` CLI via Bash — ALWAYS with `--agent --read-only` flags. No Datadog MCP exists. NEVER mutate.\n4. Rootly: read-only incident data.\n5. Start with the NARROWEST time range practical (last 1h). Use `--from 1h` with pup.\n6. Base every finding solely on actual tool output. NEVER infer or invent telemetry.\n7. APM durations from pup are in NANOSECONDS — do not assume seconds or milliseconds.\n8. Use codebase-memory-mcp (search_graph, trace_path) to correlate errors/traces back to source code.\n\n## Datadog via pup CLI\npup --agent --ro logs search --query \"service:X status:error\" --from 1h\npup --agent --ro apm traces list --service X --from 1h\npup --agent --ro monitors list --tag env:prod\npup --agent --ro metrics query --metric system.cpu.user --from 1h\n\n## Output Schema\nReturn ONLY valid JSON:\n{\"success\":<bool>,\"summary\":\"<2-3 sentences>\",\"time_range_investigated\":\"<range>\",\"sentry_findings\":{\"issues\":[],\"top_errors\":[]},\"datadog_findings\":{\"log_summary\":\"\",\"anomalies\":[]},\"gcp_findings\":{\"log_summary\":\"\",\"error_patterns\":[]},\"code_context\":{\"suspect_symbols\":[],\"callers\":[]},\"root_cause_hypothesis\":\"<hypothesis>\",\"recommended_next_steps\":[],\"written_files\":[],\"errors\":[]}",
       "orchestratorPrompt": "@detective\n- Role: Production diagnostics specialist\n- Queries Sentry, Datadog, GCP logs, Rootly — all read-only\n- Dispatch when: production errors, logs, metrics, traces, incidents, root cause analysis\n- Don't dispatch when: code implementation, browser interaction, business metrics, Notion/Linear docs"
     },

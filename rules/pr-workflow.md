@@ -3,6 +3,7 @@
 ## Git Command Safety
 
 **NEVER** run any git command without asking first. This applies to:
+
 - `git commit`
 - `git push` / `git push --force-with-lease`
 - `git checkout` / `git switch`
@@ -14,11 +15,15 @@ Always confirm the command and context with the user before executing.
 ## PR Creation & Updates
 
 ### General Rules
-- **Always ask for confirmation** before running any `gh pr create` or `gh pr edit` command
-- **Always use `--draft`** by default (unless user explicitly says "ready for review")
+
+- **Always ask for confirmation** before running any `gh pr create` or
+  `gh pr edit` command
+- **Always use `--draft`** by default (unless user explicitly says "ready for
+  review")
 - **Always add label `claude:review`** to every PR (draft or not)
 
 ### Title Format
+
 - Use conventional commit format: `type(scope): description`
 - `type`: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 - `scope`: Optional; drop if unclear or multiple areas affected
@@ -28,6 +33,7 @@ Always confirm the command and context with the user before executing.
   - `fix: resolve null pointer in data processor`
 
 ### Description
+
 - Save to file, **never paste inline**:
   - `.context/pr/<branch-name>.md` if `.context/` exists
   - `/tmp/pr-<branch-name>.md` otherwise
@@ -41,6 +47,7 @@ Always confirm the command and context with the user before executing.
   - NO architecture discussions (save for commit messages or comments)
 
 ### When Updating a PR
+
 - Reuse the same description file from step 1
 - Overwrite it with new content
 - Provide the exact `gh pr edit` command
@@ -63,4 +70,3 @@ gh pr edit 42 \
   --title "$(head -1 /tmp/pr-feature-name.md | sed 's/^# //')" \
   --body-file <(tail -n +3 /tmp/pr-feature-name.md)
 ```
-

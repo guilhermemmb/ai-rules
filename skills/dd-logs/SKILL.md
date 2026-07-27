@@ -43,14 +43,14 @@ pup logs search --query="@http.status_code:>=500" --from="1h"
 
 ### Search Syntax
 
-| Query | Meaning |
-|-------|---------|
-| `error` | Full-text search |
-| `status:error` | Tag equals |
-| `@http.status_code:500` | Attribute equals |
-| `@http.status_code:>=400` | Numeric range |
-| `service:api AND env:prod` | Boolean |
-| `@message:*timeout*` | Wildcard |
+| Query                      | Meaning          |
+| -------------------------- | ---------------- |
+| `error`                    | Full-text search |
+| `status:error`             | Tag equals       |
+| `@http.status_code:500`    | Attribute equals |
+| `@http.status_code:>=400`  | Numeric range    |
+| `service:api AND env:prod` | Boolean          |
+| `@message:*timeout*`       | Wildcard         |
 
 ## Pipelines
 
@@ -69,13 +69,15 @@ pup obs-pipelines create --file pipeline.json
 ```json
 {
   "name": "API Logs",
-  "filter": {"query": "service:api"},
+  "filter": { "query": "service:api" },
   "processors": [
     {
       "type": "grok-parser",
       "name": "Parse nginx",
       "source": "message",
-      "grok": {"match_rules": "%{IPORHOST:client_ip} %{DATA:method} %{DATA:path} %{NUMBER:status}"}
+      "grok": {
+        "match_rules": "%{IPORHOST:client_ip} %{DATA:method} %{DATA:path} %{NUMBER:status}"
+      }
     },
     {
       "type": "status-remapper",
@@ -99,7 +101,7 @@ pup obs-pipelines create --file pipeline.json
 ```json
 {
   "name": "Drop debug logs",
-  "filter": {"query": "status:debug"},
+  "filter": { "query": "status:debug" },
   "is_enabled": true
 }
 ```
@@ -111,12 +113,12 @@ pup obs-pipelines create --file pipeline.json
 pup logs search --query="*" --from="1h" | jq 'group_by(.service) | map({service: .[0].service, count: length}) | sort_by(-.count)[:10]'
 ```
 
-| Exclude | Query |
-|---------|-------|
+| Exclude       | Query                                       |
+| ------------- | ------------------------------------------- |
 | Health checks | `@http.url:"/health" OR @http.url:"/ready"` |
-| Debug logs | `status:debug` |
-| Static assets | `@http.url:*.css OR @http.url:*.js` |
-| Heartbeats | `@message:*heartbeat*` |
+| Debug logs    | `status:debug`                              |
+| Static assets | `@http.url:*.css OR @http.url:*.js`         |
+| Heartbeats    | `@message:*heartbeat*`                      |
 
 ## Archives
 
@@ -178,12 +180,12 @@ def sanitize_log(message: str) -> str:
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| Logs not appearing | Check agent, pipeline filters |
-| High costs | Add exclusion filters |
-| Search slow | Narrow time range, use indexes |
-| Missing attributes | Check grok parser |
+| Problem            | Fix                            |
+| ------------------ | ------------------------------ |
+| Logs not appearing | Check agent, pipeline filters  |
+| High costs         | Add exclusion filters          |
+| Search slow        | Narrow time range, use indexes |
+| Missing attributes | Check grok parser              |
 
 ## References/Documentation
 
@@ -191,4 +193,3 @@ def sanitize_log(message: str) -> str:
 - [Pipelines](https://docs.datadoghq.com/logs/log_configuration/pipelines/)
 - [Exclusion Filters](https://docs.datadoghq.com/logs/indexes/#exclusion-filters)
 - [Archives](https://docs.datadoghq.com/logs/archives/)
-

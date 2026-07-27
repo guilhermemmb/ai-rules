@@ -28,7 +28,8 @@
 
 ## npm Registry
 
-- `@gorgias` scope: registry at `https://npm.pkg.github.com/` (auth via `$NPM_TOKEN`)
+- `@gorgias` scope: registry at `https://npm.pkg.github.com/` (auth via
+  `$NPM_TOKEN`)
 
 ## SSH Config
 
@@ -37,11 +38,14 @@
 ## Shell Functions
 
 - `dbproxy` — interactive fzf selector for cloud-sql-proxy connections
-- `unify-ai-config` — symlinks AI config across tools (via `~/developer/dotfiles/unify-ai-config.mjs`)
+- `unify-ai-config` — symlinks AI config across tools (via
+  `~/developer/dotfiles/unify-ai-config.mjs`)
 
 ## Project Aliases (defined in ~/.zshrc)
 
-- `g:gorgias`, `g:chat`, `g:incoming`, `g:account-manager`, `g:workflows`, `g:help-center`, `g:helpdesk`, `g:ai-agent` — cd shortcuts to `~/developer/<project>`
+- `g:gorgias`, `g:chat`, `g:incoming`, `g:account-manager`, `g:workflows`,
+  `g:help-center`, `g:helpdesk`, `g:ai-agent` — cd shortcuts to
+  `~/developer/<project>`
 - `g:proxy`, `g:proxy-chat`, `g:proxy-helpdesk` — local dev proxy launchers
 - `g:pr`, `g:pr-checkout`, `g:pr-rebase` — PR tool shortcuts
 - `g:ngrok`, `g:ngrok-tmux` — ngrok launchers
@@ -58,4 +62,3 @@
 - `gcp` — git cherry-pick
 - `grbi` — git rebase -i
 - `grbc` — git rebase --continue
-

@@ -12,7 +12,8 @@ metadata:
 
 # Datadog Symbol Database
 
-Search for classes and methods in instrumented services. Find probe-able method locations for use with the Live Debugger.
+Search for classes and methods in instrumented services. Find probe-able method
+locations for use with the Live Debugger.
 
 ## Prerequisites
 
@@ -46,7 +47,9 @@ pup symdb search --service my-service --query "Controller" --view names
 
 ### Probe Locations View
 
-`TYPE:METHOD(arg1, arg2, ...)` signatures suitable for `--probe-location` in `pup debugger probes create`. Falls back to `TYPE:METHOD` when no argument info is available.
+`TYPE:METHOD(arg1, arg2, ...)` signatures suitable for `--probe-location` in
+`pup debugger probes create`. Falls back to `TYPE:METHOD` when no argument info
+is available.
 
 ```bash
 pup symdb search --service my-service --query "VetController" --view probe-locations
@@ -94,21 +97,21 @@ pup debugger probes watch <PROBE_ID> --timeout 60 --limit 10
 
 ## Options
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--service` | Service name (required) | — |
-| `--query` | Search query, matches scope names | None (lists all) |
-| `--version` | Service version filter | None |
-| `--view` | Output view: `full`, `names`, `probe-locations` | `full` |
+| Flag        | Description                                     | Default          |
+| ----------- | ----------------------------------------------- | ---------------- |
+| `--service` | Service name (required)                         | —                |
+| `--query`   | Search query, matches scope names               | None (lists all) |
+| `--version` | Service version filter                          | None             |
+| `--view`    | Output view: `full`, `names`, `probe-locations` | `full`           |
 
 ## Failure Handling
 
-| Problem | Fix |
-|---------|-----|
-| No results | Verify the service is instrumented and reporting to Datadog |
-| Auth error | Run `pup auth login` or set `DD_API_KEY` + `DD_APP_KEY` + `DD_SITE` |
-| Wrong service name | Check exact service name in Datadog APM service catalog |
-| Stale symbols | Filter with `--version` to target the currently deployed version |
+| Problem            | Fix                                                                 |
+| ------------------ | ------------------------------------------------------------------- |
+| No results         | Verify the service is instrumented and reporting to Datadog         |
+| Auth error         | Run `pup auth login` or set `DD_API_KEY` + `DD_APP_KEY` + `DD_SITE` |
+| Wrong service name | Check exact service name in Datadog APM service catalog             |
+| Stale symbols      | Filter with `--version` to target the currently deployed version    |
 
 ## References
 

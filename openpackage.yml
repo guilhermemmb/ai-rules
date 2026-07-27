@@ -1,6 +1,8 @@
 name: ai-rules
 version: 2.1.0
-description: AI coding rules, agents, skills, and commands for OpenCode + Oh My OpenCode Slim
+description:
+  AI coding rules, agents, skills, and commands for OpenCode + Oh My OpenCode
+  Slim
 author: guilhermebomfim
 license: MIT
 
@@ -19,6 +21,6 @@ mcp: opencode.jsonc
 
 # Core OpenCode configuration files
 config:
-  opencode: opencode.json           # Provider & model definitions (bf, bf-a, bf-o)
-  omo_slim: oh-my-opencode-slim.json  # Agent model assignments & routing
-  omo_append: oh-my-opencode-slim/    # Agent-specific prompt append files
+  opencode: opencode.json # Provider & model definitions (bf, bf-a, bf-o)
+  omo_slim: oh-my-opencode-slim.json # Agent model assignments & routing
+  omo_append: oh-my-opencode-slim/ # Agent-specific prompt append files
