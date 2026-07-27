@@ -1,0 +1,647 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash",
+  "small_model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash",
+  "mcp": {
+    "codebase-memory-mcp": {
+      "enabled": true,
+      "type": "local",
+      "command": [
+        "/Users/guilhermebomfim/.local/bin/codebase-memory-mcp"
+      ]
+    },
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "enabled": true,
+      "headers": {
+        "CONTEXT7_API_KEY": "ctx7sk-5a43d734-feb8-4f4f-8c67-746ac7e3cee0"
+      }
+    },
+    "github": {
+      "type": "remote",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "enabled": true,
+      "oauth": false,
+      "headers": {
+        "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
+    },
+    "sentry": {
+      "type": "remote",
+      "url": "https://mcp.sentry.dev/mcp",
+      "enabled": true
+    },
+    "linear": {
+      "type": "remote",
+      "url": "https://mcp.linear.app/mcp",
+      "enabled": true
+    },
+    "gcp-logging": {
+      "type": "remote",
+      "url": "https://logging.googleapis.com/mcp",
+      "enabled": true
+    },
+    "context-layer": {
+      "type": "remote",
+      "url": "https://cortex.mcp.gorgias-decision-engine.com/mcp",
+      "enabled": true
+    },
+    "notion": {
+      "type": "remote",
+      "url": "https://mcp.notion.com/mcp",
+      "enabled": true
+    },
+    "rootly": {
+      "type": "remote",
+      "url": "https://mcp.rootly.com/mcp",
+      "enabled": true
+    },
+    "gorgias-mcp": {
+      "type": "remote",
+      "url": "https://mcp.gorgias.com/mcp",
+      "enabled": false
+    },
+    "figma": {
+      "type": "remote",
+      "url": "https://mcp.figma.com/mcp",
+      "enabled": true
+    },
+    "mcp-server-browser": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@agent-infra/mcp-server-browser@latest"
+      ],
+      "enabled": true
+    }
+  },
+  "provider": {
+    "bf": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Gorgias Bifrost",
+      "options": {
+        "baseURL": "https://bifrost.ops.gorgias.io/v1",
+        "apiKey": "{file:/Users/guilhermebomfim/.config/gorgias-ai/bifrost-virtual-key}"
+      },
+      "models": {
+        "gemini/gemini-2.5-flash": {
+          "name": "gemini/gemini-2.5-flash",
+          "cost": {
+            "input": 0.3,
+            "output": 2.5,
+            "cache_read": 0.03,
+            "input_audio": 1
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "family": "gemini-flash",
+          "release_date": "2025-06-17",
+          "options": {
+            "fallbacks": [
+              "gemini/gemini-3-flash-preview",
+              "openai/gpt-5.4",
+              "anthropic/claude-haiku-4-5"
+            ]
+          }
+        },
+        "gemini/gemini-2.5-pro": {
+          "name": "gemini/gemini-2.5-pro",
+          "cost": {
+            "input": 1.25,
+            "output": 10,
+            "cache_read": 0.125,
+            "tiers": [
+              {
+                "input": 2.5,
+                "output": 15,
+                "cache_read": 0.25,
+                "tier": {
+                  "type": "context",
+                  "size": 200000
+                }
+              }
+            ],
+            "context_over_200k": {
+              "input": 2.5,
+              "output": 15,
+              "cache_read": 0.25
+            }
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "family": "gemini-pro",
+          "release_date": "2025-06-17",
+          "options": {
+            "fallbacks": [
+              "gemini/gemini-3-flash-preview",
+              "openai/gpt-5.4",
+              "anthropic/claude-haiku-4-5"
+            ]
+          }
+        },
+        "gemini/gemini-3-flash-preview": {
+          "name": "gemini/gemini-3-flash-preview",
+          "cost": {
+            "input": 0.5,
+            "output": 3,
+            "cache_read": 0.05,
+            "input_audio": 1
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "family": "gemini-flash",
+          "release_date": "2025-12-17",
+          "options": {
+            "fallbacks": [
+              "openai/gpt-5.4",
+              "anthropic/claude-haiku-4-5"
+            ]
+          }
+        },
+        "gemini/gemini-3-pro-preview": {
+          "name": "gemini/gemini-3-pro-preview",
+          "cost": {
+            "input": 2,
+            "output": 12,
+            "cache_read": 0.2,
+            "tiers": [
+              {
+                "input": 4,
+                "output": 18,
+                "cache_read": 0.4,
+                "tier": {
+                  "type": "context",
+                  "size": 200000
+                }
+              }
+            ],
+            "context_over_200k": {
+              "input": 4,
+              "output": 18,
+              "cache_read": 0.4
+            }
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "family": "gemini-pro",
+          "release_date": "2025-11-18",
+          "options": {
+            "fallbacks": [
+              "gemini/gemini-3-flash-preview",
+              "openai/gpt-5.4",
+              "anthropic/claude-haiku-4-5"
+            ]
+          }
+        },
+        "huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash": {
+          "name": "huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash",
+          "cost": {
+            "input": 0.14,
+            "output": 0.28
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 384000
+          },
+          "family": "deepseek-flash",
+          "release_date": "2026-04-24",
+          "options": {
+            "fallbacks": [
+              "gemini/gemini-3-flash-preview",
+              "openai/gpt-5.4",
+              "anthropic/claude-haiku-4-5"
+            ]
+          }
+        },
+        "huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro": {
+          "name": "huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro",
+          "cost": {
+            "input": 1.74,
+            "output": 3.48
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 393216
+          },
+          "family": "deepseek-thinking",
+          "release_date": "2026-04-24",
+          "options": {
+            "fallbacks": [
+              "gemini/gemini-3-flash-preview",
+              "openai/gpt-5.4",
+              "anthropic/claude-haiku-4-5"
+            ]
+          }
+        },
+        "huggingface/novita/deepseek-ai/DeepSeek-V4-Flash": {
+          "name": "huggingface/novita/deepseek-ai/DeepSeek-V4-Flash",
+          "cost": {
+            "input": 0.14,
+            "output": 0.28
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 384000
+          },
+          "family": "deepseek-flash",
+          "release_date": "2026-04-24",
+          "options": {
+            "fallbacks": [
+              "gemini/gemini-3-flash-preview",
+              "openai/gpt-5.4",
+              "anthropic/claude-haiku-4-5"
+            ]
+          }
+        },
+        "huggingface/novita/deepseek-ai/DeepSeek-V4-Pro": {
+          "name": "huggingface/novita/deepseek-ai/DeepSeek-V4-Pro",
+          "cost": {
+            "input": 1.6,
+            "output": 3.2
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 393216
+          },
+          "family": "deepseek-thinking",
+          "release_date": "2026-04-24",
+          "options": {
+            "fallbacks": [
+              "gemini/gemini-3-flash-preview",
+              "openai/gpt-5.4",
+              "anthropic/claude-haiku-4-5"
+            ]
+          }
+        },
+        "huggingface/together/zai-org/GLM-5.2": {
+          "name": "huggingface/together/zai-org/GLM-5.2",
+          "cost": {
+            "input": 1.4,
+            "output": 4.4
+          },
+          "limit": {
+            "context": 262144,
+            "output": 131072
+          },
+          "family": "glm",
+          "release_date": "2026-06-13",
+          "options": {
+            "fallbacks": [
+              "gemini/gemini-3-flash-preview",
+              "openai/gpt-5.4",
+              "anthropic/claude-haiku-4-5"
+            ]
+          }
+        }
+      }
+    },
+    "bf-a": {
+      "npm": "@ai-sdk/anthropic",
+      "name": "Gorgias Bifrost (Anthropic)",
+      "options": {
+        "baseURL": "https://bifrost.ops.gorgias.io/anthropic/v1",
+        "apiKey": "{file:/Users/guilhermebomfim/.config/gorgias-ai/bifrost-virtual-key}"
+      },
+      "models": {
+        "claude-haiku-4-5": {
+          "reasoning": true,
+          "options": {
+            "thinking": {
+              "type": "enabled",
+              "budgetTokens": 32000
+            }
+          },
+          "cost": {
+            "input": 1,
+            "output": 5,
+            "cache_read": 0.1,
+            "cache_write": 1.25
+          },
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          },
+          "family": "claude-haiku",
+          "release_date": "2025-10-15"
+        },
+        "claude-opus-4-8": {
+          "reasoning": true,
+          "options": {
+            "thinking": {
+              "type": "enabled",
+              "budgetTokens": 32000
+            }
+          },
+          "cost": {
+            "input": 5,
+            "output": 25,
+            "cache_read": 0.5,
+            "cache_write": 6.25
+          },
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          },
+          "family": "claude-opus",
+          "release_date": "2026-05-28"
+        },
+        "claude-sonnet-4-6": {
+          "reasoning": true,
+          "options": {
+            "thinking": {
+              "type": "enabled",
+              "budgetTokens": 32000
+            }
+          },
+          "cost": {
+            "input": 3,
+            "output": 15,
+            "cache_read": 0.3,
+            "cache_write": 3.75
+          },
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          },
+          "family": "claude-sonnet",
+          "release_date": "2026-02-17"
+        },
+        "claude-sonnet-5": {
+          "reasoning": true,
+          "options": {
+            "thinking": {
+              "type": "enabled",
+              "budgetTokens": 32000
+            }
+          },
+          "cost": {
+            "input": 2,
+            "output": 10,
+            "cache_read": 0.2,
+            "cache_write": 2.5
+          },
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          },
+          "family": "claude-sonnet",
+          "release_date": "2026-06-29"
+        },
+        "high": {},
+        "low": {},
+        "mid": {}
+      }
+    },
+    "bf-o": {
+      "npm": "@ai-sdk/openai",
+      "name": "Gorgias Bifrost (OpenAI)",
+      "options": {
+        "baseURL": "https://bifrost.ops.gorgias.io/v1",
+        "apiKey": "{file:/Users/guilhermebomfim/.config/gorgias-ai/bifrost-virtual-key}"
+      },
+      "models": {
+        "gpt-4o": {
+          "cost": {
+            "input": 2.5,
+            "output": 10,
+            "cache_read": 1.25
+          },
+          "limit": {
+            "context": 128000,
+            "output": 16384
+          },
+          "family": "gpt",
+          "release_date": "2024-05-13"
+        },
+        "gpt-4o-mini": {
+          "cost": {
+            "input": 0.15,
+            "output": 0.6,
+            "cache_read": 0.075
+          },
+          "limit": {
+            "context": 128000,
+            "output": 16384
+          },
+          "family": "gpt-mini",
+          "release_date": "2024-07-18"
+        },
+        "gpt-5.4": {
+          "reasoning": true,
+          "options": {
+            "reasoningEffort": "high"
+          },
+          "cost": {
+            "input": 2.5,
+            "output": 15,
+            "cache_read": 0.25,
+            "tiers": [
+              {
+                "input": 5,
+                "output": 22.5,
+                "cache_read": 0.5,
+                "tier": {
+                  "type": "context",
+                  "size": 272000
+                }
+              }
+            ],
+            "context_over_200k": {
+              "input": 5,
+              "output": 22.5,
+              "cache_read": 0.5
+            }
+          },
+          "limit": {
+            "context": 1050000,
+            "input": 922000,
+            "output": 128000
+          },
+          "family": "gpt",
+          "release_date": "2026-03-05"
+        },
+        "gpt-5.4-mini": {
+          "reasoning": true,
+          "options": {
+            "reasoningEffort": "high"
+          },
+          "cost": {
+            "input": 0.75,
+            "output": 4.5,
+            "cache_read": 0.075
+          },
+          "limit": {
+            "context": 400000,
+            "input": 272000,
+            "output": 128000
+          },
+          "family": "gpt-mini",
+          "release_date": "2026-03-17"
+        },
+        "gpt-5.5": {
+          "reasoning": true,
+          "options": {
+            "reasoningEffort": "high"
+          },
+          "cost": {
+            "input": 5,
+            "output": 30,
+            "cache_read": 0.5,
+            "tiers": [
+              {
+                "input": 10,
+                "output": 45,
+                "cache_read": 1,
+                "tier": {
+                  "type": "context",
+                  "size": 272000
+                }
+              }
+            ],
+            "context_over_200k": {
+              "input": 10,
+              "output": 45,
+              "cache_read": 1
+            }
+          },
+          "limit": {
+            "context": 1050000,
+            "input": 922000,
+            "output": 128000
+          },
+          "family": "gpt",
+          "release_date": "2026-04-23"
+        },
+        "gpt-5.6-luna": {
+          "reasoning": true,
+          "options": {
+            "reasoningEffort": "high"
+          },
+          "cost": {
+            "input": 1,
+            "output": 6,
+            "cache_read": 0.1,
+            "cache_write": 1.25,
+            "tiers": [
+              {
+                "input": 2,
+                "output": 9,
+                "cache_read": 0.2,
+                "cache_write": 2.5,
+                "tier": {
+                  "type": "context",
+                  "size": 272000
+                }
+              }
+            ],
+            "context_over_200k": {
+              "input": 2,
+              "output": 9,
+              "cache_read": 0.2,
+              "cache_write": 2.5
+            }
+          },
+          "limit": {
+            "context": 1050000,
+            "input": 922000,
+            "output": 128000
+          },
+          "family": "gpt-luna",
+          "release_date": "2026-07-09"
+        },
+        "gpt-5.6-sol": {
+          "reasoning": true,
+          "options": {
+            "reasoningEffort": "high"
+          },
+          "cost": {
+            "input": 5,
+            "output": 30,
+            "cache_read": 0.5,
+            "cache_write": 6.25,
+            "tiers": [
+              {
+                "input": 10,
+                "output": 45,
+                "cache_read": 1,
+                "cache_write": 12.5,
+                "tier": {
+                  "type": "context",
+                  "size": 272000
+                }
+              }
+            ],
+            "context_over_200k": {
+              "input": 10,
+              "output": 45,
+              "cache_read": 1,
+              "cache_write": 12.5
+            }
+          },
+          "limit": {
+            "context": 1050000,
+            "input": 922000,
+            "output": 128000
+          },
+          "family": "gpt-sol",
+          "release_date": "2026-07-09"
+        },
+        "gpt-5.6-terra": {
+          "reasoning": true,
+          "options": {
+            "reasoningEffort": "high"
+          },
+          "cost": {
+            "input": 2.5,
+            "output": 15,
+            "cache_read": 0.25,
+            "cache_write": 3.125,
+            "tiers": [
+              {
+                "input": 5,
+                "output": 22.5,
+                "cache_read": 0.5,
+                "cache_write": 6.25,
+                "tier": {
+                  "type": "context",
+                  "size": 272000
+                }
+              }
+            ],
+            "context_over_200k": {
+              "input": 5,
+              "output": 22.5,
+              "cache_read": 0.5,
+              "cache_write": 6.25
+            }
+          },
+          "limit": {
+            "context": 1050000,
+            "input": 922000,
+            "output": 128000
+          },
+          "family": "gpt-terra",
+          "release_date": "2026-07-09"
+        },
+        "high": {},
+        "low": {},
+        "mid": {}
+      }
+    }
+  },
+  "enabled_providers": [
+    "bf",
+    "bf-a",
+    "bf-o"
+  ]
+}

@@ -1,6 +1,6 @@
 #!/bin/zsh
 cd "$(dirname "$0")"
-echo "Opening agents-overview at http://localhost:3000"
+echo "Opening agents-overview at http://localhost:8888"
 npx serve -p 8888 . &
 SERVER_PID=$!
 sleep 1
