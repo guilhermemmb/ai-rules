@@ -74,7 +74,7 @@ nodes:
     model: DeepSeek V4 Flash (low)
     mcp_access: websearch, context7, gh_grep, linear, notion
     trigger: Library docs, web research, Linear issues, Notion design docs, GitHub code search
-    constraints: Read-only. Linear/Notion: never create, update, or delete.
+    constraints: "Read-only. Linear/Notion: never create, update, or delete."
     responsibilities: |
       • Fetch current library/API documentation (context7)
       • Web search for external knowledge
