@@ -4,7 +4,7 @@ description: >
   Production diagnostics specialist. Investigates production issues using
   Sentry MCP, Datadog via pup CLI (--agent --read-only), GCP Logs, and Rootly.
   Returns structured JSON. Spawned by Orchestrator only.
-model: bf-a/claude-sonnet-4-6
+model: bf-o/gpt-5.4
 tools: [read, write, bash]
 mcps: [sentry, gcp-logging, rootly]
 skills: [dd-pup, dd-apm, dd-logs, dd-monitors, dd-debugger, dd-symdb, dd-triage-flaky-test, dd-unblock-pr, incident-response, traces, logs]

@@ -19,20 +19,20 @@ ping all agents
 | Agent | Model (Bifrost) | Role | MCPs |
 |-------|----------------|------|------|
 | **Orchestrator** | GPT-5.6 Terra (xhigh) | Master delegator & coordinator | `*`, `!context7` |
-| **Oracle** | DeepSeek V4 Pro (high) | Strategic advisor, architecture, hard debugging | codebase-memory-mcp · skill: `simplify` |
+| **Oracle** | GPT-5.4 (high) | Strategic advisor, architecture, hard debugging | codebase-memory-mcp · skill: `simplify` |
 | **Explorer** | DeepSeek V4 Flash (low) | Codebase reconnaissance | codebase-memory-mcp |
 | **Librarian** | DeepSeek V4 Flash (low) | Knowledge retrieval | websearch, context7, gh_grep, linear, notion |
-| **Designer** | GPT-5.6 Luna (medium) | UI/UX excellence | — |
-| **Fixer** | Claude Sonnet 4.6 (xhigh) | Implementation specialist | codebase-memory-mcp |
-| **Observer** | Gemini 2.5 Flash | Visual analysis (images, PDFs) | — |
+| **Designer** | GPT-5.6 Sol (medium) | UI/UX excellence | — |
+| **Fixer** | GPT-5.4 (xhigh) | Implementation specialist | codebase-memory-mcp |
+| **Observer** | Gemini 3 Flash Preview | Visual analysis (images, PDFs) | — |
 
 ### Custom (3)
 
 | Agent | Model (Bifrost) | MCPs | Dispatch when |
 |-------|----------------|------|---------------|
-| **Navigator** | Claude Sonnet 4.6 | mcp-server-browser | Navigation, screenshots, DOM, form fills, UI automation |
-| **Detective** | Claude Sonnet 4.6 | sentry, gcp-logging, rootly + **pup CLI** (Datadog) | Production errors, logs, metrics, traces, incidents |
-| **Sage** | Claude Haiku 4.5 | context-layer | Gorgias metrics, schemas, business rules, BigQuery |
+| **Navigator** | Gemini 3 Flash Preview | mcp-server-browser | Navigation, screenshots, DOM, form fills, UI automation |
+| **Detective** | GPT-5.4 | sentry, gcp-logging, rootly + **pup CLI** (Datadog) | Production errors, logs, metrics, traces, incidents |
+| **Sage** | GPT-4o-mini | context-layer | Gorgias metrics, schemas, business rules, BigQuery |
 
 **Council** disabled. Observer auto-routes images from Orchestrator (DeepSeek V4 is not multimodal).
 

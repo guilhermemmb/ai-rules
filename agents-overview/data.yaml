@@ -38,7 +38,7 @@ nodes:
     role: Strategic Advisor
     color: '#60a5fa'
     parent: orchestrator
-    model: DeepSeek V4 Pro (high)
+    model: GPT-5.4 (high)
     skills: simplify
     mcp_access: codebase-memory-mcp
     trigger: Architecture review, hard debugging, trade-offs, code review
@@ -90,7 +90,7 @@ nodes:
     role: UI/UX Excellence
     color: '#60a5fa'
     parent: orchestrator
-    model: GPT-5.6 Luna (medium)
+    model: GPT-5.6 Sol (medium)
     mcp_access: codebase-memory-mcp, figma
     trigger: UI/UX implementation, visual components, frontend polish
     constraints: UI/UX focused. No backend/production tooling.
@@ -107,7 +107,7 @@ nodes:
     role: Implementation Specialist
     color: '#60a5fa'
     parent: orchestrator
-    model: Claude Sonnet 4.6 (xhigh)
+    model: GPT-5.4 (xhigh)
     mcp_access: codebase-memory-mcp
     trigger: Scoped implementation tasks, bug fixes, code changes
     constraints: Receives concrete plan from Orchestrator. RTK for commands.
@@ -124,7 +124,7 @@ nodes:
     role: Visual Analysis
     color: '#60a5fa'
     parent: orchestrator
-    model: Gemini 2.5 Flash
+    model: Gemini 3 Flash Preview
     trigger: Images, screenshots, PDFs, diagrams (auto-routed from Orchestrator)
     constraints: Read-only visual analysis. Returns structured observations.
     responsibilities: |
@@ -141,7 +141,7 @@ nodes:
     role: Browser Automation
     color: '#f59e0b'
     parent: orchestrator
-    model: Claude Sonnet 4.6
+    model: Gemini 3 Flash Preview
     mcp_access: mcp-server-browser
     trigger: Browser navigation, screenshots, DOM analysis, form fills, UI automation
     constraints: |
@@ -160,7 +160,7 @@ nodes:
     role: Production Diagnostics
     color: '#f59e0b'
     parent: orchestrator
-    model: Claude Sonnet 4.6
+    model: GPT-5.4
     mcp_access: sentry, gcp-logging, rootly, codebase-memory-mcp
     trigger: Production errors, logs, metrics, traces, incidents, root cause analysis
     constraints: |
@@ -182,7 +182,7 @@ nodes:
     role: Domain Knowledge
     color: '#f59e0b'
     parent: orchestrator
-    model: Claude Haiku 4.5
+    model: GPT-4o-mini
     mcp_access: context-layer, codebase-memory-mcp
     trigger: Gorgias metrics, table schemas, business rules, data definitions
     constraints: |

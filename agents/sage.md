@@ -6,7 +6,7 @@ description: >
   Proactively use when the user's request involves Gorgias business metrics, domain
   concepts, data definitions, table schemas, customers, revenue, churn, product usage,
   or sales.
-model: bf-a/claude-haiku-4-5
+model: bf-o/gpt-4o-mini
 tools: [read, write, bash]
 mcps: [context-layer]
 ---
