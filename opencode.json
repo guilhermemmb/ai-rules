@@ -1,5 +1,17 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "oh-my-opencode-slim"
+  ],
+  "agent": {
+    "explore": {
+      "disable": true
+    },
+    "general": {
+      "disable": true
+    }
+  },
+  "lsp": true,
   "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash",
   "small_model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash",
   "mcp": {
