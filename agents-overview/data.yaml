@@ -22,7 +22,7 @@ nodes:
     mcp_access: codebase-memory-mcp, github
     constraints: |
       Hard-enforced at MCP level: no sentry/gcp-logging/rootly (→ Detective),
-      no context-layer (→ Sage), no mcp-server-browser (→ Navigator), no linear/notion (→ Librarian)
+      no cortex MCP (→ Sage or Librarian), no mcp-server-browser (→ Navigator), no linear (→ Librarian)
       Must dispatch to appropriate agent for these domains
     responsibilities: |
       • Plan & delegate complex tasks
@@ -72,16 +72,17 @@ nodes:
     color: '#60a5fa'
     parent: orchestrator
     model: DeepSeek V4 Flash (low)
-    mcp_access: websearch, context7, gh_grep, linear, notion
-    trigger: Library docs, web research, Linear issues, Notion design docs, GitHub code search
-    constraints: "Read-only. Linear/Notion: never create, update, or delete."
+    mcp_access: websearch, context7, gh_grep, linear, cortex
+    skills: cortex
+    trigger: Library docs, web research, Linear issues, Gorgias internal docs/Notion via Cortex, GitHub code search
+    constraints: "Read-only. Linear/Cortex: never create, update, or delete."
     responsibilities: |
       • Fetch current library/API documentation (context7)
       • Web search for external knowledge
       • GitHub code search across repos (gh_grep)
       • Search Linear issues/epics/cycles
-      • Retrieve Notion design docs, specs, runbooks
-      • Cross-reference Linear issues with Notion specs
+      • Retrieve Gorgias internal docs, specs, runbooks via Cortex (replaces Notion)
+      • Cross-reference Linear issues with Cortex specs
       • Absorbed former knowledge-agent role
 
   - id: designer
@@ -183,8 +184,9 @@ nodes:
     color: '#f59e0b'
     parent: orchestrator
     model: DeepSeek V4 Flash (low)
-    mcp_access: context-layer, codebase-memory-mcp
-    trigger: Gorgias metrics, table schemas, business rules, data definitions
+    mcp_access: cortex, codebase-memory-mcp
+    skills: cortex
+    trigger: Gorgias metrics, table schemas, business rules, data definitions, Notion/internal docs, design specs
     constraints: |
       Always call get_instruction first. Cortex read-only — never mutate.
       Map metrics to code via codebase-memory-mcp only. Cortex is source of truth.
@@ -192,6 +194,7 @@ nodes:
       • Access Gorgias metric definitions (MRR, ARR, churn, NPS, LTV)
       • Query table schemas & column mappings
       • Retrieve business rules & calculations
+      • Retrieve Notion/internal documentation, design specs, runbooks via Cortex
       • Map domain concepts to implementation code
       • Explain Gorgias business domain concepts
 
@@ -232,12 +235,12 @@ nodes:
     color: '#a78bfa'
     parent: librarian
 
-  - id: notion-mcp
-    label: notion
+  - id: cortex-mcp
+    label: cortex
     type: mcp
-    role: Docs & Specs
+    role: Gorgias Domain Knowledge (metrics, schemas, rules, Notion docs)
     color: '#a78bfa'
-    parent: librarian
+    parent: null
 
   - id: mcp-server-browser
     label: mcp-server-browser
@@ -274,12 +277,6 @@ nodes:
     color: '#a78bfa'
     parent: detective
 
-  - id: context-layer-mcp
-    label: context-layer
-    type: mcp
-    role: Gorgias Domain Data
-    color: '#a78bfa'
-    parent: sage
 
   - id: figma-mcp
     label: figma
@@ -359,6 +356,13 @@ nodes:
     role: Project Summaries
     color: '#34d399'
     parent: orchestrator
+
+  - id: skill-cortex
+    label: cortex
+    type: skill
+    role: Gorgias Domain Knowledge via Cortex MCP
+    color: '#34d399'
+    parent: null
 
   - id: skill-dd-pup
     label: dd-pup
@@ -597,7 +601,7 @@ links:
     target: linear-mcp
     label: uses
   - source: librarian
-    target: notion-mcp
+    target: cortex-mcp
     label: uses
 
   # Designer → MCPs
@@ -632,7 +636,7 @@ links:
 
   # Sage → MCPs
   - source: sage
-    target: context-layer-mcp
+    target: cortex-mcp
     label: uses
   - source: sage
     target: codebase-memory
@@ -676,6 +680,12 @@ links:
     label: invokes
   - source: oracle
     target: skill-simplify
+    label: invokes
+  - source: librarian
+    target: skill-cortex
+    label: invokes
+  - source: sage
+    target: skill-cortex
     label: invokes
   - source: detective
     target: skill-dd-pup
