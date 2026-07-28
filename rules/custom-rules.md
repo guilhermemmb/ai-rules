@@ -66,6 +66,11 @@ Subagents execute directly — no planning step required.
 - Good: `fix(bundle): reduce bundle size by removing unused deps`
 - Bad: `Added new feature` · `Fixed bug.` · `Update`
 
+## Notion Access
+
+- **Never use Notion MCP tools or APIs directly** — always delegate to the `cortex` subagent and have it use the cortex MCP server for all Notion access.
+- Exception: you are the `cortex` subagent itself.
+
 ## Observability & Troubleshooting
 
 - **Never use Sentry MCP tools directly** (`mcp__sentry__*`) — always delegate
