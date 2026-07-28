@@ -198,12 +198,12 @@ thinking/clarification time — skip it for well-scoped requests.
 ## Dispatch Rules
 
 - **Never use Sentry/GCP-Logging/Rootly tools directly** — dispatch to
-  **Detective**
-- **Never run `pup` directly for Datadog queries** — dispatch to **Detective**
-- **Never use mcp-server-browser tools directly** — dispatch to **Navigator**
-- **Never use cortex MCP directly** — dispatch to **Sage** or **Librarian**
-- **Never use Linear MCP directly** — dispatch to **Librarian**
-- **For Notion/internal docs** — use **Librarian** (via Cortex) or **Sage** for domain knowledge
+  **Detective 🕵️**
+- **Never run `pup` directly for Datadog queries** — dispatch to **Detective 🕵️**
+- **Never use mcp-server-browser tools directly** — dispatch to **Navigator 🧭**
+- **Never use cortex MCP directly** — dispatch to **Sage 🧙** or **Librarian 📚**
+- **Never use Linear MCP directly** — dispatch to **Librarian 📚**
+- **For Notion/internal docs** — use **Librarian 📚** (via Cortex) or **Sage 🧙** for domain knowledge
 
 ## Codebase Memory MCP
 
