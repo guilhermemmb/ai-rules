@@ -6,7 +6,7 @@
   "multiplexer": {
     "type": "tmux",
     "layout": "main-vertical",
-      "main_pane_size": 75
+      "main_pane_size": 70
   },
   "presets": {
     "bifrost": {

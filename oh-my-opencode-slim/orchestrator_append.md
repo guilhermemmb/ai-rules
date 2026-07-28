@@ -107,8 +107,12 @@ When asked to "create PR", "open PR", "update PR", "draft PR", or similar:
 
 ## Workflow
 
-**Simple / straightforward tasks** — implement directly. Write a short inline
-plan (numbered steps), then execute without waiting for approval.
+**Always plan before acting.** For every task — trivial or complex — present
+your intended approach to the user and wait for explicit approval before
+executing anything. Never start implementation without confirmation.
+
+**Simple / straightforward tasks** — write a short numbered plan, show it to
+the user, and wait for approval before executing.
 
 **Non-trivial tasks** (new features, multi-area changes, unclear root cause) —
 follow the **Spec Driven Development (SDD) workflow** defined below. Do NOT
