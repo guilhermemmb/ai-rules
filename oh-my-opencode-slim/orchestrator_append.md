@@ -131,7 +131,7 @@ command needed.**
 **OpenSpec location — NEVER inside the repo:**
 
 All OpenSpec artifacts live exclusively at
-`/Users/guilhermebomfim/developer/gorgias-power-project/<repo>/openspec/`
+`~/developer/.ai-work/openspec/<repo>/`
 where `<repo>` is the basename of the repo being worked on.
 **Never create or write an `openspec/` folder inside the working repo.** The
 repo must stay clean; the spec chain of thought lives outside it.
@@ -145,7 +145,7 @@ repo must stay clean; the spec chain of thought lives outside it.
    ```
    If no store with id `<repo>` exists, create one at the external path:
    ```bash
-   openspec store setup <repo> --path ~/developer/gorgias-power-project/<repo> --no-init-git
+   openspec store setup <repo> --path ~/developer/.ai-work/openspec/<repo> --no-init-git
    ```
    This registers the external directory as the openspec home for this repo.
    **Never run `openspec init` inside the working repo.**
@@ -162,8 +162,8 @@ repo must stay clean; the spec chain of thought lives outside it.
 4. **Archive** — load skill `openspec-archive-change`. When invoking, explicitly
    tell the skill: "Archive using store `<repo>`. Pass `--store <repo>` on every
    openspec command. The archive must land at
-   `~/developer/gorgias-power-project/<repo>/openspec/changes/archive/`, never
-   inside the working repo."
+`~/developer/.ai-work/openspec/<repo>/changes/archive/`, never
+inside the working repo."
 
 **Optional explore step:** If the task is ambiguous or codebase impact is
 unclear, load `openspec-explore` before proposing. This is

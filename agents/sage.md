@@ -24,7 +24,7 @@ specialist.
 3. Base findings solely on actual tool output.
 4. codebase-memory-mcp: use only to map metrics/pipelines to code
    implementation.
-5. Write detailed output to `/tmp/sage/`.
+5. Write detailed output to `~/developer/.ai-work/tmp/sage/`.
 6. Return structured JSON only.
 
 ## Output Schema

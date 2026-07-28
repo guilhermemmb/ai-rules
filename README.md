@@ -62,6 +62,42 @@ ai-rules/
 └── agents-overview/           # Interactive visualization (data.yaml + index.html)
 ```
 
+## Working Directory — `~/.ai-work`
+
+All AI agent working files are grouped under `~/developer/.ai-work/` — outside any repo, never committed.
+
+```
+~/developer/.ai-work/
+├── openspec/              # OpenSpec plans & specs, one subfolder per repo
+│   └── gorgias-chat/      # plans, specs/, design.md, tasks.md for gorgias-chat
+└── tmp/                   # Agent scratch output
+    ├── navigator/          # Navigator browser extraction results
+    └── sage/               # Sage domain knowledge query results
+```
+
+### OpenSpec stores
+
+Each repo's plans live at `~/developer/.ai-work/openspec/<repo>/`. To register a new repo:
+
+```bash
+openspec store setup <repo> --path ~/developer/.ai-work/openspec/<repo> --no-init-git
+```
+
+List registered stores:
+
+```bash
+openspec store list --json
+```
+
+### Agent tmp paths
+
+| Agent | Output path |
+|-------|-------------|
+| Navigator | `~/developer/.ai-work/tmp/navigator/` |
+| Sage | `~/developer/.ai-work/tmp/sage/` |
+
+> PR description files use `/tmp/pr-<branch>.md` (ephemeral, not grouped here).
+
 ## RTK — Token Optimization Plugin
 
 RTK is installed as a real OpenCode plugin that transparently rewrites commands before execution. No manual prefixing needed.

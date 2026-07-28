@@ -29,7 +29,7 @@ interaction, and content extraction:
 - `browser_get_markdown` — page content as markdown
 - `browser_scroll` — scroll vertically
 - `browser_evaluate` — execute JavaScript in browser console **Write/Edit
-  tools** — persist extracted data to `/tmp/navigator/`.
+  tools** — persist extracted data to `~/developer/.ai-work/tmp/navigator/`.
 
 ## Browser Mode
 

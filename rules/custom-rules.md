@@ -69,6 +69,7 @@ Subagents execute directly — no planning step required.
 ## Notion Access
 
 - **Never use Notion MCP tools or APIs directly** — always delegate to the `cortex` subagent and have it use the cortex MCP server for all Notion access.
+- **Never try to open a Notion link in a browser** (via mcp-server-browser or similar). When a Notion URL is provided, strip the document ID from it and delegate to the `cortex` subagent to look up the document content.
 - Exception: you are the `cortex` subagent itself.
 
 ## Observability & Troubleshooting
