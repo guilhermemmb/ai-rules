@@ -68,9 +68,16 @@ Subagents execute directly — no planning step required.
 
 ## Notion Access
 
-- **Never use Notion MCP tools or APIs directly** — always delegate to the `cortex` subagent and have it use the cortex MCP server for all Notion access.
-- **Never try to open a Notion link in a browser** (via mcp-server-browser or similar). When a Notion URL is provided, strip the document ID from it and delegate to the `cortex` subagent to look up the document content.
-- Exception: you are the `cortex` subagent itself.
+**Never handle Notion directly as the main agent.** Route based on context:
+- **Gorgias/internal Notion** (notion.so/gorgias/... or any internal doc) → delegate to `@sage`
+- **Public Notion pages** (external, non-Gorgias) → delegate to `@librarian`
+- **Never open a Notion link in a browser** — always delegate
+
+**Notion URL → page ID extraction** (for subagents to use):
+- URL patterns: `https://www.notion.so/<page-id>` or `https://www.notion.so/<workspace>/<title>-<page-id>[?params]`
+- Strip query params, take the last path segment; if it contains `-`, the page ID is everything after the **last** `-`; otherwise the segment itself is the page ID
+- Page IDs are 32 lowercase hex chars (UUID without dashes)
+- Example: `https://www.notion.so/gorgias/My-Doc-1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d?pvs=4` → ID: `1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d`
 
 ## Observability & Troubleshooting
 

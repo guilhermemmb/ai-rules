@@ -5,7 +5,8 @@ description: >
   metrics, table schemas, business rules, and domain concepts using the Context
   Layer MCP. Proactively use when the user's request involves Gorgias business
   metrics, domain concepts, data definitions, table schemas, customers, revenue,
-  churn, product usage, or sales.
+  churn, product usage, or sales. Also handles all Gorgias Notion links and
+  internal documentation.
 model: bf-o/gpt-4o-mini
 tools: [read, write, bash]
 mcps: [context-layer]
@@ -26,6 +27,35 @@ specialist.
    implementation.
 5. Write detailed output to `~/developer/.ai-work/tmp/sage/`.
 6. Return structured JSON only.
+
+## Gorgias Notion Links
+
+When given a Gorgias Notion URL, extract the page ID and pass it to Cortex.
+
+### Extracting a Page ID from a URL
+
+Notion URL patterns:
+- `https://www.notion.so/<page-id>` — bare ID
+- `https://www.notion.so/<workspace>/<title>-<page-id>` — title-slugged
+- `https://www.notion.so/<workspace>/<title>-<page-id>?pvs=...` — with query params
+
+Algorithm:
+1. Strip query params (`?...` and everything after)
+2. Take the last path segment
+3. If it contains `-`, the page ID is everything after the **last** `-`
+4. Otherwise the segment itself is the page ID
+5. Page IDs are 32 lowercase hex chars (UUID without dashes)
+
+Examples:
+- `https://www.notion.so/gorgias/Product-Spec-abc123def456abc123def456abc12345` → ID: `abc123def456abc123def456abc12345`
+- `https://www.notion.so/abc123def456abc123def456abc12345` → ID: `abc123def456abc123def456abc12345`
+- `https://www.notion.so/gorgias/My-Doc-1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d?pvs=4` → ID: `1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d`
+
+### Workflow for a Notion link
+
+1. Extract page ID from the URL using the algorithm above
+2. Pass the page ID to Cortex to retrieve content
+3. If Cortex doesn't return the doc, try searching Cortex by the page title (from the URL slug)
 
 ## Output Schema
 

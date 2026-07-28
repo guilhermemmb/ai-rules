@@ -203,7 +203,8 @@ thinking/clarification time — skip it for well-scoped requests.
 - **Never use mcp-server-browser tools directly** — dispatch to **Navigator**
 - **Never use cortex MCP directly** — dispatch to **Sage** or **Librarian**
 - **Never use Linear MCP directly** — dispatch to **Librarian**
-- **For Notion/internal docs** — use **Librarian** (via Cortex) or **Sage** for domain knowledge
+- **For Gorgias/internal Notion links or docs** — delegate to **Sage** (extracts page ID, uses Cortex)
+- **For public Notion pages** — delegate to **Librarian**
 
 ## Codebase Memory MCP
 
