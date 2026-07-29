@@ -17,18 +17,12 @@ for "go" before applying.
 
 Subagents execute directly — no planning step required.
 
-## OpenSpec Persistence
+## SDD Artifact Persistence
 
-- After every SDD archive step, copy the archived change directory to
-  `/Users/guilhermebomfim/developer/gorgias-power-project/<repo>/openspec/`,
-  where `<repo>` is the repo currently being worked on. Create the dir if
-  absent.
-- This applies EVEN when the working directory is a repo elsewhere — never write
-  these artifacts into the repo itself; always centralize them under the path
-  above.
-- READ from there too: before planning or resuming work on a repo, check
-  `.../gorgias-power-project/<repo>/openspec/` for existing change artifacts and
-  use them as context.
+- SDD artifacts live in `docs/.planning/` within the working repo:
+  `docs/.planning/specs/` for design docs, `docs/.planning/plans/` for implementation plans.
+- Before planning or resuming work, check `docs/.planning/` for existing artifacts and use them as context.
+- Cross-repo reference: if you need to reference a spec/plan from another repo, note the path explicitly — no automated centralization.
 
 ## Development Environment
 

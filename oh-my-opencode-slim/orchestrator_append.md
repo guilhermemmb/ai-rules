@@ -182,6 +182,12 @@ command needed.**
 3. **Execute** — load skill `executing-plans`. Fresh @fixer per code task,
    @designer per UI task, @reviewer after each task, @oracle for architecture
    escalations. Continuous execution — no human checkpoints unless BLOCKED.
+   Completes when all tasks are done or parked.
+
+4. **Review** — load skill `reviewing-plans`. Dispatches @reviewer with the
+   full branch diff, plan file, and execution ledger. Returns a structured
+   report. Gate: 0 Critical issues → plan executed with success, ready for
+   merge. Any Critical > 0 → report issues, do not signal completion.
 
 **Artifacts live in-repo at `docs/.planning/` — no external CLI or tooling
 needed.**

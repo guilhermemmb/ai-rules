@@ -30,7 +30,7 @@ Assign the right agent per task type:
 | UI/UX implementation (components, styling, layouts) | @designer | medium |
 | Architecture decisions, complex debugging | @oracle | high |
 | Task review (after each task) | @reviewer | high |
-| Escalation (stuck after 2 fix attempts) | @oracle | high |
+| Escalation (stuck after 3 fix rounds) | @oracle | high |
 
 ## The Process
 
@@ -90,13 +90,9 @@ Task <N>: complete (commits <base>..<head>, review clean)
 ```
 Check the todo and continue.
 
-### Final Review
+### Handoff to Review
 
-After all tasks, dispatch @reviewer with the full branch diff for a whole-branch review. If findings exist, do ONE fix wave then one scoped re-review. Adjudicate residuals.
-
-### Finish
-
-Commit the ledger file. Present summary to the user: tasks completed, open items, ready for PR.
+After all tasks complete, commit the ledger file and do NOT dispatch @reviewer yourself. Instead, load skill `reviewing-plans` — it is the formal review gate. The reviewing-plans skill will dispatch @reviewer with the plan file, ledger, and full branch diff, then present the structured report to the user.
 
 ## Ledger Format
 
@@ -108,7 +104,7 @@ Task 2: fix round 1/3 (2 addressed, 0 open — missing validation, magic number;
 Task 2: complete (commits d4e5f6a..b7c8d9e, review clean)
 Task 3: complete (commits b7c8d9e..e0f1a2b, review clean, 1 parked — cache key naming deferred)
 ...
-Final review: clean
+Handoff: reviewing-plans dispatched
 ```
 
 The ledger survives context compaction. After compaction, trust the ledger and `git log` over memory.
