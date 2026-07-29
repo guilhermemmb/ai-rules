@@ -12,7 +12,7 @@
     "bifrost": {
       "orchestrator": {
         "model": "bf-a/claude-sonnet-5",
-        "variant": "xhigh",
+        "variant": "high",
         "skills": ["*", "!context7"],
         "mcps": ["codebase-memory-mcp", "github"]
       },
@@ -29,7 +29,7 @@
         "mcps": ["codebase-memory-mcp"]
       },
       "librarian": {
-        "model": "bf/gemini/gemini-2.5-flash",
+        "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash",
         "variant": "low",
         "skills": ["cortex"],
         "mcps": ["websearch", "context7", "gh_grep", "linear", "cortex"]
@@ -41,7 +41,7 @@
         "mcps": ["codebase-memory-mcp", "figma-desktop"]
       },
       "fixer": {
-        "model": "bf-a/claude-sonnet-5",
+        "model": "bf-o/gpt-5.6-luna",
         "variant": "xhigh",
         "skills": [],
         "mcps": ["codebase-memory-mcp"]
@@ -60,7 +60,7 @@
       "orchestratorPrompt": "@navigator\n- Role: Browser interaction specialist\n- Delegates all browser automation via mcp-server-browser\n- Dispatch when: navigation, screenshots, DOM analysis, form fills, UI automation, E2E testing\n- Don't dispatch when: code implementation, debugging, architecture, production issues"
     },
     "detective": {
-      "model": "bf-a/claude-sonnet-5",
+      "model": "bf-o/gpt-5.4-mini",
       "variant": "high",
       "mcps": ["sentry", "gcp-logging", "rootly"],
       "skills": [
@@ -87,7 +87,7 @@
       "orchestratorPrompt": "@sage\n- Role: Gorgias domain knowledge specialist\n- Queries Cortex MCP for business metrics, schemas, rules, and internal documentation\n- Dispatch when: metric definitions (MRR, ARR, churn), table schemas, business rules, data definitions, BigQuery, Gorgias/internal Notion links or docs, design specs, runbooks, team decisions\n- Notion link handling: sage extracts page IDs from Notion URLs and retrieves content via Cortex\n- Don't dispatch when: code implementation, production issues, Linear task tracking, public (non-Gorgias) Notion pages"
     },
     "reviewer": {
-      "model": "bf-a/claude-sonnet-5",
+      "model": "bf-o/gpt-5.4-mini",
       "variant": "high",
       "mcps": ["github", "codebase-memory-mcp"],
       "skills": ["reviewer"],
@@ -130,14 +130,14 @@
       "prompt": "You are a type design expert with extensive experience in large-scale software architecture. Evaluate type designs for invariant strength, encapsulation quality, and practical usefulness.\n\n## Analysis Framework\nFor each new or modified type:\n1. **Identify Invariants**: Data consistency requirements, valid state transitions, relationship constraints, business rules, preconditions/postconditions.\n2. **Evaluate Encapsulation** (Rate 1-10): Are internals hidden? Can invariants be violated from outside? Appropriate access modifiers?\n3. **Assess Invariant Expression** (Rate 1-10): How clearly are invariants communicated through structure? Compile-time enforcement?\n4. **Judge Invariant Usefulness** (Rate 1-10): Do invariants prevent real bugs? Aligned with business requirements?\n5. **Examine Invariant Enforcement** (Rate 1-10): Checked at construction time? All mutation points guarded?\n\n## Common Anti-patterns to Flag\n- Anemic domain models with no behavior\n- Types exposing mutable internals\n- Invariants enforced only through documentation\n- Missing validation at construction boundaries\n- Types relying on external code to maintain invariants\n\n## Output Format\nReturn JSON only:\n{\"agent\":\"reviewer-types\",\"summary\":\"<2-sentence overview>\",\"types\":[{\"name\":\"<TypeName>\",\"encapsulation\":<n>,\"invariant_expression\":<n>,\"invariant_usefulness\":<n>,\"invariant_enforcement\":<n>,\"strengths\":[\"<desc>\"],\"concerns\":[\"<desc>\"],\"improvements\":[\"<desc>\"]}],\"critical\":[],\"important\":[],\"suggestions\":[],\"positive\":[\"<well-designed type>\"]}"
     },
     "reviewer-simplifier": {
-      "model": "bf/gemini/gemini-3-pro-preview",
+      "model": "bf-o/gpt-5.6-luna",
       "variant": "high",
       "mcps": ["codebase-memory-mcp"],
       "skills": [],
       "prompt": "You are an expert code simplification specialist focused on enhancing code clarity, consistency, and maintainability while preserving exact functionality. Apply project-specific best practices to simplify and improve code without altering behavior.\n\n## Your Job\n1. **Preserve Functionality**: Never change what the code does — only how it does it. All original features, outputs, and behaviors must remain intact.\n2. **Enhance Clarity**: Reduce unnecessary complexity and nesting, eliminate redundant code, improve variable/function names, consolidate related logic.\n3. **Apply Project Standards**: Follow CLAUDE.md coding conventions. Use explicit return types, prefer function keyword over arrows, avoid try/catch where possible, maintain naming conventions.\n4. **Avoid Over-simplification**: Don't combine too many concerns, don't remove helpful abstractions, don't prioritize fewer lines over readability.\n5. **Focus Scope**: Only refine code in the provided diff unless instructed otherwise.\n\n## Key Rules\n- Avoid nested ternary operators — prefer switch or if/else chains for multiple conditions.\n- Choose clarity over brevity — explicit is often better than compact.\n- Never change behavior, only form.\n\n## Output Format\nReturn JSON only:\n{\"agent\":\"reviewer-simplifier\",\"summary\":\"<2-sentence overview>\",\"simplifications\":[{\"file\":\"<path>\",\"line\":<n>,\"current\":\"<desc of current complexity>\",\"suggestion\":\"<how to simplify>\",\"impact\":\"<readability gain>\"}],\"no_change_needed\":<bool>,\"positive\":[\"<already clean area>\"]}"
     },
     "reviewer-accessibility": {
-      "model": "bf/gemini/gemini-3-pro-preview",
+      "model": "bf-o/gpt-5.6-luna",
       "variant": "high",
       "mcps": ["codebase-memory-mcp", "github"],
       "skills": [],

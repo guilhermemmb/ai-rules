@@ -7,7 +7,7 @@ nodes:
     role: Master Delegator
     color: '#60a5fa'
     parent: null
-    model: Claude Sonnet 5 (xhigh)
+    model: Claude Sonnet 5 (high)
     orchestrates: true
     dispatches:
       - oracle
@@ -71,7 +71,7 @@ nodes:
     role: Knowledge Retrieval
     color: '#60a5fa'
     parent: orchestrator
-    model: Gemini 2.5 Flash (low)
+    model: DeepSeek V4 Flash (low)
     mcp_access: websearch, context7, gh_grep, linear, cortex
     skills: cortex
     trigger: Library docs, web research, Linear issues, Gorgias internal docs/Notion via Cortex, GitHub code search
@@ -108,7 +108,7 @@ nodes:
     role: Implementation Specialist
     color: '#60a5fa'
     parent: orchestrator
-    model: Claude Sonnet 5 (xhigh)
+    model: GPT-5.6 Luna (xhigh)
     mcp_access: codebase-memory-mcp
     trigger: Scoped implementation tasks, bug fixes, code changes
     constraints: Receives concrete plan from Orchestrator. RTK for commands.
@@ -161,7 +161,7 @@ nodes:
     role: Production Diagnostics
     color: '#f59e0b'
     parent: orchestrator
-    model: Claude Sonnet 5 (high)
+    model: GPT-5.4 Mini (high)
     mcp_access: sentry, gcp-logging, rootly, codebase-memory-mcp
     trigger: Production errors, logs, metrics, traces, incidents, root cause analysis
     constraints: |
@@ -204,7 +204,7 @@ nodes:
     role: PR Review Coordinator
     color: '#f59e0b'
     parent: orchestrator
-    model: Claude Sonnet 5 (high)
+    model: GPT-5.4 Mini (high)
     mcp_access: github, codebase-memory-mcp
     skills: reviewer
     trigger: review a PR, review a branch's changes, pre-commit check, code scope review
@@ -281,7 +281,7 @@ nodes:
     role: Code Clarity & Simplification
     color: '#f59e0b'
     parent: reviewer
-    model: Gemini 3 Pro Preview (high)
+    model: GPT-5.6 Luna (high)
     mcp_access: codebase-memory-mcp
     trigger: After other reviews pass (Phase B sequential)
 
@@ -291,7 +291,7 @@ nodes:
     role: WCAG 2.2 AA Audit
     color: '#f59e0b'
     parent: reviewer
-    model: Gemini 3 Pro Preview (high)
+    model: GPT-5.6 Luna (high)
     mcp_access: codebase-memory-mcp, github
     trigger: UI file changes in diff (html, jsx, tsx, css, vue, svelte)
 

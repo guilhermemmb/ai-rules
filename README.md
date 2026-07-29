@@ -18,12 +18,12 @@ ping all agents
 
 | Agent | Model (Bifrost) | Role | MCPs |
 |-------|----------------|------|------|
-| **Orchestrator** | Claude Sonnet 5 (xhigh) | Master delegator & coordinator | `*`, `!context7` |
+| **Orchestrator** | Claude Sonnet 5 (high) | Master delegator & coordinator | `*`, `!context7` |
 | **Oracle** | Claude Opus 4.8 (high) | Strategic advisor, architecture, hard debugging | codebase-memory-mcp · skill: `simplify` |
 | **Explorer** | DeepSeek V4 Flash (low) | Codebase reconnaissance | codebase-memory-mcp |
-| **Librarian** | Gemini 2.5 Flash (low) | Knowledge retrieval | websearch, context7, gh_grep, linear, notion |
+| **Librarian** | DeepSeek V4 Flash (low) | Knowledge retrieval | websearch, context7, gh_grep, linear, notion |
 | **Designer** | Gemini 3 Pro Preview (medium) | UI/UX excellence | — |
-| **Fixer** | Claude Sonnet 5 (xhigh) | Implementation specialist | codebase-memory-mcp |
+| **Fixer** | GPT-5.6 Luna (xhigh) | Implementation specialist | codebase-memory-mcp |
 | **Observer** | Gemini 3 Flash Preview | Visual analysis (images, PDFs) | — |
 
 ### Custom (11)
@@ -31,20 +31,20 @@ ping all agents
 | Agent | Model (Bifrost) | MCPs | Dispatch when |
 |-------|----------------|------|---------------|
 | **Navigator** | Gemini 3 Flash Preview | mcp-server-browser | Navigation, screenshots, DOM, form fills, UI automation |
-| **Detective** | Claude Sonnet 5 (high) | sentry, gcp-logging, rootly + **pup CLI** (Datadog) | Production errors, logs, metrics, traces, incidents |
+| **Detective** | GPT-5.4 Mini (high) | sentry, gcp-logging, rootly + **pup CLI** (Datadog) | Production errors, logs, metrics, traces, incidents |
 | **Sage** | DeepSeek V4 Flash (low) | cortex, codebase-memory-mcp | Gorgias metrics, schemas, business rules, BigQuery, Notion docs |
-| **Reviewer** | Claude Sonnet 5 (high) | github, codebase-memory-mcp | PR/branch/diff review — dispatches 7 `reviewer-*` specialists |
+| **Reviewer** | GPT-5.4 Mini (high) | github, codebase-memory-mcp | PR/branch/diff review — dispatches 7 `reviewer-*` specialists |
 | **reviewer-code** | Claude Sonnet 5 (high) | codebase-memory-mcp, github | CLAUDE.md compliance, bugs, style (≥80 confidence) |
 | **reviewer-comments** | DeepSeek V4 Flash (low) | codebase-memory-mcp, github | Comment accuracy, rot, completeness |
 | **reviewer-test** | GPT-5.6 Luna (high) | codebase-memory-mcp, github | Behavioral test coverage, critical gaps |
 | **reviewer-errors** | Claude Sonnet 5 (high) | codebase-memory-mcp, github | Silent failures, catch blocks, error handling |
 | **reviewer-types** | GPT-5.6 Terra (high) | codebase-memory-mcp, github | Type encapsulation, invariant design |
-| **reviewer-simplifier** | Gemini 3 Pro Preview (high) | codebase-memory-mcp | Code clarity, nesting reduction |
-| **reviewer-accessibility** | Gemini 3 Pro Preview (high) | codebase-memory-mcp, github | WCAG 2.2 AA, contrast, keyboard, ARIA |
+| **reviewer-simplifier** | GPT-5.6 Luna (high) | codebase-memory-mcp | Code clarity, nesting reduction |
+| **reviewer-accessibility** | GPT-5.6 Luna (high) | codebase-memory-mcp, github | WCAG 2.2 AA, contrast, keyboard, ARIA |
 
-**Council** disabled. Observer auto-routes images from Orchestrator (DeepSeek V4 is not multimodal).
+**Council** disabled. Observer auto-routes images from Orchestrator (Claude Sonnet 5 is not multimodal in this harness).
 
-**Model mix rationale:** Anthropic (Claude Sonnet 5 / Opus 4.8) for highest-stakes reasoning — orchestrator, oracle, fixer, detective, and the 3 most precision-critical reviewers (coordinator, code, errors). Gemini 3 Pro for structured/visual work (designer, simplifier, accessibility). GPT-5.6 for formal/systematic reasoning (types, tests). DeepSeek Flash for cheap high-frequency or low-stakes tasks (explorer, sage, comments).
+**Model mix rationale:** Claude Sonnet 5 / Opus 4.8 (Anthropic) reserved for the brain and precision-critical, low-volume review (orchestrator, oracle, reviewer-code, reviewer-errors). GPT-5.6 Luna is the core high-volume workhorse — cheaper than Sonnet 5, proven in this harness — covering fixer plus three reviewer specialists (test, simplifier, accessibility); GPT-5.4 Mini covers lighter-reasoning coordination (detective, reviewer); GPT-5.6 Terra remains for reviewer-types' formal invariant reasoning. Gemini 3 Pro/Flash reserved for genuine multimodal needs only (designer's Figma work; observer/navigator's screenshots). DeepSeek Flash handles cheap high-frequency or low-stakes text-only tasks (explorer, librarian, sage, reviewer-comments).
 
 ## Directory Map
 
