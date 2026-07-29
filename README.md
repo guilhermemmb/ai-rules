@@ -26,13 +26,21 @@ ping all agents
 | **Fixer** | GPT-5.4 (xhigh) | Implementation specialist | codebase-memory-mcp |
 | **Observer** | Gemini 3 Flash Preview | Visual analysis (images, PDFs) | — |
 
-### Custom (3)
+### Custom (11)
 
 | Agent | Model (Bifrost) | MCPs | Dispatch when |
 |-------|----------------|------|---------------|
 | **Navigator** | Gemini 3 Flash Preview | mcp-server-browser | Navigation, screenshots, DOM, form fills, UI automation |
 | **Detective** | GPT-5.4 | sentry, gcp-logging, rootly + **pup CLI** (Datadog) | Production errors, logs, metrics, traces, incidents |
-| **Sage** | GPT-4o-mini | context-layer | Gorgias metrics, schemas, business rules, BigQuery |
+| **Sage** | DeepSeek V4 Flash (low) | cortex, codebase-memory-mcp | Gorgias metrics, schemas, business rules, BigQuery, Notion docs |
+| **Reviewer** | Claude Sonnet 4.6 (high) | github, codebase-memory-mcp | PR/branch/diff review — dispatches 7 `reviewer-*` specialists |
+| **reviewer-code** | Claude Sonnet 4.6 (high) | codebase-memory-mcp, github | CLAUDE.md compliance, bugs, style (≥80 confidence) |
+| **reviewer-comments** | Claude Sonnet 4.6 (high) | codebase-memory-mcp, github | Comment accuracy, rot, completeness |
+| **reviewer-test** | Claude Sonnet 4.6 (high) | codebase-memory-mcp, github | Behavioral test coverage, critical gaps |
+| **reviewer-errors** | Claude Sonnet 4.6 (high) | codebase-memory-mcp, github | Silent failures, catch blocks, error handling |
+| **reviewer-types** | Claude Sonnet 4.6 (high) | codebase-memory-mcp, github | Type encapsulation, invariant design |
+| **reviewer-simplifier** | Claude Sonnet 4.6 (high) | codebase-memory-mcp | Code clarity, nesting reduction |
+| **reviewer-accessibility** | Claude Sonnet 4.6 (high) | codebase-memory-mcp, github | WCAG 2.2 AA, contrast, keyboard, ARIA |
 
 **Council** disabled. Observer auto-routes images from Orchestrator (DeepSeek V4 is not multimodal).
 
@@ -62,32 +70,38 @@ ai-rules/
 └── agents-overview/           # Interactive visualization (data.yaml + index.html)
 ```
 
-## Working Directory — `~/.ai-work`
+## SDD Artifacts — `docs/.planning/`
 
-All AI agent working files are grouped under `~/developer/.ai-work/` — outside any repo, never committed.
+Spec Driven Development artifacts live inside each working repo at `docs/.planning/`:
 
 ```
-~/developer/.ai-work/
-├── openspec/              # OpenSpec plans & specs, one subfolder per repo
-│   └── gorgias-chat/      # plans, specs/, design.md, tasks.md for gorgias-chat
-└── tmp/                   # Agent scratch output
-    ├── navigator/          # Navigator browser extraction results
-    └── sage/               # Sage domain knowledge query results
+<repo>/docs/.planning/
+├── specs/                          # Design docs (brainstorming phase)
+│   └── YYYY-MM-DD-<topic>-design.md
+├── plans/                          # Implementation plans (writing-plans phase)
+│   └── YYYY-MM-DD-<feature>.md
+├── ledger-<plan>.md                # Execution ledger (executing-plans phase)
+└── reports/                        # Per-task implementer reports
+    └── <plan>-task-<N>-report.md
 ```
 
-### OpenSpec stores
+### SDD Workflow (4-step)
 
-Each repo's plans live at `~/developer/.ai-work/openspec/<repo>/`. To register a new repo:
+| Phase | Skill | Key agents |
+|---|---|---|
+| 1. Brainstorm | `brainstorming` | @explorer, @librarian, @oracle, @designer |
+| 2. Plan | `writing-plans` | — (orchestrator writes plan directly) |
+| 3. Execute | `executing-plans` | @fixer (code), @designer (UI), @reviewer (per-task gate), @oracle (escalation) |
+| 4. Review | `reviewing-plans` | @reviewer (final gate — 7 reviewer-* specialists) |
 
-```bash
-openspec store setup <repo> --path ~/developer/.ai-work/openspec/<repo> --no-init-git
-```
+See `docs/sdd-workflow.md` for the full flowchart and agent usage matrix.
 
-List registered stores:
+## Agent tmp paths
 
-```bash
-openspec store list --json
-```
+| Agent | Output path |
+|-------|-------------|
+| Navigator | `~/developer/.ai-work/tmp/navigator/` |
+| Sage | `~/developer/.ai-work/tmp/sage/` |
 
 ### Agent tmp paths
 

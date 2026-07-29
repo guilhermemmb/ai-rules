@@ -198,6 +198,103 @@ nodes:
       • Map domain concepts to implementation code
       • Explain Gorgias business domain concepts
 
+  - id: reviewer
+    label: Reviewer
+    type: agent
+    role: PR Review Coordinator
+    color: '#f59e0b'
+    parent: orchestrator
+    model: Claude Sonnet 4.6 (high)
+    mcp_access: github, codebase-memory-mcp
+    skills: reviewer
+    trigger: review a PR, review a branch's changes, pre-commit check, code scope review
+    dispatches:
+      - reviewer-code
+      - reviewer-comments
+      - reviewer-test
+      - reviewer-errors
+      - reviewer-types
+      - reviewer-simplifier
+      - reviewer-accessibility
+    constraints: |
+      Orchestrator-only dispatch. Spawns reviewer-* sub-agents (Phase A parallel, Phase B sequential simplifier).
+      Returns structured report: Critical / Important / Suggestions / Strengths / Action Plan.
+    responsibilities: |
+      • Comprehensive PR and code review coordinator
+      • Dispatches 7 reviewer-* specialists in parallel
+      • Aggregates findings into one structured report
+      • Read-only — never modifies files
+
+  - id: reviewer-code
+    label: reviewer-code
+    type: agent
+    role: CLAUDE.md Compliance & Bugs
+    color: '#f59e0b'
+    parent: reviewer
+    model: Claude Sonnet 4.6 (high)
+    mcp_access: codebase-memory-mcp, github
+    trigger: Always dispatched by reviewer
+
+  - id: reviewer-comments
+    label: reviewer-comments
+    type: agent
+    role: Comment Accuracy & Rot
+    color: '#f59e0b'
+    parent: reviewer
+    model: Claude Sonnet 4.6 (high)
+    mcp_access: codebase-memory-mcp, github
+    trigger: Comments/docs changes in diff
+
+  - id: reviewer-test
+    label: reviewer-test
+    type: agent
+    role: Test Coverage Analysis
+    color: '#f59e0b'
+    parent: reviewer
+    model: Claude Sonnet 4.6 (high)
+    mcp_access: codebase-memory-mcp, github
+    trigger: Test file changes in diff
+
+  - id: reviewer-errors
+    label: reviewer-errors
+    type: agent
+    role: Silent Failure Hunting
+    color: '#f59e0b'
+    parent: reviewer
+    model: Claude Sonnet 4.6 (high)
+    mcp_access: codebase-memory-mcp, github
+    trigger: Error handling changes in diff
+
+  - id: reviewer-types
+    label: reviewer-types
+    type: agent
+    role: Type Design Analysis
+    color: '#f59e0b'
+    parent: reviewer
+    model: Claude Sonnet 4.6 (high)
+    mcp_access: codebase-memory-mcp, github
+    trigger: New types/interfaces in diff
+
+  - id: reviewer-simplifier
+    label: reviewer-simplifier
+    type: agent
+    role: Code Clarity & Simplification
+    color: '#f59e0b'
+    parent: reviewer
+    model: Claude Sonnet 4.6 (high)
+    mcp_access: codebase-memory-mcp
+    trigger: After other reviews pass (Phase B sequential)
+
+  - id: reviewer-accessibility
+    label: reviewer-accessibility
+    type: agent
+    role: WCAG 2.2 AA Audit
+    color: '#f59e0b'
+    parent: reviewer
+    model: Claude Sonnet 4.6 (high)
+    mcp_access: codebase-memory-mcp, github
+    trigger: UI file changes in diff (html, jsx, tsx, css, vue, svelte)
+
   # === MCPs ===
 
   - id: codebase-memory
@@ -406,45 +503,45 @@ nodes:
     color: '#34d399'
     parent: detective
 
-  - id: skill-openspec-propose
-    label: openspec-propose
+  - id: skill-brainstorming
+    label: brainstorming
     type: skill
-    role: SDD Proposal Workflow
+    role: SDD Phase 1 — Socratic Design
     color: '#34d399'
     parent: orchestrator
 
-  - id: skill-openspec-apply
-    label: openspec-apply-change
+  - id: skill-writing-plans
+    label: writing-plans
     type: skill
-    role: SDD Implementation Workflow
+    role: SDD Phase 2 — Task Decomposition
     color: '#34d399'
     parent: orchestrator
 
-  - id: skill-openspec-archive
-    label: openspec-archive-change
+  - id: skill-executing-plans
+    label: executing-plans
     type: skill
-    role: SDD Archive Workflow
+    role: SDD Phase 3 — Agent-Per-Task Execution
     color: '#34d399'
     parent: orchestrator
 
-  - id: skill-openspec-explore
-    label: openspec-explore
+  - id: skill-reviewing-plans
+    label: reviewing-plans
     type: skill
-    role: SDD Exploration Mode
+    role: SDD Phase 4 — Final Review Gate
     color: '#34d399'
     parent: orchestrator
 
-  - id: skill-openspec-update
-    label: openspec-update-change
+  - id: skill-reviewer
+    label: reviewer
     type: skill
-    role: SDD Plan Update
+    role: PR Review Orchestration (7 specialists)
     color: '#34d399'
-    parent: orchestrator
+    parent: reviewer
 
-  - id: skill-openspec-sync
-    label: openspec-sync-specs
+  - id: skill-screenshot
+    label: screenshot
     type: skill
-    role: SDD Spec Sync
+    role: Terminal Screenshots
     color: '#34d399'
     parent: orchestrator
 
@@ -507,8 +604,8 @@ nodes:
     config: |
       • Preset: bifrost
       • 7 built-in agents (council disabled)
-      • 3 custom agents (Navigator, Detective, Sage)
-      • 8 bundled skills + project-context
+      • 11 custom agents (Navigator, Detective, Sage, Reviewer + 7 reviewer-*)
+      • 4 SDD skills (brainstorming, writing-plans, executing-plans, reviewing-plans) + reviewer
       • Image routing: auto (Observer)
 
   - id: zsh-env
@@ -578,6 +675,9 @@ links:
   - source: orchestrator
     target: sage
     label: dispatches
+  - source: orchestrator
+    target: reviewer
+    label: dispatches
 
   # Orchestrator → MCPs
   - source: orchestrator
@@ -632,6 +732,37 @@ links:
     label: uses
   - source: detective
     target: codebase-memory
+    label: uses
+
+  # Reviewer → sub-agents
+  - source: reviewer
+    target: reviewer-code
+    label: dispatches
+  - source: reviewer
+    target: reviewer-comments
+    label: dispatches (if docs)
+  - source: reviewer
+    target: reviewer-test
+    label: dispatches (if tests)
+  - source: reviewer
+    target: reviewer-errors
+    label: dispatches (if errors)
+  - source: reviewer
+    target: reviewer-types
+    label: dispatches (if types)
+  - source: reviewer
+    target: reviewer-simplifier
+    label: dispatches (sequential)
+  - source: reviewer
+    target: reviewer-accessibility
+    label: dispatches (if UI files)
+
+  # Reviewer → MCPs
+  - source: reviewer
+    target: codebase-memory
+    label: uses
+  - source: reviewer
+    target: github-mcp
     label: uses
 
   # Sage → MCPs
@@ -704,6 +835,24 @@ links:
     label: invokes
   - source: detective
     target: skill-incident-response
+    label: invokes
+  - source: orchestrator
+    target: skill-brainstorming
+    label: invokes
+  - source: orchestrator
+    target: skill-writing-plans
+    label: invokes
+  - source: orchestrator
+    target: skill-executing-plans
+    label: invokes
+  - source: orchestrator
+    target: skill-reviewing-plans
+    label: invokes
+  - source: orchestrator
+    target: skill-screenshot
+    label: invokes
+  - source: reviewer
+    target: skill-reviewer
     label: invokes
 
   # Tools → agents
