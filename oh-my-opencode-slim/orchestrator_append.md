@@ -154,7 +154,7 @@ follow the **Spec Driven Development (SDD) workflow** defined below. Do NOT
 create an ad-hoc inline plan; load the skill and generate the proper artifacts
 instead.
 
-## Spec Driven Development (SDD) Default Workflow — OpenSpec
+## Spec Driven Development (SDD) Default Workflow
 
 **This is the default for all non-trivial work. Run it automatically — no user
 command needed.**
@@ -167,46 +167,24 @@ command needed.**
   decision
 - Explicit hotfix or incident response
 
-**OpenSpec location — NEVER inside the repo:**
-
-All OpenSpec artifacts live exclusively at
-`~/developer/.ai-work/openspec/<repo>/`
-where `<repo>` is the basename of the repo being worked on.
-**Never create or write an `openspec/` folder inside the working repo.** The
-repo must stay clean; the spec chain of thought lives outside it.
-
 **For everything else, follow this workflow automatically:**
 
-1. **Init** — derive `<repo>` from the current repo's directory basename. Check
-   if a store already exists:
-   ```bash
-   openspec store list --json
-   ```
-   If no store with id `<repo>` exists, create one at the external path:
-   ```bash
-   openspec store setup <repo> --path ~/developer/.ai-work/openspec/<repo> --no-init-git
-   ```
-   This registers the external directory as the openspec home for this repo.
-   **Never run `openspec init` inside the working repo.**
+1. **Brainstorm** — load skill `brainstorming`. Dispatch @explorer for codebase
+   recon, @librarian for external research, @oracle for architecture, @designer
+   for UI exploration. Produces a design doc at
+   `docs/.planning/specs/YYYY-MM-DD-<topic>-design.md`. No code until design
+   is approved.
 
-2. **Propose** — load skill `openspec-propose` and tell it to use
-   `--store <repo>`. All artifacts (proposal.md, specs/, design.md, tasks.md)
-   are written to the registered store path, not the repo. Show the user the
-   artifacts and pause for approval before implementing.
+2. **Plan** — load skill `writing-plans`. Breaks the design into bite-sized
+   tasks (2–5 min each) with exact file paths, complete code, and verification
+   steps. Saves to `docs/.planning/plans/YYYY-MM-DD-<feature>.md`.
 
-3. **Apply** — load skill `openspec-apply-change` with `--store <repo>`. Work
-   through tasks.md using the normal delegation model: @fixer for code changes,
-   @designer for UI/UX, @oracle for architecture decisions.
+3. **Execute** — load skill `executing-plans`. Fresh @fixer per code task,
+   @designer per UI task, @reviewer after each task, @oracle for architecture
+   escalations. Continuous execution — no human checkpoints unless BLOCKED.
 
-4. **Archive** — load skill `openspec-archive-change`. When invoking, explicitly
-   tell the skill: "Archive using store `<repo>`. Pass `--store <repo>` on every
-   openspec command. The archive must land at
-`~/developer/.ai-work/openspec/<repo>/changes/archive/`, never
-inside the working repo."
-
-**Optional explore step:** If the task is ambiguous or codebase impact is
-unclear, load `openspec-explore` before proposing. This is
-thinking/clarification time — skip it for well-scoped requests.
+**Artifacts live in-repo at `docs/.planning/` — no external CLI or tooling
+needed.**
 
 ## Development Environment
 
