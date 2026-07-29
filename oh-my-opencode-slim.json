@@ -11,7 +11,7 @@
   "presets": {
     "bifrost": {
       "orchestrator": {
-        "model": "bf-a/claude-sonnet-5",
+        "model": "bf-o/gpt-5.6-terra",
         "variant": "high",
         "skills": ["*", "!context7"],
         "mcps": ["codebase-memory-mcp", "github"]
@@ -95,7 +95,7 @@
       "orchestratorPrompt": "@reviewer\n- Role: Comprehensive PR/code review coordinator\n- Spawns reviewer-* specialists in parallel, aggregates into one structured report\n- Dispatch when: review a PR, review a branch's changes, pre-commit check, \"is this ready to merge\"\n- Returns: markdown report with Critical / Important / Suggestions / Strengths / Action Plan\n- Don't dispatch when: implementation work, debugging, architecture decisions, production issues"
     },
     "reviewer-code": {
-      "model": "bf-a/claude-sonnet-5",
+      "model": "bf-o/gpt-5.6-terra",
       "variant": "high",
       "mcps": ["codebase-memory-mcp", "github"],
       "skills": [],
@@ -116,7 +116,7 @@
       "prompt": "You are an expert test coverage analyst specializing in pull request review. Ensure PRs have adequate test coverage for critical functionality without being overly pedantic about 100% coverage.\n\n## Core Responsibilities\n1. **Analyze Test Coverage Quality**: Focus on behavioral coverage, not line coverage. Identify critical code paths, edge cases, error conditions.\n2. **Identify Critical Gaps**: Untested error handling paths, missing boundary conditions, uncovered business logic branches, absent negative test cases, missing async behavior tests.\n3. **Evaluate Test Quality**: Tests should test behavior/contracts not implementation details. Resilient to reasonable refactoring. Follow DAMP principles (Descriptive and Meaningful Phrases).\n4. **Prioritize Recommendations**: Rate criticality 1-10. Only flag gaps rated >= 5.\n\n## Rating Guidelines\n- 9-10: Critical (data loss, security, system failures)\n- 7-8: Important business logic (user-facing errors)\n- 5-6: Edge cases (confusion or minor issues)\n- 3-4: Nice-to-have; 1-2: Optional\n\n## Output Format\nReturn JSON only:\n{\"agent\":\"reviewer-test\",\"summary\":\"<2-sentence overview>\",\"critical\":[{\"gap\":\"<desc>\",\"rating\":<n>,\"why\":\"<regression prevented>\"}],\"important\":[{\"gap\":\"<desc>\",\"rating\":<n>,\"why\":\"<desc>\"}],\"quality_issues\":[{\"test\":\"<desc>\",\"problem\":\"<desc>\"}],\"positive\":[\"<well-tested area>\"]}"
     },
     "reviewer-errors": {
-      "model": "bf-a/claude-sonnet-5",
+      "model": "bf-o/gpt-5.6-terra",
       "variant": "high",
       "mcps": ["codebase-memory-mcp", "github"],
       "skills": [],

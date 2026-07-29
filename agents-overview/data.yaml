@@ -7,7 +7,7 @@ nodes:
     role: Master Delegator
     color: '#60a5fa'
     parent: null
-    model: Claude Sonnet 5 (high)
+    model: GPT-5.6 Terra (high)
     orchestrates: true
     dispatches:
       - oracle
@@ -231,7 +231,7 @@ nodes:
     role: CLAUDE.md Compliance & Bugs
     color: '#f59e0b'
     parent: reviewer
-    model: Claude Sonnet 5 (high)
+    model: GPT-5.6 Terra (high)
     mcp_access: codebase-memory-mcp, github
     trigger: Always dispatched by reviewer
 
@@ -261,7 +261,7 @@ nodes:
     role: Silent Failure Hunting
     color: '#f59e0b'
     parent: reviewer
-    model: Claude Sonnet 5 (high)
+    model: GPT-5.6 Terra (high)
     mcp_access: codebase-memory-mcp, github
     trigger: Error handling changes in diff
 
