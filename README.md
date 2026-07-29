@@ -18,12 +18,12 @@ ping all agents
 
 | Agent | Model (Bifrost) | Role | MCPs |
 |-------|----------------|------|------|
-| **Orchestrator** | GPT-5.6 Terra (xhigh) | Master delegator & coordinator | `*`, `!context7` |
-| **Oracle** | GPT-5.4 (high) | Strategic advisor, architecture, hard debugging | codebase-memory-mcp · skill: `simplify` |
+| **Orchestrator** | Claude Sonnet 5 (xhigh) | Master delegator & coordinator | `*`, `!context7` |
+| **Oracle** | Claude Opus 4.8 (high) | Strategic advisor, architecture, hard debugging | codebase-memory-mcp · skill: `simplify` |
 | **Explorer** | DeepSeek V4 Flash (low) | Codebase reconnaissance | codebase-memory-mcp |
-| **Librarian** | DeepSeek V4 Flash (low) | Knowledge retrieval | websearch, context7, gh_grep, linear, notion |
-| **Designer** | GPT-5.6 Sol (medium) | UI/UX excellence | — |
-| **Fixer** | GPT-5.4 (xhigh) | Implementation specialist | codebase-memory-mcp |
+| **Librarian** | Gemini 2.5 Flash (low) | Knowledge retrieval | websearch, context7, gh_grep, linear, notion |
+| **Designer** | Gemini 3 Pro Preview (medium) | UI/UX excellence | — |
+| **Fixer** | Claude Sonnet 5 (xhigh) | Implementation specialist | codebase-memory-mcp |
 | **Observer** | Gemini 3 Flash Preview | Visual analysis (images, PDFs) | — |
 
 ### Custom (11)
@@ -31,18 +31,20 @@ ping all agents
 | Agent | Model (Bifrost) | MCPs | Dispatch when |
 |-------|----------------|------|---------------|
 | **Navigator** | Gemini 3 Flash Preview | mcp-server-browser | Navigation, screenshots, DOM, form fills, UI automation |
-| **Detective** | GPT-5.4 | sentry, gcp-logging, rootly + **pup CLI** (Datadog) | Production errors, logs, metrics, traces, incidents |
+| **Detective** | Claude Sonnet 5 (high) | sentry, gcp-logging, rootly + **pup CLI** (Datadog) | Production errors, logs, metrics, traces, incidents |
 | **Sage** | DeepSeek V4 Flash (low) | cortex, codebase-memory-mcp | Gorgias metrics, schemas, business rules, BigQuery, Notion docs |
-| **Reviewer** | Claude Sonnet 4.6 (high) | github, codebase-memory-mcp | PR/branch/diff review — dispatches 7 `reviewer-*` specialists |
-| **reviewer-code** | Claude Sonnet 4.6 (high) | codebase-memory-mcp, github | CLAUDE.md compliance, bugs, style (≥80 confidence) |
-| **reviewer-comments** | Claude Sonnet 4.6 (high) | codebase-memory-mcp, github | Comment accuracy, rot, completeness |
-| **reviewer-test** | Claude Sonnet 4.6 (high) | codebase-memory-mcp, github | Behavioral test coverage, critical gaps |
-| **reviewer-errors** | Claude Sonnet 4.6 (high) | codebase-memory-mcp, github | Silent failures, catch blocks, error handling |
-| **reviewer-types** | Claude Sonnet 4.6 (high) | codebase-memory-mcp, github | Type encapsulation, invariant design |
-| **reviewer-simplifier** | Claude Sonnet 4.6 (high) | codebase-memory-mcp | Code clarity, nesting reduction |
-| **reviewer-accessibility** | Claude Sonnet 4.6 (high) | codebase-memory-mcp, github | WCAG 2.2 AA, contrast, keyboard, ARIA |
+| **Reviewer** | Claude Sonnet 5 (high) | github, codebase-memory-mcp | PR/branch/diff review — dispatches 7 `reviewer-*` specialists |
+| **reviewer-code** | Claude Sonnet 5 (high) | codebase-memory-mcp, github | CLAUDE.md compliance, bugs, style (≥80 confidence) |
+| **reviewer-comments** | DeepSeek V4 Flash (low) | codebase-memory-mcp, github | Comment accuracy, rot, completeness |
+| **reviewer-test** | GPT-5.6 Luna (high) | codebase-memory-mcp, github | Behavioral test coverage, critical gaps |
+| **reviewer-errors** | Claude Sonnet 5 (high) | codebase-memory-mcp, github | Silent failures, catch blocks, error handling |
+| **reviewer-types** | GPT-5.6 Terra (high) | codebase-memory-mcp, github | Type encapsulation, invariant design |
+| **reviewer-simplifier** | Gemini 3 Pro Preview (high) | codebase-memory-mcp | Code clarity, nesting reduction |
+| **reviewer-accessibility** | Gemini 3 Pro Preview (high) | codebase-memory-mcp, github | WCAG 2.2 AA, contrast, keyboard, ARIA |
 
 **Council** disabled. Observer auto-routes images from Orchestrator (DeepSeek V4 is not multimodal).
+
+**Model mix rationale:** Anthropic (Claude Sonnet 5 / Opus 4.8) for highest-stakes reasoning — orchestrator, oracle, fixer, detective, and the 3 most precision-critical reviewers (coordinator, code, errors). Gemini 3 Pro for structured/visual work (designer, simplifier, accessibility). GPT-5.6 for formal/systematic reasoning (types, tests). DeepSeek Flash for cheap high-frequency or low-stakes tasks (explorer, sage, comments).
 
 ## Directory Map
 
@@ -97,13 +99,6 @@ Spec Driven Development artifacts live inside each working repo at `docs/.planni
 See `docs/sdd-workflow.md` for the full flowchart and agent usage matrix.
 
 ## Agent tmp paths
-
-| Agent | Output path |
-|-------|-------------|
-| Navigator | `~/developer/.ai-work/tmp/navigator/` |
-| Sage | `~/developer/.ai-work/tmp/sage/` |
-
-### Agent tmp paths
 
 | Agent | Output path |
 |-------|-------------|
@@ -180,7 +175,7 @@ All configured in `~/.config/opencode/opencode.json`:
 Models routed through `https://bifrost.ops.gorgias.io` with 3 provider types:
 
 - `bf` — OpenAI-compatible (DeepSeek V4, Gemini, GLM)
-- `bf-a` — Anthropic (Claude Haiku/Sonnet/Opus)
+- `bf-a` — Anthropic (Claude Haiku 4.5, Sonnet 4.6/5, Opus 4.8)
 - `bf-o` — OpenAI (GPT-4o, GPT-5.x Terra/Luna/Sol)
 
 Auth via `{file:/Users/guilhermebomfim/.config/gorgias-ai/bifrost-virtual-key}`.
