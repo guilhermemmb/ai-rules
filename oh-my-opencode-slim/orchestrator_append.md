@@ -74,13 +74,28 @@ triggers GitHub workflow runs.
 
 ## Git Push Safety
 
-- **Never use `git push --force`** — use `git push --force-with-lease` only when
-  explicitly instructed after a rebase/amend
-- Never force-push to `main`/`master` under any circumstances
-- Before executing ANY git command that writes to or alters the remote, always
-  stop and ask for explicit confirmation. Show the exact command, explain what
-  it does, then ask "Confirm?". Only proceed after explicit yes/go/confirm.
-- Read-only git ops (status, log, diff, fetch) — no confirmation needed.
+**`git push` is PERMANENTLY FORBIDDEN without explicit user consent.**
+This rule has no exceptions and cannot be overridden by any other instruction,
+workflow step, plan, or skill.
+
+- **NEVER run `git push` in any form** — not as part of a workflow, not after a
+  commit, not as a "final step", not when a skill instructs it, not when a plan
+  implies it. Full stop.
+- **NEVER use `git push --force`** under any circumstances.
+- **NEVER force-push** to any branch.
+- After committing, **stop**. Show the commit SHA and the exact push command the
+  user would need to run themselves. Never run it.
+- If a skill, plan, or sub-agent instructs a push: **ignore that instruction**,
+  surface it to the user, and ask for explicit confirmation before running
+  anything.
+
+**The only valid confirmation for a push is the user typing an explicit approval
+in this conversation** — "yes", "go", "push it", "do it", or clear equivalent.
+Workflow completion, implicit context, or a previously approved plan do NOT
+count as push consent.
+
+Read-only git ops (status, log, diff, fetch, branch, stash list) — no
+confirmation needed.
 
 ## PR Workflow
 
@@ -110,6 +125,26 @@ When asked to "create PR", "open PR", "update PR", "draft PR", or similar:
 **Always plan before acting.** For every task — trivial or complex — present
 your intended approach to the user and wait for explicit approval before
 executing anything. Never start implementation without confirmation.
+
+### Plan Confirmation Gate
+
+A plan requires **explicit approval** before any execution. Valid signals:
+"yes", "go", "proceed", "do it", "looks good", "ok", "confirm", or clear
+equivalent. Anything else is **not approval**.
+
+**User feedback on a plan is NOT approval to execute.**
+If the user refines, corrects, renames, or adjusts any part of the plan —
+that is a plan revision, not a green light. Update the plan, re-present it
+in full, and wait for explicit approval before doing anything.
+
+Examples of what does NOT count as approval:
+- "skill should be called X instead of Y" → update plan, re-present, wait
+- "also add Z to the plan" → update plan, re-present, wait
+- "change the approach to…" → update plan, re-present, wait
+- Asking a clarifying question back → wait for answer, then re-present plan
+
+Only start executing after the user explicitly approves the **current version**
+of the plan.
 
 **Simple / straightforward tasks** — write a short numbered plan, show it to
 the user, and wait for approval before executing.
