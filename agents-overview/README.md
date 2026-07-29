@@ -21,6 +21,31 @@ The page uses `fetch()` to load `data.yaml`, so it must be served over HTTP (not
 
 Click any card to expand and see detailed information — constraints, responsibilities, tools, and configuration.
 
+## Dispatch Graph
+
+The following static Mermaid diagram is the high-level agent-to-agent dispatch map. The rendered version appears above the cards in `index.html`; it intentionally excludes MCPs, skills, tools, infrastructure, runtime data, and card interactions.
+
+```mermaid
+flowchart TD
+    ORCH[Orchestrator] --> ORACLE[Oracle]
+    ORCH --> EXPLORER[Explorer]
+    ORCH --> LIBRARIAN[Librarian]
+    ORCH --> DESIGNER[Designer]
+    ORCH --> FIXER[Fixer]
+    ORCH --> OBSERVER["Observer (auto-routes images)"]
+    ORCH --> NAVIGATOR[Navigator]
+    ORCH --> DETECTIVE[Detective]
+    ORCH --> SAGE[Sage]
+    ORCH --> REVIEWER[Reviewer]
+    REVIEWER --> REVIEWERCODE["Reviewer Code"]
+    REVIEWER --> REVIEWERCOMMENTS["Reviewer Comments (if docs)"]
+    REVIEWER --> REVIEWERTEST["Reviewer Test (if tests)"]
+    REVIEWER --> REVIEWERERRORS["Reviewer Errors (if errors)"]
+    REVIEWER --> REVIEWERTYPES["Reviewer Types (if types)"]
+    REVIEWER --> REVIEWERSIMPLIFIER["Reviewer Simplifier (sequential)"]
+    REVIEWER --> REVIEWERACCESSIBILITY["Reviewer Accessibility (if UI files)"]
+```
+
 ## Using the Visualization
 
 **Navigation:**
