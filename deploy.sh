@@ -150,15 +150,15 @@ run_rulesync() {
 
 # ── deploy ──
 deploy() {
-  local backup_file="$SRCDIR/oh-my-opencode-slim.json.tmp.json"
+  BACKUP_FILE="$SRCDIR/oh-my-opencode-slim.json.tmp.json"
   
   # Create backup
   if [ -f "$SRCDIR/oh-my-opencode-slim.json" ]; then
-    cp "$SRCDIR/oh-my-opencode-slim.json" "$backup_file"
+    cp "$SRCDIR/oh-my-opencode-slim.json" "$BACKUP_FILE"
   fi
 
   # Ensure restoration on exit
-  trap 'if [ -f "$backup_file" ]; then mv "$backup_file" "$SRCDIR/oh-my-opencode-slim.json"; fi' EXIT
+  trap 'if [ -f "$BACKUP_FILE" ]; then mv "$BACKUP_FILE" "$SRCDIR/oh-my-opencode-slim.json"; fi' EXIT
 
   apply_model_profile
   run_rulesync
