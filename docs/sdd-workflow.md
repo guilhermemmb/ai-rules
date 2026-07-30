@@ -78,6 +78,8 @@ flowchart TD
         E14["Append to ledger:\nTask N complete"]
         E15{"More tasks?"}
         E16["Commit ledger"]
+        E17{"Ask user: run final\ncomprehensive review?"}
+        E18["Record in ledger:\nHandoff: final review skipped by user\n\nState merge-readiness review\nwas not run"]
 
         E1 --> E2
         E2 --> E3
@@ -99,7 +101,9 @@ flowchart TD
         E14 --> E15
         E15 -->|yes| E5
         E15 -->|no| E16
-        E16 --> R1
+        E16 --> E17
+        E17 -->|yes — explicit opt-in| R1
+        E17 -->|no — skip| E18
     end
 
     subgraph PHASE4["🔍 Phase 4: Reviewing Plans"]
@@ -131,6 +135,7 @@ flowchart TD
     style E10 fill:#fff9c4,stroke:#f57f17
     style E12 fill:#fff9c4,stroke:#f57f17
     style E15 fill:#fff9c4,stroke:#f57f17
+    style E17 fill:#fff9c4,stroke:#f57f17
     style R5 fill:#fff9c4,stroke:#f57f17
 ```
 

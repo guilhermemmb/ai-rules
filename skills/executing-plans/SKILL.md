@@ -92,7 +92,10 @@ Check the todo and continue.
 
 ### Handoff to Review
 
-After all tasks complete, commit the ledger file and do NOT dispatch @reviewer yourself. Instead, load skill `reviewing-plans` — it is the formal review gate. The reviewing-plans skill will dispatch @reviewer with the plan file, ledger, and full branch diff, then present the structured report to the user.
+After all tasks complete, commit the ledger file and ask the user whether to run the final comprehensive review. This is a mandatory user-choice gate. Do not load skill `reviewing-plans` or dispatch @reviewer unless the user explicitly chooses to run the review.
+
+- If the user opts in, load skill `reviewing-plans`. It will dispatch @reviewer with the plan file, ledger, and full branch diff, then present the structured report to the user.
+- If the user skips it, append `Handoff: final review skipped by user` to the ledger and state that the merge-readiness review was not run.
 
 ## Ledger Format
 
@@ -104,7 +107,9 @@ Task 2: fix round 1/3 (2 addressed, 0 open — missing validation, magic number;
 Task 2: complete (commits d4e5f6a..b7c8d9e, review clean)
 Task 3: complete (commits b7c8d9e..e0f1a2b, review clean, 1 parked — cache key naming deferred)
 ...
-Handoff: reviewing-plans dispatched
+Handoff: reviewing-plans dispatched after user opt-in
+# Or, when the user skips the optional final review:
+Handoff: final review skipped by user
 ```
 
 The ledger survives context compaction. After compaction, trust the ledger and `git log` over memory.

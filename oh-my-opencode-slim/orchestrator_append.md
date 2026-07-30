@@ -181,13 +181,19 @@ command needed.**
 
 3. **Execute** — load skill `executing-plans`. Fresh @fixer per code task,
    @designer per UI task, @reviewer after each task, @oracle for architecture
-   escalations. Continuous execution — no human checkpoints unless BLOCKED.
-   Completes when all tasks are done or parked.
+   escalations. Continuous execution — no human checkpoints until all tasks
+   are done or parked, then ask for the final review choice.
 
-4. **Review** — load skill `reviewing-plans`. Dispatches @reviewer with the
-   full branch diff, plan file, and execution ledger. Returns a structured
-   report. Gate: 0 Critical issues → plan executed with success, ready for
-   merge. Any Critical > 0 → report issues, do not signal completion.
+4. **Review (optional; user-confirmed)** — After execution completes, ask the
+   user whether to run the final comprehensive review. Do not load skill
+   `reviewing-plans` or dispatch @reviewer unless the user explicitly opts in.
+   If the user opts in, load `reviewing-plans`; it dispatches @reviewer with
+   the full branch diff, plan file, and execution ledger, then returns a
+   structured report. Gate: 0 Critical issues → plan executed with success,
+   ready for merge. Any Critical > 0 → report issues, do not signal
+   completion. If the user skips, record
+   `Handoff: final review skipped by user` in the ledger and state that the
+   merge-readiness review was not run; do not enter the reviewing-plans phase.
 
 **Artifacts live in-repo at `docs/.planning/` — no external CLI or tooling
 needed.**

@@ -94,7 +94,7 @@ Spec Driven Development artifacts live inside each working repo at `docs/.planni
 | 1. Brainstorm | `brainstorming` | @explorer, @librarian, @oracle, @designer |
 | 2. Plan | `writing-plans` | — (orchestrator writes plan directly) |
 | 3. Execute | `executing-plans` | @fixer (code), @designer (UI), @reviewer (per-task gate), @oracle (escalation) |
-| 4. Review | `reviewing-plans` | @reviewer (final gate — 7 reviewer-* specialists) |
+| 4. Review (optional; user-confirmed) | `reviewing-plans` | @reviewer (final gate — 7 reviewer-* specialists, only after opt-in) |
 
 See `docs/sdd-workflow.md` for the full flowchart and agent usage matrix.
 

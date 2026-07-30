@@ -1,6 +1,6 @@
 ---
 name: reviewing-plans
-description: Use after executing-plans completes — dispatches @reviewer for a final comprehensive review before merge
+description: Use after executing-plans completes and only after explicit user opt-in — dispatches @reviewer for a final comprehensive review before merge
 ---
 
 # Reviewing Plans
@@ -12,6 +12,7 @@ Run a final comprehensive review of all changes produced by the execution phase.
 ## When to Use
 
 - After `executing-plans` has completed all tasks
+- The user has explicitly opted in to run the final comprehensive review
 - The execution ledger shows all tasks complete or parked
 - You are ready to signal to the user that the plan is done
 
@@ -97,6 +98,7 @@ Return a concise summary to the orchestrator:
 
 ## Rules
 
+- **Explicit user opt-in is required**: Do not load this skill or dispatch @reviewer unless the user explicitly chooses to run the final comprehensive review.
 - **No code changes**: Reviewing-plans is advisory only. Never fix issues inline.
 - **Binary gate**: Critical = 0 → success. Any Critical > 0 → not passed.
 - **Trust the ledger**: Parked items with rulings from executing-plans are resolved. Do not re-litigate.
