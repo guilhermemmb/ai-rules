@@ -134,7 +134,10 @@ run_rulesync() {
   cyan "  🔗 Linking core engine configs to ~/.config/opencode (Source of Truth)..."
   ln -sf "$SRCDIR/opencode.json" "$OPENDIR/opencode.json"
   ln -sf "$SRCDIR/opencode.jsonc" "$OPENDIR/opencode.jsonc"
-  ln -sf "$SRCDIR/oh-my-opencode-slim.json" "$OPENDIR/oh-my-opencode-slim.json"
+  
+  # Ensure the global config is an independent file, not a symlink, before copying
+  rm -f "$OPENDIR/oh-my-opencode-slim.json"
+  cp "$SRCDIR/oh-my-opencode-slim.json" "$OPENDIR/oh-my-opencode-slim.json"
   
   # Link directories that rulesync doesn't manage but OMO-Slim needs
   rm -rf "$OPENDIR/oh-my-opencode-slim" "$OPENDIR/skills" "$OPENDIR/commands"
@@ -147,6 +150,16 @@ run_rulesync() {
 
 # ── deploy ──
 deploy() {
+  local backup_file="$SRCDIR/oh-my-opencode-slim.json.tmp.json"
+  
+  # Create backup
+  if [ -f "$SRCDIR/oh-my-opencode-slim.json" ]; then
+    cp "$SRCDIR/oh-my-opencode-slim.json" "$backup_file"
+  fi
+
+  # Ensure restoration on exit
+  trap 'if [ -f "$backup_file" ]; then mv "$backup_file" "$SRCDIR/oh-my-opencode-slim.json"; fi' EXIT
+
   apply_model_profile
   run_rulesync
   install_omo
