@@ -1,0 +1,11 @@
+{
+  "$schema": "https://github.com/dyoshikawa/rulesync/releases/latest/download/config-schema.json",
+  "targets": ["claudecode", "opencode"],
+  "features": ["rules", "commands", "subagents", "skills"],
+  "inputRoot": ".",
+  "outputRoots": {
+    "claudecode": "/Users/guilhermebomfim/.claude",
+    "opencode": "/Users/guilhermebomfim/.config/opencode"
+  },
+  "delete": true
+}

@@ -1,3 +1,8 @@
+---
+name: codebase-memory
+description: AI rules/agent definition for codebase-memory.md
+---
+
 # Codebase Memory MCP
 
 **MANDATORY: use Codebase Memory MCP graph tools FIRST — before reading files or

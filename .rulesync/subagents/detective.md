@@ -1,9 +1,6 @@
 ---
 name: detective
-description: >
-  Production diagnostics specialist. Investigates production issues using Sentry
-  MCP, Datadog via pup CLI (--agent --read-only), GCP Logs, and Rootly. Returns
-  structured JSON. Spawned by Orchestrator only.
+description: AI rules/agent definition for detective.md
 model: bf-o/gpt-5.4
 tools: [read, write, bash]
 mcps: [sentry, gcp-logging, rootly]

@@ -1,12 +1,6 @@
 ---
 name: sage
-description: >
-  Gorgias domain knowledge specialist. Answers questions about Gorgias business
-  metrics, table schemas, business rules, and domain concepts using the Context
-  Layer MCP. Proactively use when the user's request involves Gorgias business
-  metrics, domain concepts, data definitions, table schemas, customers, revenue,
-  churn, product usage, or sales. Also handles all Gorgias Notion links and
-  internal documentation.
+description: AI rules/agent definition for sage.md
 model: bf-o/gpt-4o-mini
 tools: [read, write, bash]
 mcps: [context-layer]

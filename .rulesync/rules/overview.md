@@ -1,6 +1,9 @@
 ---
-globs: ["**/*"]
+name: overview
+description: AI rules/agent definition for overview
+root: true
 ---
+
 
 # Global Instructions
 

@@ -1,5 +1,6 @@
 ---
-description: "Review a pull request using the @reviewer subagent"
+name: review-pr
+description: AI rules/agent definition for review-pr.md
 targets: ["claudecode"]
 ---
 

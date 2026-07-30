@@ -1,9 +1,6 @@
 ---
 name: navigator
-description: >
-  Browser interaction specialist. Receives a goal, executes it using
-  mcp-server-browser. Returns a clear report back to the Orchestrator. Spawned
-  by Orchestrator.
+description: AI rules/agent definition for navigator.md
 model: bf/gemini/gemini-3-flash-preview
 tools: [read, write, edit, bash]
 mcps: [mcp-server-browser]

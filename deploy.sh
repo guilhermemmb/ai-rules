@@ -125,91 +125,65 @@ apply_model_profile() {
   python3 "$SRCDIR/scripts/apply-model-profile.py" "$SRCDIR" "$MODEL_PROFILE"
 }
 
-# ── deploy config overlay ──
+# ── rulesync generation ──
+run_rulesync() {
+  cyan "  🔄 Synchronizing rules via rulesync..."
+  bunx rulesync generate
+  green "  ✅ Rules synchronized globally"
+
+  cyan "  🔗 Linking core engine configs to ~/.config/opencode (Source of Truth)..."
+  ln -sf "$SRCDIR/opencode.json" "$OPENDIR/opencode.json"
+  ln -sf "$SRCDIR/opencode.jsonc" "$OPENDIR/opencode.jsonc"
+  ln -sf "$SRCDIR/oh-my-opencode-slim.json" "$OPENDIR/oh-my-opencode-slim.json"
+  
+  # Link directories that rulesync doesn't manage but OMO-Slim needs
+  rm -rf "$OPENDIR/oh-my-opencode-slim" "$OPENDIR/skills" "$OPENDIR/commands"
+  ln -sf "$SRCDIR/.rulesync/oh-my-opencode-slim" "$OPENDIR/oh-my-opencode-slim"
+  ln -sf "$SRCDIR/.rulesync/skills" "$OPENDIR/skills"
+  ln -sf "$SRCDIR/.rulesync/commands" "$OPENDIR/commands"
+  
+  green "  ✅ Global engine symlinks established"
+}
+
+# ── deploy ──
 deploy() {
   apply_model_profile
-
-  cp "$SRCDIR/opencode.json" "$OPENDIR/opencode.json"
-  green "  ✅ opencode.json"
-
-  cp "$SRCDIR/tui.json" "$OPENDIR/tui.json"
-  green "  ✅ tui.json"
-
-  cp "$SRCDIR/oh-my-opencode-slim.json" "$OPENDIR/oh-my-opencode-slim.json"
-  green "  ✅ oh-my-opencode-slim.json"
-
-  mkdir -p "$OPENDIR/oh-my-opencode-slim"
-  rsync -a "$SRCDIR/oh-my-opencode-slim/" "$OPENDIR/oh-my-opencode-slim/"
-  green "  ✅ oh-my-opencode-slim/ (10 append files)"
-
-  mkdir -p "$OPENDIR/commands"
-  rsync -a "$SRCDIR/commands/" "$OPENDIR/commands/"
-  green "  ✅ commands/"
-
-  mkdir -p "$OPENDIR/skills"
-  rsync -a "$SRCDIR/skills/" "$OPENDIR/skills/"
-  green "  ✅ skills/ (merged — plugin-managed skills preserved)"
+  run_rulesync
+  install_omo
 }
 
 # ── main ──
 case "$MODE" in
   "--check")
-    echo "🔍 deploy.sh --check (dry-run)"
+    echo "🔍 deploy.sh --check (rulesync dry-run)"
     echo ""
-    check_file "tui.json"                 "$SRCDIR/tui.json"                 "$OPENDIR/tui.json"
     check_file "opencode.json"            "$SRCDIR/opencode.json"            "$OPENDIR/opencode.json"
-    check_file ".opencode/package.json"   "$SRCDIR/.opencode/package.json"   "$OPENDIR/package.json"
-    check_file ".opencode/package-lock.json" \
-                                           "$SRCDIR/.opencode/package-lock.json" \
-                                           "$OPENDIR/package-lock.json"
-    check_dir  ".opencode/plugins/"       "$SRCDIR/.opencode/plugins"        "$OPENDIR/.opencode/plugins"
-    check_file ".opencode/plugins/ocmonitor.tsx" \
-                                          "$SRCDIR/.opencode/plugins/ocmonitor.tsx" \
-                                          "$OPENDIR/.opencode/plugins/ocmonitor.tsx"
+    check_file "rulesync.jsonc"           "$SRCDIR/rulesync.jsonc"           "$OPENDIR/rulesync.jsonc"
     check_file "oh-my-opencode-slim.json" "$SRCDIR/oh-my-opencode-slim.json" "$OPENDIR/oh-my-opencode-slim.json"
-    check_dir  "oh-my-opencode-slim/"     "$SRCDIR/oh-my-opencode-slim"      "$OPENDIR/oh-my-opencode-slim"
-    check_dir  "commands/"                "$SRCDIR/commands"                 "$OPENDIR/commands"
-    check_dir  "skills/"                  "$SRCDIR/skills"                   "$OPENDIR/skills"
-    cyan "  SOURCE   ocmonitor/config.toml → $OCMONITOR_DIR/config.toml"
-    check_file "ocmonitor/config.toml"    "$SRCDIR/ocmonitor/config.toml"    "$OCMONITOR_DIR/config.toml"
-    cyan "  SOURCE   opencode.json + generator → $OCMONITOR_DIR/models.json"
-    check_ocmonitor_catalog
+    check_dir  ".rulesync/oh-my-opencode-slim/" "$SRCDIR/.rulesync/oh-my-opencode-slim" "$OPENDIR/oh-my-opencode-slim"
+    check_dir  ".rulesync/commands/"      "$SRCDIR/.rulesync/commands"       "$OPENDIR/commands"
+    check_dir  ".rulesync/skills/"        "$SRCDIR/.rulesync/skills"         "$OPENDIR/skills"
     echo ""
     echo "Run './deploy.sh' to apply."
     ;;
   "--force")
     FORCE=true
-    echo "⚡ deploy.sh — ai-rules → ~/.config/opencode"
-    echo "   (force mode: full reinstall)"
-    echo ""
-    install_omo
+    echo "⚡ deploy.sh — ai-rules (rulesync global)"
     echo ""
     deploy
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "  ✅ Deploy complete."
+    echo "  ✅ Migration complete."
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo "Validation:"
-    echo "  1. Restart OpenCode"
-    echo "  2. Run:  ping all agents"
-    echo "  3. If any agent fails, check provider auth with: opencode auth login"
     ;;
   "deploy"|"")
-    echo "⚡ deploy.sh — ai-rules → ~/.config/opencode"
-    echo ""
-    install_omo
+    echo "⚡ deploy.sh — ai-rules (rulesync global)"
     echo ""
     deploy
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "  ✅ Deploy complete."
+    echo "  ✅ Migration complete."
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    echo "Validation:"
-    echo "  1. Restart OpenCode"
-    echo "  2. Run:  ping all agents"
-    echo "  3. If any agent fails, check provider auth with: opencode auth login"
     ;;
   *)
     echo "Usage: ./deploy.sh [--check | --force | --model-profile=<name>]"

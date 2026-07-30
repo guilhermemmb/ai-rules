@@ -1,3 +1,8 @@
+---
+name: git-remote-confirmation
+description: AI rules/agent definition for git-remote-confirmation.md
+---
+
 # Git Remote & GitHub — Confirm Before Acting
 
 ## gh CLI — blocked commands

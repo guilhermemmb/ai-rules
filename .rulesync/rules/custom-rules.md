@@ -1,3 +1,8 @@
+---
+name: custom-rules
+description: AI rules/agent definition for custom-rules.md
+---
+
 # Custom Rules (always applied)
 
 ## Machine Configuration

@@ -1,3 +1,8 @@
+---
+name: rtk
+description: AI rules/agent definition for rtk.md
+---
+
 # RTK — Rust Token Killer
 
 RTK is a token-optimized CLI proxy. It intercepts dev commands (git, pnpm, etc.)

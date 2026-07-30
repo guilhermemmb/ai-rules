@@ -3,7 +3,9 @@
   "mcp": {
     "codebase-memory-mcp": {
       "type": "local",
-      "command": ["/Users/guilhermebomfim/.local/bin/codebase-memory-mcp"],
+      "command": [
+        "/Users/guilhermebomfim/.local/bin/codebase-memory-mcp"
+      ],
       "enabled": true
     },
     "context7": {
@@ -65,8 +67,23 @@
     },
     "mcp-server-browser": {
       "type": "local",
-      "command": ["npx", "-y", "@agent-infra/mcp-server-browser@latest"],
+      "command": [
+        "npx",
+        "-y",
+        "@agent-infra/mcp-server-browser@latest"
+      ],
       "enabled": true
     }
-  }
+  },
+  "instructions": [
+    ".opencode/memories/codebase-memory.md",
+    ".opencode/memories/context7.md",
+    ".opencode/memories/custom-rules.md",
+    ".opencode/memories/git-remote-confirmation.md",
+    ".opencode/memories/overview.md",
+    ".opencode/memories/pr-workflow.md",
+    ".opencode/memories/rtk.md",
+    ".opencode/memories/security-scan.md",
+    ".opencode/memories/user-config.md"
+  ]
 }

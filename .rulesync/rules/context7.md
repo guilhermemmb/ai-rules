@@ -1,3 +1,8 @@
+---
+name: context7
+description: AI rules/agent definition for context7.md
+---
+
 # Context7 MCP — Library Documentation
 
 Use Context7 MCP to fetch current documentation whenever the user asks about a

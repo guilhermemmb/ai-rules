@@ -1,3 +1,8 @@
+---
+name: user-config
+description: AI rules/agent definition for user-config.md
+---
+
 ## Git Configuration
 
 - Git user: Guilherme Bomfim (guilherme.bomfim@gorgias.com)

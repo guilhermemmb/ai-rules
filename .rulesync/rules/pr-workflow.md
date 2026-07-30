@@ -1,3 +1,8 @@
+---
+name: pr-workflow
+description: AI rules/agent definition for pr-workflow.md
+---
+
 # Pull Request Workflow
 
 ## Git Command Safety

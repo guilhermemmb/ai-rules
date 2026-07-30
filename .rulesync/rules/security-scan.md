@@ -1,3 +1,8 @@
+---
+name: security-scan
+description: AI rules/agent definition for security-scan.md
+---
+
 # Commit / Push Safety Scan
 
 On-demand checklist. Read and apply this before any `git commit`, `git push`, or
