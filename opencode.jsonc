@@ -1,20 +1,18 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "shell": "zsh",
-  "default_agent": "orchestrator",
   "mcp": {
     "codebase-memory-mcp": {
       "type": "local",
       "command": ["/Users/guilhermebomfim/.local/bin/codebase-memory-mcp"],
-      "enabled": true,
+      "enabled": true
     },
     "context7": {
       "type": "remote",
       "url": "https://mcp.context7.com/mcp",
       "enabled": true,
       "headers": {
-        "CONTEXT7_API_KEY": "ctx7sk-5a43d734-feb8-4f4f-8c67-746ac7e3cee0",
-      },
+        "CONTEXT7_API_KEY": "ctx7sk-5a43d734-feb8-4f4f-8c67-746ac7e3cee0"
+      }
     },
     "github": {
       "type": "remote",
@@ -22,53 +20,53 @@
       "enabled": true,
       "oauth": false,
       "headers": {
-        "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}",
-      },
+        "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
     },
     "sentry": {
       "type": "remote",
       "url": "https://mcp.sentry.dev/mcp",
-      "enabled": true,
+      "enabled": true
     },
     "linear": {
       "type": "remote",
       "url": "https://mcp.linear.app/mcp",
-      "enabled": true,
+      "enabled": true
     },
     "gcp-logging": {
       "type": "remote",
       "url": "https://logging.googleapis.com/mcp",
-      "enabled": false,
+      "enabled": false
     },
     "context-layer": {
       "type": "remote",
       "url": "https://cortex.mcp.gorgias-decision-engine.com/mcp",
-      "enabled": true,
+      "enabled": true
     },
     "notion": {
       "type": "remote",
       "url": "https://mcp.notion.com/mcp",
-      "enabled": true,
+      "enabled": true
     },
     "rootly": {
       "type": "remote",
       "url": "https://mcp.rootly.com/mcp",
-      "enabled": true,
+      "enabled": true
     },
     "gorgias-mcp": {
       "type": "remote",
       "url": "https://mcp.gorgias.com/mcp",
-      "enabled": false,
+      "enabled": false
     },
     "figma-desktop": {
       "type": "remote",
       "url": "http://127.0.0.1:3845/mcp",
-      "enabled": true,
+      "enabled": true
     },
     "mcp-server-browser": {
       "type": "local",
       "command": ["npx", "-y", "@agent-infra/mcp-server-browser@latest"],
-      "enabled": true,
-    },
-  },
+      "enabled": true
+    }
+  }
 }
