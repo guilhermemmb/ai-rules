@@ -19,7 +19,7 @@ ping all agents
 | Agent | Model (Bifrost) | Role | MCPs |
 |-------|----------------|------|------|
 | **Orchestrator** | GPT-5.6 Terra (high) | Master delegator & coordinator | `*`, `!context7` |
-| **Oracle** | Claude Opus 4.8 (high) | Strategic advisor, architecture, hard debugging | codebase-memory-mcp · skill: `simplify` |
+| **Oracle** | GPT-5.6 Terra (high) | Strategic advisor, architecture, hard debugging | codebase-memory-mcp · skill: `simplify` |
 | **Explorer** | DeepSeek V4 Flash (low) | Codebase reconnaissance | codebase-memory-mcp |
 | **Librarian** | DeepSeek V4 Flash (low) | Knowledge retrieval | websearch, context7, gh_grep, linear, notion |
 | **Designer** | Gemini 3 Pro Preview (medium) | UI/UX excellence | — |
@@ -44,7 +44,7 @@ ping all agents
 
 **Council** disabled. Observer auto-routes images from Orchestrator (GPT-5.6 Terra is not multimodal in this harness).
 
-**Model mix rationale:** Opus 4.8 (Anthropic) reserved for oracle's rare, highest-stakes architecture/debugging calls. GPT-5.6 Terra is the precision-critical, low-volume review tier — orchestrator, reviewer-code, reviewer-errors, and reviewer-types' formal invariant reasoning. GPT-5.6 Luna is the core high-volume workhorse covering fixer plus three reviewer specialists (test, simplifier, accessibility); GPT-5.4 Mini covers lighter-reasoning coordination (detective, reviewer). Gemini 3 Pro/Flash reserved for genuine multimodal needs only (designer's Figma work; observer/navigator's screenshots). DeepSeek Flash handles cheap high-frequency or low-stakes text-only tasks (explorer, librarian, sage, reviewer-comments).
+**Model mix rationale:** GPT-5.6 Terra is the precision-critical, low-volume tier for Oracle's strategic architecture and debugging work, the Orchestrator, and reviewer-code, reviewer-errors, and reviewer-types' formal invariant reasoning. GPT-5.6 Luna is the core high-volume workhorse covering fixer plus three reviewer specialists (test, simplifier, accessibility); GPT-5.4 Mini covers lighter-reasoning coordination (detective, reviewer). Gemini 3 Pro/Flash is reserved for genuine multimodal needs only (designer's Figma work; observer/navigator's screenshots). DeepSeek Flash handles cheap high-frequency or low-stakes text-only tasks (explorer, librarian, sage, reviewer-comments).
 
 ## Directory Map
 

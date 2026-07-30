@@ -38,7 +38,7 @@ nodes:
     role: Strategic Advisor
     color: '#60a5fa'
     parent: orchestrator
-    model: Claude Opus 4.8 (high)
+    model: GPT-5.6 Terra (high)
     skills: simplify
     mcp_access: codebase-memory-mcp
     trigger: Architecture review, hard debugging, trade-offs, code review

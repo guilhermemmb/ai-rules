@@ -17,7 +17,7 @@
         "mcps": ["codebase-memory-mcp", "github"]
       },
       "oracle": {
-        "model": "bf-a/claude-opus-4-8",
+        "model": "bf-o/gpt-5.6-terra",
         "variant": "high",
         "skills": ["simplify"],
         "mcps": ["codebase-memory-mcp"]
@@ -52,6 +52,10 @@
     }
   },
   "agents": {
+    "orchestrator": {
+      "model": "bf-o/gpt-5.6-terra",
+      "variant": "high"
+    },
     "navigator": {
       "model": "bf/gemini/gemini-3-flash-preview",
       "mcps": ["mcp-server-browser"],
