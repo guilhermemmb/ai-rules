@@ -15,9 +15,14 @@ Execute an implementation plan by dispatching a fresh agent per task, reviewing 
 
 ## When to Use
 
-- You have an approved implementation plan from `writing-plans`
+- The work is non-trivial and has an approved implementation plan from
+  `writing-plans`
 - Tasks are mostly independent
 - You are staying in the current session
+
+Do not use this skill for trivial, straightforward, or explicitly
+direct-execution work. Those tasks should be implemented directly with
+proportionate verification, not converted into an execution plan.
 
 ## Agent Dispatch Rules
 

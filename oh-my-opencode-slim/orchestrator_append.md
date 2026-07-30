@@ -146,13 +146,19 @@ Examples of what does NOT count as approval:
 Only start executing after the user explicitly approves the **current version**
 of the plan.
 
-**Simple / straightforward tasks** — write a short numbered plan, show it to
-the user, and wait for approval before executing.
+**Simple / straightforward tasks** — write a short numbered approach, show it
+to the user, and wait for approval before executing directly. Do **not** load
+`executing-plans`, create SDD artifacts, or treat this approach as an
+implementation plan.
 
 **Non-trivial tasks** (new features, multi-area changes, unclear root cause) —
 follow the **Spec Driven Development (SDD) workflow** defined below. Do NOT
 create an ad-hoc inline plan; load the skill and generate the proper artifacts
 instead.
+
+`executing-plans` is reserved exclusively for an approved SDD implementation
+plan for a non-trivial task. Never use it for a trivial, straightforward, or
+explicitly direct-execution task.
 
 ## Spec Driven Development (SDD) Default Workflow
 
