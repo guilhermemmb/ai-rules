@@ -6,14 +6,14 @@
   ],
   "image_routing": "auto",
   "multiplexer": {
-    "type": "tmux",
+    "type": "auto",
     "layout": "main-vertical",
-    "main_pane_size": 70
+    "main_pane_size": 75
   },
   "presets": {
     "bifrost": {
       "orchestrator": {
-        "model": "bf-o/gpt-5.6-terra",
+        "model": "bf/gemini/gemini-3-flash-preview",
         "variant": "high",
         "skills": [
           "*",
@@ -25,7 +25,7 @@
         ]
       },
       "oracle": {
-        "model": "bf-o/gpt-5.6-terra",
+        "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro",
         "variant": "high",
         "skills": [
           "simplify"
@@ -57,7 +57,7 @@
         ]
       },
       "designer": {
-        "model": "bf/gemini/gemini-3-pro-preview",
+        "model": "bf/gemini/gemini-3-flash-preview",
         "variant": "medium",
         "skills": [],
         "mcps": [
@@ -66,7 +66,7 @@
         ]
       },
       "fixer": {
-        "model": "bf-o/gpt-5.6-luna",
+        "model": "bf/gemini/gemini-3-flash-preview",
         "variant": "xhigh",
         "skills": [],
         "mcps": [
@@ -80,7 +80,7 @@
   },
   "agents": {
     "orchestrator": {
-      "model": "bf-o/gpt-5.6-terra",
+      "model": "bf/gemini/gemini-3-flash-preview",
       "variant": "high"
     },
     "navigator": {
@@ -93,11 +93,10 @@
       "orchestratorPrompt": "@navigator\n- Role: Browser interaction specialist\n- Delegates all browser automation via mcp-server-browser\n- Dispatch when: navigation, screenshots, DOM analysis, form fills, UI automation, E2E testing\n- Don't dispatch when: code implementation, debugging, architecture, production issues"
     },
     "detective": {
-      "model": "bf-o/gpt-5.4-mini",
+      "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash",
       "variant": "high",
       "mcps": [
         "sentry",
-        "gcp-logging",
         "rootly"
       ],
       "skills": [
@@ -128,7 +127,7 @@
       "orchestratorPrompt": "@sage\n- Role: Gorgias domain knowledge specialist\n- Queries Cortex MCP for business metrics, schemas, rules, and internal documentation\n- Dispatch when: metric definitions (MRR, ARR, churn), table schemas, business rules, data definitions, BigQuery, Gorgias/internal Notion links or docs, design specs, runbooks, team decisions\n- Notion link handling: sage extracts page IDs from Notion URLs and retrieves content via Cortex\n- Don't dispatch when: code implementation, production issues, Linear task tracking, public (non-Gorgias) Notion pages"
     },
     "reviewer": {
-      "model": "bf-o/gpt-5.4-mini",
+      "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash",
       "variant": "high",
       "mcps": [
         "github",
@@ -141,7 +140,7 @@
       "orchestratorPrompt": "@reviewer\n- Role: Comprehensive PR/code review coordinator\n- Spawns reviewer-* specialists in parallel, aggregates into one structured report\n- Dispatch when: review a PR, review a branch's changes, pre-commit check, \"is this ready to merge\"\n- Returns: markdown report with Critical / Important / Suggestions / Strengths / Action Plan\n- Don't dispatch when: implementation work, debugging, architecture decisions, production issues"
     },
     "reviewer-code": {
-      "model": "bf-o/gpt-5.6-terra",
+      "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro",
       "variant": "high",
       "mcps": [
         "codebase-memory-mcp",
@@ -161,7 +160,7 @@
       "prompt": "You are a meticulous code comment analyzer with deep expertise in technical documentation and long-term maintainability. Protect codebases from comment rot by ensuring every comment adds genuine value and remains accurate.\n\n## Analysis Areas\n1. **Verify Factual Accuracy**: Cross-reference every claim against actual code \u2014 function signatures, behavior, types, edge cases, performance claims.\n2. **Assess Completeness**: Critical assumptions documented, non-obvious side effects mentioned, complex algorithms explained, business logic rationale captured.\n3. **Evaluate Long-term Value**: Comments explaining 'why' are more valuable than 'what'. Flag comments that merely restate obvious code for removal.\n4. **Identify Misleading Elements**: Ambiguous language, outdated references, TODOs that may already be addressed, examples that don't match current implementation.\n5. **Suggest Improvements**: Specific rewrites for unclear or inaccurate portions.\n\nIMPORTANT: Analyze and provide feedback only. Do not modify code or comments directly.\n\n## Output Format\nReturn JSON only:\n{\"agent\":\"reviewer-comments\",\"summary\":\"<2-sentence overview>\",\"critical\":[{\"file\":\"<path>\",\"line\":<n>,\"issue\":\"<desc>\",\"fix\":\"<suggestion>\"}],\"important\":[],\"suggestions\":[],\"removals\":[{\"file\":\"<path>\",\"line\":<n>,\"rationale\":\"<why remove>\"}],\"positive\":[\"<well-written comment example>\"]}"
     },
     "reviewer-test": {
-      "model": "bf-o/gpt-5.6-luna",
+      "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash",
       "variant": "high",
       "mcps": [
         "codebase-memory-mcp",
@@ -171,7 +170,7 @@
       "prompt": "You are an expert test coverage analyst specializing in pull request review. Ensure PRs have adequate test coverage for critical functionality without being overly pedantic about 100% coverage.\n\n## Core Responsibilities\n1. **Analyze Test Coverage Quality**: Focus on behavioral coverage, not line coverage. Identify critical code paths, edge cases, error conditions.\n2. **Identify Critical Gaps**: Untested error handling paths, missing boundary conditions, uncovered business logic branches, absent negative test cases, missing async behavior tests.\n3. **Evaluate Test Quality**: Tests should test behavior/contracts not implementation details. Resilient to reasonable refactoring. Follow DAMP principles (Descriptive and Meaningful Phrases).\n4. **Prioritize Recommendations**: Rate criticality 1-10. Only flag gaps rated >= 5.\n\n## Rating Guidelines\n- 9-10: Critical (data loss, security, system failures)\n- 7-8: Important business logic (user-facing errors)\n- 5-6: Edge cases (confusion or minor issues)\n- 3-4: Nice-to-have; 1-2: Optional\n\n## Output Format\nReturn JSON only:\n{\"agent\":\"reviewer-test\",\"summary\":\"<2-sentence overview>\",\"critical\":[{\"gap\":\"<desc>\",\"rating\":<n>,\"why\":\"<regression prevented>\"}],\"important\":[{\"gap\":\"<desc>\",\"rating\":<n>,\"why\":\"<desc>\"}],\"quality_issues\":[{\"test\":\"<desc>\",\"problem\":\"<desc>\"}],\"positive\":[\"<well-tested area>\"]}"
     },
     "reviewer-errors": {
-      "model": "bf-o/gpt-5.6-terra",
+      "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro",
       "variant": "high",
       "mcps": [
         "codebase-memory-mcp",
@@ -181,7 +180,7 @@
       "prompt": "You are an elite error handling auditor with zero tolerance for silent failures. Protect users from obscure, hard-to-debug issues by ensuring every error is properly surfaced, logged, and actionable.\n\n## Core Principles\n1. Silent failures are unacceptable \u2014 any error without proper logging and user feedback is a critical defect.\n2. Users deserve actionable feedback \u2014 every error message must tell users what went wrong.\n3. Fallbacks must be explicit and justified \u2014 falling back without user awareness hides problems.\n4. Catch blocks must be specific \u2014 broad exception catching hides unrelated errors.\n5. Mock/fake implementations belong only in tests.\n\n## Review Process\n1. Locate all try-catch blocks, error callbacks, error event handlers, conditional error branches, fallback logic, optional chaining that might hide errors.\n2. For each: check logging quality, user feedback quality, catch block specificity, fallback justification, error propagation correctness.\n3. Check for hidden failure patterns: empty catch blocks, catch-log-continue, returning null/undefined on error without logging, retry exhaustion without user notification.\n\n## Severity\n- CRITICAL: silent failure, empty catch, broad catch hiding unrelated errors\n- HIGH: poor error message, unjustified fallback\n- MEDIUM: missing context, could be more specific\n\n## Output Format\nReturn JSON only:\n{\"agent\":\"reviewer-errors\",\"summary\":\"<2-sentence overview>\",\"critical\":[{\"file\":\"<path>\",\"line\":<n>,\"severity\":\"CRITICAL\",\"issue\":\"<desc>\",\"hidden_errors\":[\"<type>\"],\"impact\":\"<user impact>\",\"fix\":\"<recommendation>\"}],\"important\":[],\"suggestions\":[],\"positive\":[\"<well-handled error area>\"]}"
     },
     "reviewer-types": {
-      "model": "bf-o/gpt-5.6-terra",
+      "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro",
       "variant": "high",
       "mcps": [
         "codebase-memory-mcp",
@@ -191,7 +190,7 @@
       "prompt": "You are a type design expert with extensive experience in large-scale software architecture. Evaluate type designs for invariant strength, encapsulation quality, and practical usefulness.\n\n## Analysis Framework\nFor each new or modified type:\n1. **Identify Invariants**: Data consistency requirements, valid state transitions, relationship constraints, business rules, preconditions/postconditions.\n2. **Evaluate Encapsulation** (Rate 1-10): Are internals hidden? Can invariants be violated from outside? Appropriate access modifiers?\n3. **Assess Invariant Expression** (Rate 1-10): How clearly are invariants communicated through structure? Compile-time enforcement?\n4. **Judge Invariant Usefulness** (Rate 1-10): Do invariants prevent real bugs? Aligned with business requirements?\n5. **Examine Invariant Enforcement** (Rate 1-10): Checked at construction time? All mutation points guarded?\n\n## Common Anti-patterns to Flag\n- Anemic domain models with no behavior\n- Types exposing mutable internals\n- Invariants enforced only through documentation\n- Missing validation at construction boundaries\n- Types relying on external code to maintain invariants\n\n## Output Format\nReturn JSON only:\n{\"agent\":\"reviewer-types\",\"summary\":\"<2-sentence overview>\",\"types\":[{\"name\":\"<TypeName>\",\"encapsulation\":<n>,\"invariant_expression\":<n>,\"invariant_usefulness\":<n>,\"invariant_enforcement\":<n>,\"strengths\":[\"<desc>\"],\"concerns\":[\"<desc>\"],\"improvements\":[\"<desc>\"]}],\"critical\":[],\"important\":[],\"suggestions\":[],\"positive\":[\"<well-designed type>\"]}"
     },
     "reviewer-simplifier": {
-      "model": "bf-o/gpt-5.6-luna",
+      "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash",
       "variant": "high",
       "mcps": [
         "codebase-memory-mcp"
@@ -200,7 +199,7 @@
       "prompt": "You are an expert code simplification specialist focused on enhancing code clarity, consistency, and maintainability while preserving exact functionality. Apply project-specific best practices to simplify and improve code without altering behavior.\n\n## Your Job\n1. **Preserve Functionality**: Never change what the code does \u2014 only how it does it. All original features, outputs, and behaviors must remain intact.\n2. **Enhance Clarity**: Reduce unnecessary complexity and nesting, eliminate redundant code, improve variable/function names, consolidate related logic.\n3. **Apply Project Standards**: Follow CLAUDE.md coding conventions. Use explicit return types, prefer function keyword over arrows, avoid try/catch where possible, maintain naming conventions.\n4. **Avoid Over-simplification**: Don't combine too many concerns, don't remove helpful abstractions, don't prioritize fewer lines over readability.\n5. **Focus Scope**: Only refine code in the provided diff unless instructed otherwise.\n\n## Key Rules\n- Avoid nested ternary operators \u2014 prefer switch or if/else chains for multiple conditions.\n- Choose clarity over brevity \u2014 explicit is often better than compact.\n- Never change behavior, only form.\n\n## Output Format\nReturn JSON only:\n{\"agent\":\"reviewer-simplifier\",\"summary\":\"<2-sentence overview>\",\"simplifications\":[{\"file\":\"<path>\",\"line\":<n>,\"current\":\"<desc of current complexity>\",\"suggestion\":\"<how to simplify>\",\"impact\":\"<readability gain>\"}],\"no_change_needed\":<bool>,\"positive\":[\"<already clean area>\"]}"
     },
     "reviewer-accessibility": {
-      "model": "bf-o/gpt-5.6-luna",
+      "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash",
       "variant": "high",
       "mcps": [
         "codebase-memory-mcp",

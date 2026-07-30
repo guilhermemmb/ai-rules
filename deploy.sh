@@ -127,25 +127,28 @@ apply_model_profile() {
 
 # ── rulesync generation ──
 run_rulesync() {
-  cyan "  🔄 Synchronizing rules via rulesync..."
-  bunx rulesync generate
-  green "  ✅ Rules synchronized globally"
-
-  cyan "  🔗 Linking core engine configs to ~/.config/opencode (Source of Truth)..."
-  ln -sf "$SRCDIR/opencode.json" "$OPENDIR/opencode.json"
-  ln -sf "$SRCDIR/opencode.jsonc" "$OPENDIR/opencode.jsonc"
+  cyan "  📦 Copying engine configs to ~/.config/opencode (No Symlinks)..."
   
-  # Ensure the global config is an independent file, not a symlink, before copying
-  rm -f "$OPENDIR/oh-my-opencode-slim.json"
+  # Ensure target dir exists
+  mkdir -p "$OPENDIR"
+  
+  # Break symlinks and copy base files
+  rm -f "$OPENDIR/opencode.json" "$OPENDIR/oh-my-opencode-slim.json" "$OPENDIR/rulesync.jsonc"
+  cp "$SRCDIR/opencode.json" "$OPENDIR/opencode.json"
   cp "$SRCDIR/oh-my-opencode-slim.json" "$OPENDIR/oh-my-opencode-slim.json"
+  cp "$SRCDIR/rulesync.jsonc" "$OPENDIR/rulesync.jsonc"
   
-  # Link directories that rulesync doesn't manage but OMO-Slim needs
+  # Distribute assets that rulesync doesn't manage natively
   rm -rf "$OPENDIR/oh-my-opencode-slim" "$OPENDIR/skills" "$OPENDIR/commands"
-  ln -sf "$SRCDIR/.rulesync/oh-my-opencode-slim" "$OPENDIR/oh-my-opencode-slim"
-  ln -sf "$SRCDIR/.rulesync/skills" "$OPENDIR/skills"
-  ln -sf "$SRCDIR/.rulesync/commands" "$OPENDIR/commands"
+  cp -r "$SRCDIR/.rulesync/oh-my-opencode-slim" "$OPENDIR/oh-my-opencode-slim"
+  cp -r "$SRCDIR/.rulesync/skills" "$OPENDIR/skills"
+  cp -r "$SRCDIR/.rulesync/commands" "$OPENDIR/commands"
   
-  green "  ✅ Global engine symlinks established"
+  cyan "  🔄 Merging MCPs and rules via rulesync..."
+  # We run rulesync generate in the repo root; it targets the paths in rulesync.jsonc
+  bunx rulesync generate
+  
+  green "  ✅ Deployment complete via rulesync"
 }
 
 # ── deploy ──

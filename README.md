@@ -22,7 +22,7 @@ ping all agents
 
 | Profile | Strategy | Key Models | Location |
 | :--- | :--- | :--- | :--- |
-| **default** | Performance-first | GPT-5.6 Terra/Luna, Gemini 3 Pro | `profiles/models/default.yml` |
+| **default** | Performance-first | Gemini 3 Flash, GPT-5.6 Terra/Luna, Gemini 3 Pro | `profiles/models/default.yml` |
 | **cost-efficient** | Cost-optimized (90% savings) | DeepSeek V4 Flash/Pro, Gemini 3 Flash | `profiles/models/cost-efficient.yml` |
 
 ## Agent Pantheon
@@ -31,7 +31,7 @@ ping all agents
 
 | Agent | Model (Default) | Model (Cost-Efficient) | Role |
 | :--- | :--- | :--- | :--- |
-| **Orchestrator** | GPT-5.6 Terra | DeepSeek V4 Flash | Master delegator & coordinator |
+| **Orchestrator** | Gemini 3 Flash | Gemini 3 Flash | Master delegator & coordinator |
 | **Oracle** | GPT-5.6 Terra | DeepSeek V4 Pro | Strategic advisor, architecture |
 | **Explorer** | DeepSeek V4 Flash | DeepSeek V4 Flash | Codebase reconnaissance |
 | **Librarian** | DeepSeek V4 Flash | DeepSeek V4 Flash | Knowledge retrieval |
@@ -54,7 +54,7 @@ ping all agents
 
 **Council** disabled. Observer auto-routes images from Orchestrator.
 
-**Model Profiles Rationale:** The system defaults to high-precision GPT-5.6 and Gemini 3 Pro models for complex reasoning. The `cost-efficient` profile swaps these for DeepSeek V4 (Flash/Pro) and Gemini 3 Flash, providing ~90-95% cost reduction with competitive performance for most routine development tasks.
+**Model Profiles Rationale:** The system defaults to a specialized mix of Gemini 3 Flash/Pro and GPT-5.6 models for complex reasoning. The `cost-efficient` profile swaps these for DeepSeek V4 (Flash/Pro) and Gemini 3 Flash, providing ~90-95% cost reduction with competitive performance for most routine development tasks.
 
 ## Directory Map
 

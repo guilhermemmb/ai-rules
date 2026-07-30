@@ -1,5 +1,5 @@
 # .planning/model-profiles/default.yaml
-orchestrator: "bf-o/gpt-5.6-terra"
+orchestrator: "bf/gemini/gemini-3-flash-preview"
 oracle: "bf-o/gpt-5.6-terra"
 explorer: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
 librarian: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"

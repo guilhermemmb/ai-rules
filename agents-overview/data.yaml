@@ -7,7 +7,7 @@ nodes:
     role: Master Delegator
     color: '#60a5fa'
     parent: null
-    model: GPT-5.6 Terra (high)
+    model: Gemini 3 Flash Preview
     orchestrates: true
     dispatches:
       - oracle
@@ -38,7 +38,7 @@ nodes:
     role: Strategic Advisor
     color: '#60a5fa'
     parent: orchestrator
-    model: GPT-5.6 Terra (high)
+    model: GPT-5.6 Terra
     skills: simplify
     mcp_access: codebase-memory-mcp
     trigger: Architecture review, hard debugging, trade-offs, code review
@@ -231,7 +231,7 @@ nodes:
     role: CLAUDE.md Compliance & Bugs
     color: '#f59e0b'
     parent: reviewer
-    model: GPT-5.6 Terra (high)
+    model: GPT-5.6 Terra
     mcp_access: codebase-memory-mcp, github
     trigger: Always dispatched by reviewer
 
@@ -261,7 +261,7 @@ nodes:
     role: Silent Failure Hunting
     color: '#f59e0b'
     parent: reviewer
-    model: GPT-5.6 Terra (high)
+    model: GPT-5.6 Terra
     mcp_access: codebase-memory-mcp, github
     trigger: Error handling changes in diff
 
@@ -271,7 +271,7 @@ nodes:
     role: Type Design Analysis
     color: '#f59e0b'
     parent: reviewer
-    model: GPT-5.6 Terra (high)
+    model: GPT-5.6 Terra
     mcp_access: codebase-memory-mcp, github
     trigger: New types/interfaces in diff
 
@@ -643,7 +643,7 @@ nodes:
       • Profiles: default, cost-efficient
       • Location: profiles/models/*.yml
       • Deploy: ./deploy.sh --model-profile=cost-efficient
-      • default: GPT-5.6 Terra/Luna, Gemini 3 Pro
+      • default: Gemini 3 Flash, GPT-5.6 Terra/Luna, Gemini 3 Pro
       • cost-efficient: DeepSeek V4 Flash/Pro, Gemini 3 Flash
       • Implementation: scripts/apply-model-profile.py patches oh-my-opencode-slim.json
 
