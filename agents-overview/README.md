@@ -266,6 +266,7 @@ No code needed—YAML drives everything.
 ### Infrastructure
 - **OpenCode** — Entry point, OMO Slim plugin host
 - **Oh My OpenCode Slim** — Agent orchestration (preset: bifrost)
+- **Model Profiles** — Switch between `default` (performance) and `cost-efficient` (90% savings) via `deploy.sh --model-profile=<name>`
 - **Bifrost** — Model gateway (https://bifrost.ops.gorgias.io)
 - **RTK** — Token optimization plugin (~60-90% reduction)
 - **zsh Environment** — Shell config (VOLTA_HOME, GORGIAS_ROOT, aliases)

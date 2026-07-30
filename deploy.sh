@@ -13,8 +13,31 @@
 set -euo pipefail
 
 OPENDIR="${HOME}/.config/opencode"
+OCMONITOR_DIR="${HOME}/.config/ocmonitor"
 SRCDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MODE="${1:-deploy}"
+MODE="deploy"
+MODEL_PROFILE="default"
+
+# ── parse args ──
+for arg in "$@"; do
+  case $arg in
+    --check)
+      MODE="--check"
+      shift
+      ;;
+    --force)
+      FORCE=true
+      shift
+      ;;
+    --model-profile=*)
+      MODEL_PROFILE="${arg#*=}"
+      shift
+      ;;
+    *)
+      # Preserve positional args if needed
+      ;;
+  esac
+done
 
 red()   { printf '\033[31m%s\033[0m\n' "$1"; }
 green() { printf '\033[32m%s\033[0m\n' "$1"; }
@@ -97,8 +120,15 @@ install_omo() {
   green "  ✅ Plugin installed"
 }
 
+# ── apply model profile ──
+apply_model_profile() {
+  python3 "$SRCDIR/scripts/apply-model-profile.py" "$SRCDIR" "$MODEL_PROFILE"
+}
+
 # ── deploy config overlay ──
 deploy() {
+  apply_model_profile
+
   cp "$SRCDIR/opencode.json" "$OPENDIR/opencode.json"
   green "  ✅ opencode.json"
 
@@ -126,12 +156,24 @@ case "$MODE" in
   "--check")
     echo "🔍 deploy.sh --check (dry-run)"
     echo ""
-  check_file "tui.json"                 "$SRCDIR/tui.json"                 "$OPENDIR/tui.json"
-  check_file "opencode.json"            "$SRCDIR/opencode.json"            "$OPENDIR/opencode.json"
-  check_file "oh-my-opencode-slim.json" "$SRCDIR/oh-my-opencode-slim.json" "$OPENDIR/oh-my-opencode-slim.json"
-  check_dir  "oh-my-opencode-slim/"     "$SRCDIR/oh-my-opencode-slim"      "$OPENDIR/oh-my-opencode-slim"
-  check_dir  "commands/"                "$SRCDIR/commands"                 "$OPENDIR/commands"
-  check_dir  "skills/"                  "$SRCDIR/skills"                   "$OPENDIR/skills"
+    check_file "tui.json"                 "$SRCDIR/tui.json"                 "$OPENDIR/tui.json"
+    check_file "opencode.json"            "$SRCDIR/opencode.json"            "$OPENDIR/opencode.json"
+    check_file ".opencode/package.json"   "$SRCDIR/.opencode/package.json"   "$OPENDIR/package.json"
+    check_file ".opencode/package-lock.json" \
+                                           "$SRCDIR/.opencode/package-lock.json" \
+                                           "$OPENDIR/package-lock.json"
+    check_dir  ".opencode/plugins/"       "$SRCDIR/.opencode/plugins"        "$OPENDIR/.opencode/plugins"
+    check_file ".opencode/plugins/ocmonitor.tsx" \
+                                          "$SRCDIR/.opencode/plugins/ocmonitor.tsx" \
+                                          "$OPENDIR/.opencode/plugins/ocmonitor.tsx"
+    check_file "oh-my-opencode-slim.json" "$SRCDIR/oh-my-opencode-slim.json" "$OPENDIR/oh-my-opencode-slim.json"
+    check_dir  "oh-my-opencode-slim/"     "$SRCDIR/oh-my-opencode-slim"      "$OPENDIR/oh-my-opencode-slim"
+    check_dir  "commands/"                "$SRCDIR/commands"                 "$OPENDIR/commands"
+    check_dir  "skills/"                  "$SRCDIR/skills"                   "$OPENDIR/skills"
+    cyan "  SOURCE   ocmonitor/config.toml → $OCMONITOR_DIR/config.toml"
+    check_file "ocmonitor/config.toml"    "$SRCDIR/ocmonitor/config.toml"    "$OCMONITOR_DIR/config.toml"
+    cyan "  SOURCE   opencode.json + generator → $OCMONITOR_DIR/models.json"
+    check_ocmonitor_catalog
     echo ""
     echo "Run './deploy.sh' to apply."
     ;;
@@ -170,7 +212,8 @@ case "$MODE" in
     echo "  3. If any agent fails, check provider auth with: opencode auth login"
     ;;
   *)
-    echo "Usage: ./deploy.sh [--check | --force]"
+    echo "Usage: ./deploy.sh [--check | --force | --model-profile=<name>]"
+    echo "Profiles: $(ls "$SRCDIR/profiles/models" | sed 's/\.yml$//' | paste -sd, -)"
     exit 1
     ;;
 esac

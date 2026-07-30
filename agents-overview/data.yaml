@@ -633,6 +633,20 @@ nodes:
       • Install: rtk init -g --opencode
       • /opt/homebrew/bin/rtk
 
+  - id: model-profiles
+    label: Model Profiles
+    type: infra
+    role: Cost vs Performance Switching
+    color: '#f472b6'
+    parent: null
+    config: |
+      • Profiles: default, cost-efficient
+      • Location: profiles/models/*.yml
+      • Deploy: ./deploy.sh --model-profile=cost-efficient
+      • default: GPT-5.6 Terra/Luna, Gemini 3 Pro
+      • cost-efficient: DeepSeek V4 Flash/Pro, Gemini 3 Flash
+      • Implementation: scripts/apply-model-profile.py patches oh-my-opencode-slim.json
+
   - id: bifrost
     label: Bifrost
     type: infra
@@ -876,6 +890,9 @@ links:
   - source: opencode
     target: omo-slim
     label: plugin
+  - source: model-profiles
+    target: omo-slim
+    label: configures models
   - source: omo-slim
     target: bifrost
     label: models via
