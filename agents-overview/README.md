@@ -271,46 +271,99 @@ No code needed—YAML drives everything.
 - **RTK** — Token optimization plugin (~60-90% reduction)
 - **zsh Environment** — Shell config (VOLTA_HOME, GORGIAS_ROOT, aliases)
 
-## SDD Workflow — How the Plan Works
+## SDD Workflow — T-Shirt Sizing
 
-The orchestrator defaults to Spec Driven Development (SDD) for any non-trivial
-work. It's a 4-phase pipeline, each phase backed by a skill
-(`brainstorming` → `writing-plans` → `executing-plans` → `reviewing-plans`),
-with a fast-path bypass for trivial/hotfix changes.
+The orchestrator always evaluates and visibly reports
+`T-shirt size: XS | S | M | L | XL` with a short rationale first. The size
+determines whether work is direct, uses a merged plan, or follows full SDD.
+
+### T-shirt sizing policy
+
+- **XS** — obvious isolated reversible edit. Execute immediately; no approval,
+  artifact, or SDD.
+- **S** — small local work following an established pattern.
+- **M** — cohesive bounded work across related files without
+  architecture/security/migration/data-integrity/external-integration
+  uncertainty.
+- **S/M** — use one concise merged SDD + implementation plan in
+  `docs/.planning/plans/`, show it once, and obtain one approval before direct
+  execution with proportionate validation. Do not create a separate spec, load
+  `executing-plans`, create a ledger, run a per-task review, or prompt for a
+  final review.
+- **L** — multi-area/cross-system work or material uncertainty.
+- **XL** — architecture, migration, security/data-integrity, production-impact,
+  or major external-dependency work.
+- **L/XL** — use full SDD. Show and approve a separate design/spec in
+  `docs/.planning/specs/` before writing the implementation plan in
+  `docs/.planning/plans/`; retain plan approval and the existing
+  execution/review flow.
 
 ```mermaid
 flowchart TD
-    Start([User request]) --> Triage{Trivial, cosmetic,\nor hotfix?}
-    Triage -->|yes| Direct[Direct implementation\n+ proportional verification]
-    Direct --> Done([Done])
+    Start([User request]) --> Size["Report first:\nT-shirt size: XS | S | M | L | XL\n+ short rationale"]
+    Size --> Triage{"T-shirt size?"}
+    Triage -->|XS| XS1
+    Triage -->|S/M| SM1
+    Triage -->|L/XL| LX1
 
-    Triage -->|no| P1
+    subgraph XS["XS path"]
+        direction TB
+        XS1["Obvious isolated reversible edit"] --> Direct["Execute immediately\n(no approval, artifact, or SDD)"]
+        Direct --> Done([Complete])
+    end
 
-    subgraph P1["Phase 1 — brainstorming"]
+    subgraph SM["S/M path"]
+        direction TB
+        SM1["S: small local established-pattern work\nM: cohesive bounded work across related files\n(no architecture/security/migration/data-integrity/\nexternal-integration uncertainty)"]
+        SM2["Write one concise merged SDD + implementation plan\ndocs/.planning/plans/"]
+        SM3["Show plan once"]
+        SM4{"Approve plan once?"}
+        SM5["Execute directly"]
+        SM6["Proportionate validation\n(no separate spec, executing-plans, ledger,\nper-task review, or final-review prompt)"]
+        SM7["Revise, clarify, or defer"]
+
+        SM1 --> SM2
+        SM2 --> SM3
+        SM3 --> SM4
+        SM4 -->|yes| SM5
+        SM5 --> SM6
+        SM6 --> Done
+        SM4 -->|no| SM7
+    end
+
+    subgraph LX["L/XL path — full SDD"]
+        direction TB
+        LX1["L: multi-area/cross-system or material uncertainty\nXL: architecture, migration, security/data-integrity,\nproduction-impact, or major external-dependency work"]
+        LX1 --> B1
+    end
+
+    subgraph Full1["🧠 L/XL — Phase 1: Brainstorming"]
         direction TB
         B1[Explore project context\n@explorer] --> B2[Research if needed\n@librarian / @oracle]
         B2 --> B3[Ask clarifying questions\none at a time]
         B3 --> B4[Propose 2-3 approaches\nwith trade-offs]
-        B4 --> B5[Present design sections]
-        B5 --> B6{User approves\nsection?}
+        B4 --> B5[Show separate design/spec]
+        B5 --> B6{"Approve design/spec?"}
         B6 -->|revise| B5
-        B6 -->|yes| B7[Write spec doc\ndocs/.planning/specs/*.md]
+        B6 -->|yes| B7[Save design/spec\ndocs/.planning/specs/]
         B7 --> B8[Spec self-review]
-        B8 --> B9{User reviews\nspec file?}
+        B8 --> B9{"User approves spec?"}
         B9 -->|changes requested| B8
     end
 
     B9 -->|approved| P2
 
-    subgraph P2["Phase 2 — writing-plans"]
+    subgraph P2["📋 L/XL — Phase 2: Writing Plans"]
         direction TB
         W1[Map file structure\n& task boundaries] --> W2[Decompose into\nbite-sized tasks 2-5min]
-        W2 --> W3[Write plan doc\ndocs/.planning/plans/*.md\nwith Global Constraints]
+        W2 --> W3[Write implementation plan\ndocs/.planning/plans/\nwith Global Constraints]
+        W3 --> W4{User approves plan?}
     end
 
-    P2 --> P3
+    W4 -->|revise| W3
+    W4 -->|approved| E1
 
-    subgraph P3["Phase 3 — executing-plans (per task)"]
+    subgraph P3["⚡ L/XL — Phase 3: Executing Plans"]
         direction TB
         E1[Dispatch fresh agent\n@fixer code / @designer UI] --> E2{Report status?}
         E2 -->|NEEDS_CONTEXT| E1
@@ -320,13 +373,15 @@ flowchart TD
         E3 --> E4{Review passed?}
         E4 -->|no, up to 3 rounds| E1
         E4 -->|yes| E6{More tasks\nin plan?}
+        E7{"Run optional final review?"}
         E6 -->|yes| E1
+        E6 -->|no, all tasks done/parked| E7
         E5 --> E6
+        E7 -->|yes| R1
+        E7 -->|no| Done
     end
 
-    E6 -->|no, all tasks done/parked| P4
-
-    subgraph P4["Phase 4 — reviewing-plans (merge gate)"]
+    subgraph P4["🔍 L/XL — Phase 4: Reviewing Plans"]
         direction TB
         R1[Gather plan + ledger\n+ full branch diff] --> R2[Dispatch @reviewer\nfull comprehensive review]
         R2 --> R3{Critical issues\n= 0?}
@@ -339,10 +394,22 @@ flowchart TD
 
 **Key rules baked into the flow:**
 
-- The **only** exit from `brainstorming` is loading `writing-plans` — no code is written before a design is approved.
-- `executing-plans` uses a **fresh agent per task** with isolated context, never inheriting orchestrator session history.
-- The fix loop in Phase 3 is capped at **3 rounds** before escalating to `@oracle`.
-- Phase 4 is a hard **merge gate**: any Critical issue blocks the "success" signal, regardless of how many tasks completed.
+- Always report `T-shirt size: XS | S | M | L | XL` and a short rationale
+  before taking action.
+- XS work is immediate and has no approval, artifact, or SDD.
+- S/M work gets one concise merged plan in `docs/.planning/plans/`, shown once
+  and approved once before direct execution with proportionate validation. It
+  skips a separate spec, `executing-plans`, a ledger, per-task review, and the
+  final-review prompt.
+- L/XL work is full SDD: show and approve the separate design/spec in
+  `docs/.planning/specs/` before writing the implementation plan in
+  `docs/.planning/plans/`, then retain plan approval and the existing
+  execution/review flow.
+- The fix loop in Phase 3 is capped at **3 rounds** before escalating to
+  `@oracle`.
+- Phase 4 is an **optional** final merge gate for L/XL work: any
+  Critical issue blocks the "success" signal, regardless of how many tasks
+  completed.
 
 ## Constraints
 

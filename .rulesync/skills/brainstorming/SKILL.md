@@ -1,25 +1,34 @@
 ---
 name: brainstorming
-description: "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation."
+description: "Use this for L/XL work after T-shirt sizing. Explores user intent, requirements and design before implementation."
 ---
 
-# Brainstorming Ideas Into Designs
+# Brainstorming L/XL Work Into Designs
 
-Help turn ideas into fully formed designs and specs through natural collaborative dialogue.
+Use this only for L/XL work after the orchestrator has shown the scale
+`T-shirt size: XS | S | M | L | XL`, the selected size, and its rationale. XS
+executes immediately; S/M use the combined SDD + implementation-plan format in
+`writing-plans` without a separate design spec.
 
-Start by understanding the current project context, then ask questions one at a time to refine the idea. Once you understand what you're building, present the design and get user approval.
+Start by understanding the current project context, then ask questions one at a
+time to refine the idea. Once you understand what you're building, present the
+design and get user approval.
 
 <HARD-GATE>
-Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
+For L/XL work, do NOT invoke any implementation skill, write any code, scaffold
+any project, or take any implementation action until you have presented a
+separate design/spec and the user has approved it. This gate does not apply to
+XS or the approved S/M combined-plan path.
 </HARD-GATE>
 
-## Anti-Pattern: "This Is Too Simple To Need A Design"
+## Anti-Pattern: Bypassing Design for L/XL Work
 
-Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
+L/XL projects require this process even when an individual change looks simple.
+S/M projects must not be expanded into a separate design spec.
 
 ## Checklist
 
-You MUST complete each of these items in order:
+For L/XL work, you MUST complete each of these items in order:
 
 1. **Explore project context** — dispatch @explorer to check files, docs, recent commits
 2. **Research if needed** — dispatch @librarian for external docs, APIs, or library research
@@ -55,7 +64,9 @@ User reviews spec?
 Load skill: writing-plans
 ```
 
-**The terminal state is loading `writing-plans`.** Do NOT invoke any implementation skill directly. The ONLY skill you invoke after brainstorming is `writing-plans`.
+**The terminal state is loading `writing-plans`.** Do NOT invoke any
+implementation skill directly. The ONLY skill you invoke after L/XL
+brainstorming is `writing-plans`, and only after the separate spec is approved.
 
 ## The Process
 
@@ -132,7 +143,7 @@ Wait for the user's response. If they request changes, make them and re-run the 
 
 | Thought | Reality |
 |---------|---------|
-| "This is too simple for a design" | Simple projects are where unexamined assumptions cause the most waste. |
+| "This L/XL work is too simple for a design" | L/XL work requires the full design gate. |
 | "I need to explore first, then brainstorm" | Exploring IS part of brainstorming — dispatch @explorer as step 1. |
-| "I can write a quick plan without a spec" | Specs prevent rework. Always spec → plan → execute. |
-| "The user said just do it" | "Just do it" overrides SDD. If they said that, you may skip. Otherwise: spec first. |
+| "I can write a quick plan without a spec for L/XL work" | L/XL work requires spec → plan → execute; S/M work uses the combined plan. |
+| "The user said just do it" | The T-shirt size still must be shown; XS executes immediately, while S/M/L/XL follow their approval gates. |

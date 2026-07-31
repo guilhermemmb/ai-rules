@@ -1,13 +1,19 @@
 ---
 name: writing-plans
-description: Use when you have a spec or requirements for a multi-step task, before touching code
+description: Use for approved L/XL specs or classified S/M work before touching code
 ---
 
 # Writing Plans
 
+Use this only after the orchestrator has shown the scale
+`T-shirt size: XS | S | M | L | XL`, the selected size, and its rationale.
+
 ## Overview
 
-Write comprehensive implementation plans assuming the engineer has zero context for our codebase and questionable taste. Document everything they need to know: which files to touch for each task, code, testing, docs they might need to check, how to test it. Give them the whole plan as bite-sized tasks. DRY. YAGNI. TDD. Frequent commits.
+Write the plan format appropriate to the T-shirt size. For L/XL work, write a
+comprehensive implementation plan assuming the engineer has zero context for
+our codebase and questionable taste. For S/M work, write one concise merged SDD
++ implementation plan. DRY. YAGNI. TDD where proportionate.
 
 Assume they are a skilled developer, but know almost nothing about our toolset or problem domain. Assume they don't know good test design very well.
 
@@ -17,18 +23,81 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 ## Scope Check
 
-If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
+For L/XL specs, if the work covers multiple independent subsystems, it should
+have been broken into sub-project specs during brainstorming. If it wasn't,
+suggest breaking this into separate plans — one per subsystem. Each full plan
+should produce working, testable software on its own. S/M work remains one
+cohesive outcome.
+
+## Mode Selection
+
+- **S/M:** use the combined-plan format below. Do not require a
+  separate spec or split the outcome into independently reviewed tasks.
+- **L/XL:** use the full SDD implementation-plan format below after
+  the separate spec has been approved.
 
 ## File Structure
 
-Before defining tasks, map out which files will be created or modified and what each one is responsible for. This is where decomposition decisions get locked in.
+For L/XL SDD plans, before defining tasks, map out which files will be created
+or modified and what each one is responsible for. This is where decomposition
+decisions get locked in.
 
 - Design units with clear boundaries and well-defined interfaces. Each file should have one clear responsibility.
 - You reason best about code you can hold in context at once, and your edits are more reliable when files are focused. Prefer smaller, focused files over large ones that do too much.
 - Files that change together should live together. Split by responsibility, not by technical layer.
 - In existing codebases, follow established patterns. If the codebase uses large files, don't unilaterally restructure — but if a file you're modifying has grown unwieldy, including a split in the plan is reasonable.
 
-This structure informs the task decomposition. Each task should produce self-contained changes that make sense independently.
+This structure informs L/XL task decomposition. Each task should produce
+self-contained changes that make sense independently.
+
+## S/M Combined SDD + Implementation-Plan Format
+
+Use this format only for S/M work. S is small local work using established
+patterns and straightforward validation. M is one cohesive bounded outcome
+across a small set of related files, with no architecture, security, migration,
+data-integrity, or external-integration uncertainty. Save exactly one document
+to `docs/.planning/plans/YYYY-MM-DD-<topic>.md`:
+
+````markdown
+# [Outcome] S/M Combined SDD + Implementation Plan
+
+> **T-shirt size:** S or M — direct execution after one approval
+
+## Design Rationale
+
+[Why this approach is appropriate and which established pattern it follows]
+
+## Scope and Files
+
+- Modify: `exact/path/to/file`
+- [Other related files, if needed]
+- Out of scope: [Explicit boundaries]
+
+## Implementation Steps
+
+1. [Concrete step with the relevant behavior or content]
+2. [Concrete step with the relevant behavior or content]
+
+## Validation
+
+- [Proportionate test, lint, or manual check]
+- [Expected result]
+````
+
+Keep the document concise and unified: it merges rationale, scope/files,
+implementation steps, and validation rather than reproducing a separate spec.
+
+### Combined-Plan Handoff
+
+Present the completed document once and ask for one approval. After approval,
+execute it directly with proportionate validation. Do **not** load
+`executing-plans`, create a ledger, dispatch a per-task review loop, or ask for
+a final-review choice.
+
+## L/XL Full SDD Implementation-Plan Format
+
+Use the following format only for L/XL work after the separate design/spec has
+been approved.
 
 ## Task Right-Sizing
 
@@ -43,9 +112,9 @@ A task is the smallest unit that carries its own test cycle and is worth a fresh
 - "Run the tests and make sure they pass" — step
 - "Commit" — step
 
-## Plan Document Header
+## L/XL SDD Plan Document Header
 
-**Every plan MUST start with this header:**
+**Every L/XL SDD plan MUST start with this header:**
 
 ```markdown
 # [Feature Name] Implementation Plan
@@ -68,7 +137,7 @@ include this section.]
 ---
 ```
 
-## Task Structure
+## L/XL SDD Task Structure
 
 ````markdown
 ### Task N: [Component Name]
@@ -127,7 +196,7 @@ Every step must contain the actual content an engineer needs. These are **plan f
 - Steps that describe what to do without showing how (code blocks required for code steps)
 - References to types, functions, or methods not defined in any task
 
-## Self-Review
+## L/XL SDD Self-Review
 
 After writing the complete plan, review it with fresh eyes:
 
@@ -137,9 +206,9 @@ After writing the complete plan, review it with fresh eyes:
 
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 
-## Execution Handoff
+## L/XL Execution Handoff
 
-After saving the plan, tell the user:
+After saving an L/XL SDD plan, tell the user:
 
 **"Plan complete and saved to `docs/.planning/plans/<filename>.md`. Ready to execute — I'll dispatch a fresh subagent per task with review after each. Shall I proceed?"**
 

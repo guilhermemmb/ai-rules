@@ -1,11 +1,17 @@
 ---
 name: executing-plans
-description: Use when executing an implementation plan — dispatches fresh agent per task with review after each
+description: Use only for approved L/XL SDD implementation plans — dispatches fresh agent per task with review after each
 ---
 
 # Executing Plans
 
-Execute an implementation plan by dispatching a fresh agent per task, reviewing after each, and continuing through all tasks without stopping.
+Use this only after the orchestrator has shown the scale
+`T-shirt size: XS | S | M | L | XL`, selected L/XL with a rationale, and
+received the required plan approval.
+
+Execute an approved L/XL SDD implementation plan by dispatching a fresh agent
+per task, reviewing after each, and continuing through all tasks without
+stopping.
 
 **Why subagents:** You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused. Never let them inherit your session's history — construct exactly what they need.
 
@@ -15,14 +21,14 @@ Execute an implementation plan by dispatching a fresh agent per task, reviewing 
 
 ## When to Use
 
-- The work is non-trivial and has an approved implementation plan from
-  `writing-plans`
+- The work is classified as L or XL and has an approved SDD implementation plan
+  from `writing-plans`
 - Tasks are mostly independent
 - You are staying in the current session
 
-Do not use this skill for trivial, straightforward, or explicitly
-direct-execution work. Those tasks should be implemented directly with
-proportionate verification, not converted into an execution plan.
+Do not use this skill for XS, S, or M work, or for explicitly direct-execution
+work. S/M combined plans are executed directly after one approval with
+proportionate validation; they are not converted into execution plans.
 
 ## Agent Dispatch Rules
 

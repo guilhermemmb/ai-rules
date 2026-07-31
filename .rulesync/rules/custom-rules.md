@@ -10,17 +10,36 @@ description: AI rules/agent definition for custom-rules.md
 - Always use zsh. Before running any command, source my `~/.zshrc` first so the
   environment matches my interactive terminal.
 
-## Workflow (main agent only)
+## T-Shirt Sizing Workflow
 
-**Simple / straightforward tasks** — implement directly. Write a short inline
-plan of action (a quick numbered list of steps), then execute without waiting
-for approval.
+Before choosing a workflow, evaluate the request and show the user the scale
+`T-shirt size: XS | S | M | L | XL`, then report one selection with a short
+rationale.
 
-**Non-trivial tasks** (new features with unknowns, multi-area changes, unclear
-root cause) — create a full plan first, show it in digestible chunks, and wait
-for "go" before applying.
+- **XS** — one obvious, isolated, reversible edit. State XS and execute
+  immediately; no approval, planning artifact, or SDD.
+- **S** — small local work using established patterns and straightforward
+  validation.
+- **M** — one cohesive bounded outcome across a small set of related files, with
+  no architecture, security, migration, data-integrity, or
+  external-integration uncertainty.
 
-Subagents execute directly — no planning step required.
+  S and M produce one concise merged SDD + implementation plan in
+  `docs/.planning/plans/`, containing rationale, scope/files, concrete steps,
+  and validation. Present it once, wait for one approval, then execute directly
+  with proportionate validation. Do not create a separate spec, load
+  `executing-plans`, create a ledger, run a per-task review loop, or ask for a
+  final-review choice.
+- **L** — a multi-area or cross-system change, or material uncertainty.
+- **XL** — architecture, migration, security/data-integrity, production-impact,
+  or major external-dependency work.
+
+  L and XL start full SDD: show a separate design/spec and ask for approval
+  before writing the implementation plan. After plan approval, retain the
+  `executing-plans` execution/review flow.
+
+Subagents follow the assigned T-shirt workflow and must not bypass its approval
+or artifact requirements.
 
 ## SDD Artifact Persistence
 

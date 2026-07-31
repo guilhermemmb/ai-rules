@@ -122,13 +122,14 @@ When asked to "create PR", "open PR", "update PR", "draft PR", or similar:
 
 ## Workflow
 
-**Always plan before acting.** For every task — trivial or complex — present
-your intended approach to the user and wait for explicit approval before
-executing anything. Never start implementation without confirmation.
+**Always size before choosing a workflow.** Evaluate the request, show the
+user the scale `T-shirt size: XS | S | M | L | XL`, and report the selection as
+`T-shirt size: <selected> — <short rationale>` before choosing a workflow.
 
 ### Plan Confirmation Gate
 
-A plan requires **explicit approval** before any execution. Valid signals:
+A plan requires **explicit approval** before execution for S, M, L, or XL. Valid
+signals:
 "yes", "go", "proceed", "do it", "looks good", "ok", "confirm", or clear
 equivalent. Anything else is **not approval**.
 
@@ -144,62 +145,34 @@ Examples of what does NOT count as approval:
 - Asking a clarifying question back → wait for answer, then re-present plan
 
 Only start executing after the user explicitly approves the **current version**
-of the plan.
+of an S, M, L, or XL plan. XS has no approval gate.
 
-**Simple / straightforward tasks** — write a short numbered approach, show it
-to the user, and wait for approval before executing directly. Do **not** load
-`executing-plans`, create SDD artifacts, or treat this approach as an
-implementation plan.
+### T-Shirt Sizing Workflow
 
-**Non-trivial tasks** (new features, multi-area changes, unclear root cause) —
-follow the **Spec Driven Development (SDD) workflow** defined below. Do NOT
-create an ad-hoc inline plan; load the skill and generate the proper artifacts
-instead.
+Use the selected size and rationale shown above to choose exactly one path:
 
-`executing-plans` is reserved exclusively for an approved SDD implementation
-plan for a non-trivial task. Never use it for a trivial, straightforward, or
-explicitly direct-execution task.
+- **XS** — one obvious, isolated, reversible edit. State XS with a short
+  rationale and execute immediately. No approval, planning artifact, or SDD.
+- **S** — small local work using established patterns and straightforward
+  validation.
+- **M** — one cohesive bounded outcome across a small set of related files,
+  with no architecture, security, migration, data-integrity, or
+  external-integration uncertainty.
 
-## Spec Driven Development (SDD) Default Workflow
+  S and M use `writing-plans` to create one concise merged SDD +
+  implementation plan in `docs/.planning/plans/`, containing rationale,
+  scope/files, concrete steps, and validation. Present it once and wait for
+  one approval, then execute directly with proportionate validation. Do not
+  create a separate spec, load `executing-plans`, create a ledger, run a
+  per-task review loop, or ask for a final-review choice.
+- **L** — a multi-area or cross-system change, or material uncertainty.
+- **XL** — architecture, migration, security/data-integrity, production-impact,
+  or major external-dependency work.
 
-**This is the default for all non-trivial work. Run it automatically — no user
-command needed.**
-
-**Skip SDD and implement directly only when:**
-
-- User signals: "trivial", "quick fix", "minor", "just do it", "no SDD", "skip
-  spec", "skip planning", or any clear synonym
-- The change is a single-line / cosmetic / config-value edit with no design
-  decision
-- Explicit hotfix or incident response
-
-**For everything else, follow this workflow automatically:**
-
-1. **Brainstorm** — load skill `brainstorming`. Dispatch @explorer for codebase
-   recon, @librarian for external research, @oracle for architecture, @designer
-   for UI exploration. Produces a design doc at
-   `docs/.planning/specs/YYYY-MM-DD-<topic>-design.md`. No code until design
-   is approved.
-
-2. **Plan** — load skill `writing-plans`. Breaks the design into bite-sized
-   tasks (2–5 min each) with exact file paths, complete code, and verification
-   steps. Saves to `docs/.planning/plans/YYYY-MM-DD-<feature>.md`.
-
-3. **Execute** — load skill `executing-plans`. Fresh @fixer per code task,
-   @designer per UI task, @reviewer after each task, @oracle for architecture
-   escalations. Continuous execution — no human checkpoints until all tasks
-   are done or parked, then ask for the final review choice.
-
-4. **Review (optional; user-confirmed)** — After execution completes, ask the
-   user whether to run the final comprehensive review. Do not load skill
-   `reviewing-plans` or dispatch @reviewer unless the user explicitly opts in.
-   If the user opts in, load `reviewing-plans`; it dispatches @reviewer with
-   the full branch diff, plan file, and execution ledger, then returns a
-   structured report. Gate: 0 Critical issues → plan executed with success,
-   ready for merge. Any Critical > 0 → report issues, do not signal
-   completion. If the user skips, record
-   `Handoff: final review skipped by user` in the ledger and state that the
-   merge-readiness review was not run; do not enter the reviewing-plans phase.
+  L and XL start full SDD: load `brainstorming`, show a separate design/spec,
+  and ask for approval before loading `writing-plans`. After the separate spec
+  is approved, present the implementation plan for approval, then load
+  `executing-plans` and retain its execution/review flow.
 
 **Artifacts live in-repo at `docs/.planning/` — no external CLI or tooling
 needed.**
