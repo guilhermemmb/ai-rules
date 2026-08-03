@@ -60,6 +60,10 @@
         "model": "bf-a/claude-sonnet-5",
         "variant": "medium",
         "skills": [],
+        "rules": [
+          "figma-design-to-code",
+          "figma-code-connect"
+        ],
         "mcps": [
           "codebase-memory-mcp",
           "figma-desktop"

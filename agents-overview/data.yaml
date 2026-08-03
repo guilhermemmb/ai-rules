@@ -123,7 +123,9 @@ nodes:
 
     • Read design system conventions via codebase-memory-mcp
 
-    • Access Figma designs via figma-desktop MCP
+    • Collect and interpret Figma design specs via figma-design-to-code workflow
+
+    • Map Figma components to codebase via figma-code-connect workflow
 
     '
 - id: fixer
