@@ -1,5 +1,10 @@
 #!/bin/zsh
 cd "$(dirname "$0")"
+
+# Update data.yaml from source profiles and opencode.json
+echo "🔄 Updating data.yaml..."
+python3 ../scripts/update-agents-overview-data.py
+
 echo "Opening agents-overview at http://localhost:8888"
 npx serve -p 8888 . &
 SERVER_PID=$!

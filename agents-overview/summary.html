@@ -3,9 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Rules — Summary</title>
+  <title>AI Rules — Summary</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
+
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -22,6 +24,43 @@
     -webkit-text-fill-color: transparent;
   }
   .sub { color: #94a3b8; font-size: 0.9rem; margin: 4px 0 18px; }
+
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 20px;
+  }
+
+  .profile-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(251, 191, 36, 0.05);
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(251, 191, 36, 0.15);
+  }
+
+  .profile-selector label {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .profile-selector select {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fbbf24;
+    padding: 3px 6px;
+    border-radius: 5px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+  }
 
   .main-card {
     background: rgba(96,165,250,0.1);
@@ -77,124 +116,16 @@
 </style>
 </head>
 <body>
-  <h1>AI Rules Architecture — OMO Slim</h1>
-  <div class="sub">Orchestrator + 9 specialized subagents · 10 agents total</div>
-
-  <div class="main-card">
-    <div class="name">orchestrator <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">— Master Delegator</span></div>
-    <div class="desc">Reads code, plans, implements, dispatches subagents. Model: Gemini 3 Flash Preview (high).</div>
-    <div class="row-label">Dispatches</div>
-    <div class="chips">
-      <span class="chip disp">oracle</span>
-      <span class="chip disp">explorer</span>
-      <span class="chip disp">librarian</span>
-      <span class="chip disp">designer</span>
-      <span class="chip disp">fixer</span>
-      <span class="chip disp">observer</span>
-      <span class="chip disp">navigator</span>
-      <span class="chip disp">detective</span>
-      <span class="chip disp">sage</span>
+  <div class="header-row">
+    <div>
+      <h1>AI Rules Architecture — OMO Slim</h1>
+      <div id="agent-count-sub" class="sub">Loading agents...</div>
     </div>
-    <div class="row-label">MCPs</div>
-    <div class="chips">
-      <span class="chip mcp">codebase-memory-mcp</span>
-      <span class="chip mcp">github</span>
-    </div>
+    <div id="profile-container"></div>
   </div>
 
-  <div class="grid">
-    <!-- Pantheon Agents -->
-    <div class="card">
-      <div class="name">oracle</div>
-      <span class="model">⚙ GPT-5.6 Terra</span>
-      <div class="trig">Architecture review, hard debugging, trade-offs, code review</div>
-      <div class="mcps">
-        <span class="chip mcp">codebase-memory-mcp</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="name">explorer</div>
-      <span class="model">⚙ DeepSeek V4 Flash (low)</span>
-      <div class="trig">Broad codebase searches, pattern discovery, unfamiliar repos</div>
-      <div class="mcps">
-        <span class="chip mcp">codebase-memory-mcp</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="name">librarian</div>
-      <span class="model">⚙ DeepSeek V4 Flash (low)</span>
-      <div class="trig">Library docs, web research, Linear issues, Notion design docs, GitHub code search</div>
-      <div class="mcps">
-        <span class="chip mcp">websearch</span>
-        <span class="chip mcp">context7</span>
-        <span class="chip mcp">gh_grep</span>
-        <span class="chip mcp">linear</span>
-        <span class="chip mcp">notion</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="name">designer</div>
-      <span class="model">⚙ Gemini 3 Pro Preview</span>
-      <div class="trig">UI/UX implementation, visual components, frontend polish</div>
-      <div class="mcps">
-        <span class="chip mcp">codebase-memory-mcp</span>
-        <span class="chip mcp">figma</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="name">fixer</div>
-      <span class="model">⚙ GPT-5.6 Luna (xhigh)</span>
-      <div class="trig">Scoped implementation tasks, bug fixes, code changes</div>
-      <div class="mcps">
-        <span class="chip mcp">codebase-memory-mcp</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="name">observer</div>
-      <span class="model">⚙ Gemini 3 Flash Preview</span>
-      <div class="trig">Images, screenshots, PDFs, diagrams (auto-routed)</div>
-      <div class="mcps">
-        <!-- none -->
-      </div>
-    </div>
-
-    <!-- Custom Agents -->
-    <div class="card custom">
-      <div class="name">navigator</div>
-      <span class="model">⚙ Gemini 3 Flash Preview</span>
-      <div class="trig">Browser navigation, screenshots, DOM analysis, form fills</div>
-      <div class="mcps">
-        <span class="chip mcp">mcp-server-browser</span>
-      </div>
-    </div>
-
-    <div class="card custom">
-      <div class="name">detective</div>
-      <span class="model">⚙ GPT-5.4 Mini</span>
-      <div class="trig">Production errors, logs, metrics, traces, incidents</div>
-      <div class="mcps">
-        <span class="chip mcp">sentry</span>
-        <span class="chip mcp">pup-cli</span>
-        <span class="chip mcp">gcp-logging</span>
-        <span class="chip mcp">rootly</span>
-        <span class="chip mcp">codebase-memory-mcp</span>
-      </div>
-    </div>
-
-    <div class="card custom">
-      <div class="name">sage</div>
-      <span class="model">⚙ DeepSeek V4 Flash (low)</span>
-      <div class="trig">Gorgias metrics, table schemas, business rules, data definitions</div>
-      <div class="mcps">
-        <span class="chip mcp">context-layer</span>
-        <span class="chip mcp">codebase-memory-mcp</span>
-      </div>
-    </div>
+  <div id="main-content">
+    <div style="padding: 40px; text-align: center; color: #94a3b8;">Summoning the Pantheon Summary...</div>
   </div>
 
   <div class="legend">
@@ -203,5 +134,125 @@
     <span><div class="dot" style="background:#a78bfa;"></div>MCP Access</span>
   </div>
   <div class="footer">Full interactive view: agents-overview/index.html · driven by data.yaml</div>
+
+  <script>
+    let AVATARS = {};
+    let MODEL_NAMES = {};
+    let PROFILES = {};
+    let currentProfile = 'default';
+    let rawData = null;
+
+    fetch('./data.yaml')
+      .then(r => r.text())
+      .then(t => jsyaml.load(t))
+      .then(data => {
+        rawData = data;
+        AVATARS = data.avatars || {};
+        MODEL_NAMES = data.model_names || {};
+        PROFILES = data.profiles || {};
+        render();
+      })
+      .catch(e => {
+        document.getElementById('main-content').innerHTML = `<div style="color:#f87171">Error: ${e.message}</div>`;
+      });
+
+    function prettifyModel(modelId) {
+      if (MODEL_NAMES[modelId]) return MODEL_NAMES[modelId];
+      if (!modelId) return 'Unknown';
+      const parts = modelId.split('/');
+      return parts[parts.length - 1].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    function render() {
+      const data = rawData;
+      const nodes = data.nodes;
+      const agents = nodes.filter(n => n.type === 'agent');
+      const pantheon = agents.filter(a => a.parent === 'orchestrator' || a.id === 'orchestrator');
+      const custom = agents.filter(a => !pantheon.includes(a));
+      const orchestrator = agents.find(a => a.id === 'orchestrator');
+      const builtins = pantheon.filter(a => a.id !== 'orchestrator');
+
+      // Update sub-header
+      document.getElementById('agent-count-sub').textContent = 
+        `${orchestrator ? 'Orchestrator + ' : ''}${agents.length - (orchestrator ? 1 : 0)} specialized subagents · ${agents.length} agents total`;
+
+      // Render profile selector
+      const profileContainer = document.getElementById('profile-container');
+      profileContainer.innerHTML = `
+        <div class="profile-selector">
+          <label for="profile-select">Model Map</label>
+          <select id="profile-select">
+            ${Object.keys(PROFILES).map(p => `
+              <option value="${p}" ${p === currentProfile ? 'selected' : ''}>
+                ${p.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              </option>
+            `).join('')}
+          </select>
+        </div>
+      `;
+      document.getElementById('profile-select').addEventListener('change', (e) => {
+        currentProfile = e.target.value;
+        render();
+      });
+
+      // Render Main Content
+      let html = '';
+
+      // 1. Orchestrator Card
+      if (orchestrator) {
+        const orchModel = PROFILES[currentProfile]['orchestrator'] || orchestrator.model;
+        html += `
+          <div class="main-card">
+            <div class="name">${AVATARS.orchestrator || ''} ${orchestrator.label} <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">— ${orchestrator.role}</span></div>
+            <div class="desc">Model: ${prettifyModel(orchModel)}. ${orchestrator.responsibilities.split('\n')[0]}</div>
+            <div class="row-label">Dispatches</div>
+            <div class="chips">
+              ${(orchestrator.dispatches || []).map(d => `<span class="chip disp">${d}</span>`).join('')}
+            </div>
+            <div class="row-label">MCPs</div>
+            <div class="chips">
+              ${(orchestrator.mcp_access || '').split(',').map(m => `<span class="chip mcp">${m.trim()}</span>`).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // 2. Grid for other agents
+      html += '<div class="grid">';
+      
+      // Built-ins
+      builtins.forEach(a => {
+        const model = PROFILES[currentProfile][a.id] || a.model;
+        html += `
+          <div class="card">
+            <div class="name">${AVATARS[a.id] || ''} ${a.label}</div>
+            <span class="model">⚙ ${prettifyModel(model)}</span>
+            <div class="trig">${a.trigger || a.role}</div>
+            <div class="mcps">
+              ${(a.mcp_access || '').split(',').filter(m => m.trim()).map(m => `<span class="chip mcp">${m.trim()}</span>`).join('')}
+            </div>
+          </div>
+        `;
+      });
+
+      // Custom
+      custom.forEach(a => {
+        const model = PROFILES[currentProfile][a.id] || a.model;
+        html += `
+          <div class="card custom">
+            <div class="name">${AVATARS[a.id] || ''} ${a.label}</div>
+            <span class="model">⚙ ${prettifyModel(model)}</span>
+            <div class="trig">${a.trigger || a.role}</div>
+            <div class="mcps">
+              ${(a.mcp_access || '').split(',').filter(m => m.trim()).map(m => `<span class="chip mcp">${m.trim()}</span>`).join('')}
+            </div>
+          </div>
+        `;
+      });
+
+      html += '</div>';
+      document.getElementById('main-content').innerHTML = html;
+    }
+  </script>
 </body>
 </html>

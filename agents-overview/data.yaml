@@ -1,904 +1,982 @@
 nodes:
-  # === PANTHEON — Built-in OMO Slim Agents ===
-
-  - id: orchestrator
-    label: Orchestrator
-    type: agent
-    role: Master Delegator
-    color: '#60a5fa'
-    parent: null
-    model: Gemini 3 Flash Preview
-    orchestrates: true
-    dispatches:
-      - oracle
-      - explorer
-      - librarian
-      - designer
-      - fixer
-      - observer
-      - navigator
-      - detective
-      - sage
-    mcp_access: codebase-memory-mcp, github
-    constraints: |
-      Hard-enforced at MCP level: no sentry/gcp-logging/rootly (→ Detective),
-      no cortex MCP (→ Sage or Librarian), no mcp-server-browser (→ Navigator), no linear (→ Librarian)
-      Must dispatch to appropriate agent for these domains
-    responsibilities: |
-      • Plan & delegate complex tasks
-      • Coordinate background subagents
-      • Implement simple tasks directly
-      • Read security-scan rules before git commit/push/rebase
-      • Never run git commands without user confirmation
-      • RTK active via plugin (transparent rewrite)
-
-  - id: oracle
-    label: Oracle
-    type: agent
-    role: Strategic Advisor
-    color: '#60a5fa'
-    parent: orchestrator
-    model: GPT-5.6 Terra
-    skills: simplify
-    mcp_access: codebase-memory-mcp
-    trigger: Architecture review, hard debugging, trade-offs, code review
-    constraints: Read-heavy analysis. No sentry/datadog/context-layer MCPs.
-    responsibilities: |
-      • Architecture review & trade-off analysis
-      • Hard debugging & root cause from code
-      • Code review with simplify skill
-      • Strategic technical decisions
-
-  - id: explorer
-    label: Explorer
-    type: agent
-    role: Codebase Reconnaissance
-    color: '#60a5fa'
-    parent: orchestrator
-    model: DeepSeek V4 Flash (low)
-    mcp_access: codebase-memory-mcp
-    trigger: Broad codebase searches, pattern discovery, unfamiliar repos
-    constraints: Read-only exploration. Uses RTK for efficiency.
-    responsibilities: |
-      • Broad codebase scouting & pattern discovery
-      • Find definitions, callers, dependencies
-      • Map unfamiliar repos quickly
-      • Prefer codebase-memory-mcp over grep/glob
-
-  - id: librarian
-    label: Librarian
-    type: agent
-    role: Knowledge Retrieval
-    color: '#60a5fa'
-    parent: orchestrator
-    model: DeepSeek V4 Flash (low)
-    mcp_access: websearch, context7, gh_grep, linear, cortex
-    skills: cortex
-    trigger: Library docs, web research, Linear issues, Gorgias internal docs/Notion via Cortex, GitHub code search
-    constraints: "Read-only. Linear/Cortex: never create, update, or delete."
-    responsibilities: |
-      • Fetch current library/API documentation (context7)
-      • Web search for external knowledge
-      • GitHub code search across repos (gh_grep)
-      • Search Linear issues/epics/cycles
-      • Retrieve Gorgias internal docs, specs, runbooks via Cortex (replaces Notion)
-      • Cross-reference Linear issues with Cortex specs
-      • Absorbed former knowledge-agent role
-
-  - id: designer
-    label: Designer
-    type: agent
-    role: UI/UX Excellence
-    color: '#60a5fa'
-    parent: orchestrator
-    model: Gemini 3 Pro Preview (medium)
-    mcp_access: codebase-memory-mcp, figma-desktop
-    trigger: UI/UX implementation, visual components, frontend polish
-    constraints: UI/UX focused. No backend/production tooling.
-    responsibilities: |
-      • Implement UI components & layouts
-      • Visual polish & design system adherence
-      • Front-end patterns and animations
-      • Read design system conventions via codebase-memory-mcp
-      • Access Figma designs via figma-desktop MCP
-
-  - id: fixer
-    label: Fixer
-    type: agent
-    role: Implementation Specialist
-    color: '#60a5fa'
-    parent: orchestrator
-    model: GPT-5.6 Luna (xhigh)
-    mcp_access: codebase-memory-mcp
-    trigger: Scoped implementation tasks, bug fixes, code changes
-    constraints: Receives concrete plan from Orchestrator. RTK for commands.
-    responsibilities: |
-      • Fast, scoped code implementation
-      • Bug fixes with clear reproduction steps
-      • Single-file or bounded multi-file changes
-      • Run lint after changes
-      • Conventional commits format
-
-  - id: observer
-    label: Observer
-    type: agent
-    role: Visual Analysis
-    color: '#60a5fa'
-    parent: orchestrator
-    model: Gemini 3 Flash Preview
-    trigger: Images, screenshots, PDFs, diagrams (auto-routed from Orchestrator)
-    constraints: Read-only visual analysis. Returns structured observations.
-    responsibilities: |
-      • Read images & screenshots
-      • Parse PDFs & diagrams
-      • Return observations to Orchestrator
-      • Enabled because Orchestrator model is not multimodal
-
-  # === CUSTOM AGENTS ===
-
-  - id: navigator
-    label: Navigator
-    type: agent
-    role: Browser Automation
-    color: '#f59e0b'
-    parent: orchestrator
-    model: Gemini 3 Flash Preview
-    mcp_access: mcp-server-browser
-    trigger: Browser navigation, screenshots, DOM analysis, form fills, UI automation
-    constraints: |
-      Browser interaction only — no backend diagnostics or code editing.
-      Always headless unless told otherwise.
-    responsibilities: |
-      • Navigate to URLs & interact with pages
-      • Take screenshots & capture page state
-      • Fill forms & click elements
-      • Extract page content (text, markdown)
-      • Execute JavaScript in browser console
-
-  - id: detective
-    label: Detective
-    type: agent
-    role: Production Diagnostics
-    color: '#f59e0b'
-    parent: orchestrator
-    model: GPT-5.4 Mini (high)
-    mcp_access: sentry, gcp-logging, rootly, codebase-memory-mcp
-    trigger: Production errors, logs, metrics, traces, incidents, root cause analysis
-    constraints: |
-      All tools read-only. NEVER resolve/assign/mutate issues or logs.
-      Start with narrowest time range (last 1h).
-      Base findings solely on tool output — never infer telemetry.
-      Datadog: pup CLI (--agent --ro) via Bash — no Datadog MCP.
-    responsibilities: |
-      • Query Sentry for error issues & events
-      • Query Datadog via pup CLI: logs, metrics, APM traces, monitors
-      • Read GCP Cloud Logging
-      • Access Rootly incident data
-      • Correlate telemetry to source code via codebase-memory-mcp
-      • Root cause analysis & incident investigation
-
-  - id: sage
-    label: Sage
-    type: agent
-    role: Domain Knowledge
-    color: '#f59e0b'
-    parent: orchestrator
-    model: DeepSeek V4 Flash (low)
-    mcp_access: cortex, codebase-memory-mcp
-    skills: cortex
-    trigger: Gorgias metrics, table schemas, business rules, data definitions, Notion/internal docs, design specs
-    constraints: |
-      Always call get_instruction first. Cortex read-only — never mutate.
-      Map metrics to code via codebase-memory-mcp only. Cortex is source of truth.
-    responsibilities: |
-      • Access Gorgias metric definitions (MRR, ARR, churn, NPS, LTV)
-      • Query table schemas & column mappings
-      • Retrieve business rules & calculations
-      • Retrieve Notion/internal documentation, design specs, runbooks via Cortex
-      • Map domain concepts to implementation code
-      • Explain Gorgias business domain concepts
-
-  - id: reviewer
-    label: Reviewer
-    type: agent
-    role: PR Review Coordinator
-    color: '#f59e0b'
-    parent: orchestrator
-    model: GPT-5.4 Mini (high)
-    mcp_access: github, codebase-memory-mcp
-    skills: reviewer
-    trigger: review a PR, review a branch's changes, pre-commit check, code scope review
-    dispatches:
-      - reviewer-code
-      - reviewer-comments
-      - reviewer-test
-      - reviewer-errors
-      - reviewer-types
-      - reviewer-simplifier
-      - reviewer-accessibility
-    constraints: |
-      Orchestrator-only dispatch. Spawns reviewer-* sub-agents (Phase A parallel, Phase B sequential simplifier).
-      Returns structured report: Critical / Important / Suggestions / Strengths / Action Plan.
-    responsibilities: |
-      • Comprehensive PR and code review coordinator
-      • Dispatches 7 reviewer-* specialists in parallel
-      • Aggregates findings into one structured report
-      • Read-only — never modifies files
-
-  - id: reviewer-code
-    label: reviewer-code
-    type: agent
-    role: CLAUDE.md Compliance & Bugs
-    color: '#f59e0b'
-    parent: reviewer
-    model: GPT-5.6 Terra
-    mcp_access: codebase-memory-mcp, github
-    trigger: Always dispatched by reviewer
-
-  - id: reviewer-comments
-    label: reviewer-comments
-    type: agent
-    role: Comment Accuracy & Rot
-    color: '#f59e0b'
-    parent: reviewer
-    model: DeepSeek V4 Flash (low)
-    mcp_access: codebase-memory-mcp, github
-    trigger: Comments/docs changes in diff
-
-  - id: reviewer-test
-    label: reviewer-test
-    type: agent
-    role: Test Coverage Analysis
-    color: '#f59e0b'
-    parent: reviewer
-    model: GPT-5.6 Luna (high)
-    mcp_access: codebase-memory-mcp, github
-    trigger: Test file changes in diff
-
-  - id: reviewer-errors
-    label: reviewer-errors
-    type: agent
-    role: Silent Failure Hunting
-    color: '#f59e0b'
-    parent: reviewer
-    model: GPT-5.6 Terra
-    mcp_access: codebase-memory-mcp, github
-    trigger: Error handling changes in diff
-
-  - id: reviewer-types
-    label: reviewer-types
-    type: agent
-    role: Type Design Analysis
-    color: '#f59e0b'
-    parent: reviewer
-    model: GPT-5.6 Terra
-    mcp_access: codebase-memory-mcp, github
-    trigger: New types/interfaces in diff
-
-  - id: reviewer-simplifier
-    label: reviewer-simplifier
-    type: agent
-    role: Code Clarity & Simplification
-    color: '#f59e0b'
-    parent: reviewer
-    model: GPT-5.6 Luna (high)
-    mcp_access: codebase-memory-mcp
-    trigger: After other reviews pass (Phase B sequential)
-
-  - id: reviewer-accessibility
-    label: reviewer-accessibility
-    type: agent
-    role: WCAG 2.2 AA Audit
-    color: '#f59e0b'
-    parent: reviewer
-    model: GPT-5.6 Luna (high)
-    mcp_access: codebase-memory-mcp, github
-    trigger: UI file changes in diff (html, jsx, tsx, css, vue, svelte)
-
-  # === MCPs ===
-
-  - id: codebase-memory
-    label: codebase-memory-mcp
-    type: mcp
-    role: Code Intelligence
-    color: '#a78bfa'
-    parent: null
-
-  - id: context7-mcp
-    label: context7
-    type: mcp
-    role: Library Docs
-    color: '#a78bfa'
-    parent: librarian
-
-  - id: websearch-mcp
-    label: websearch
-    type: mcp
-    role: Web Search (Exa)
-    color: '#a78bfa'
-    parent: librarian
-
-  - id: gh-grep-mcp
-    label: gh_grep
-    type: mcp
-    role: GitHub Code Search
-    color: '#a78bfa'
-    parent: librarian
-
-  - id: linear-mcp
-    label: linear
-    type: mcp
-    role: Issues & Epics
-    color: '#a78bfa'
-    parent: librarian
-
-  - id: cortex-mcp
-    label: cortex
-    type: mcp
-    role: Gorgias Domain Knowledge (metrics, schemas, rules, Notion docs)
-    color: '#a78bfa'
-    parent: null
-
-  - id: mcp-server-browser
-    label: mcp-server-browser
-    type: mcp
-    role: Browser Automation
-    color: '#a78bfa'
-    parent: navigator
-
-  - id: sentry-mcp
-    label: sentry
-    type: mcp
-    role: Error Monitoring
-    color: '#a78bfa'
-    parent: detective
-
-  - id: pup-cli
-    label: pup CLI
-    type: tool
-    role: Datadog CLI (--agent --ro)
-    color: '#34d399'
-    parent: detective
-
-  - id: gcp-logging-mcp
-    label: gcp-logging
-    type: mcp
-    role: GCP Logs
-    color: '#a78bfa'
-    parent: detective
-
-  - id: rootly-mcp
-    label: rootly
-    type: mcp
-    role: Incident Management
-    color: '#a78bfa'
-    parent: detective
-
-
-  - id: figma-desktop-mcp
-    label: figma-desktop
-    type: mcp
-    role: Design Files
-    color: '#a78bfa'
-    parent: designer
-
-  - id: github-mcp
-    label: github
-    type: mcp
-    role: PRs, Issues, Repos
-    color: '#a78bfa'
-    parent: orchestrator
-
-  # === Skills ===
-
-  - id: skill-codemap
-    label: codemap
-    type: skill
-    role: Repository Cartography
-    color: '#34d399'
-    parent: orchestrator
-
-  - id: skill-deepwork
-    label: deepwork
-    type: skill
-    role: Heavy Session Workflow
-    color: '#34d399'
-    parent: orchestrator
-
-  - id: skill-verification
-    label: verification-planning
-    type: skill
-    role: Evidence Before Code
-    color: '#34d399'
-    parent: orchestrator
-
-  - id: skill-simplify
-    label: simplify
-    type: skill
-    role: Behavior-Preserving Refactors
-    color: '#34d399'
-    parent: oracle
-
-  - id: skill-worktrees
-    label: worktrees
-    type: skill
-    role: Isolated Coding Lanes
-    color: '#34d399'
-    parent: orchestrator
-
-  - id: skill-clonedeps
-    label: clonedeps
-    type: skill
-    role: Dependency X-Ray
-    color: '#34d399'
-    parent: orchestrator
-
-  - id: skill-reflect
-    label: reflect
-    type: skill
-    role: Workflow Self-Improvement
-    color: '#34d399'
-    parent: orchestrator
-
-  - id: skill-omo-slim
-    label: oh-my-opencode-slim
-    type: skill
-    role: Plugin Self-Configuration
-    color: '#34d399'
-    parent: orchestrator
-
-  - id: skill-project-context
-    label: project-context
-    type: skill
-    role: Project Summaries
-    color: '#34d399'
-    parent: orchestrator
-
-  - id: skill-cortex
-    label: cortex
-    type: skill
-    role: Gorgias Domain Knowledge via Cortex MCP
-    color: '#34d399'
-    parent: null
-
-  - id: skill-dd-pup
-    label: dd-pup
-    type: skill
-    role: Datadog CLI Reference
-    color: '#34d399'
-    parent: detective
-
-  - id: skill-dd-apm
-    label: dd-apm
-    type: skill
-    role: APM Traces & Services
-    color: '#34d399'
-    parent: detective
-
-  - id: skill-dd-logs
-    label: dd-logs
-    type: skill
-    role: Log Search & Management
-    color: '#34d399'
-    parent: detective
-
-  - id: skill-dd-monitors
-    label: dd-monitors
-    type: skill
-    role: Monitor Alerting
-    color: '#34d399'
-    parent: detective
-
-  - id: skill-dd-debugger
-    label: dd-debugger
-    type: skill
-    role: Live Debugger Probes
-    color: '#34d399'
-    parent: detective
-
-  - id: skill-incident-response
-    label: incident-response
-    type: skill
-    role: Incident Tracking & On-call
-    color: '#34d399'
-    parent: detective
-
-  - id: skill-brainstorming
-    label: brainstorming
-    type: skill
-    role: SDD Phase 1 — Socratic Design
-    color: '#34d399'
-    parent: orchestrator
-
-  - id: skill-writing-plans
-    label: writing-plans
-    type: skill
-    role: SDD Phase 2 — Task Decomposition
-    color: '#34d399'
-    parent: orchestrator
-
-  - id: skill-executing-plans
-    label: executing-plans
-    type: skill
-    role: SDD Phase 3 — Agent-Per-Task Execution
-    color: '#34d399'
-    parent: orchestrator
-
-  - id: skill-reviewing-plans
-    label: reviewing-plans
-    type: skill
-    role: SDD Phase 4 — Final Review Gate
-    color: '#34d399'
-    parent: orchestrator
-
-  - id: skill-reviewer
-    label: reviewer
-    type: skill
-    role: PR Review Orchestration (7 specialists)
-    color: '#34d399'
-    parent: reviewer
-
-  - id: skill-screenshot
-    label: screenshot
-    type: skill
-    role: Terminal Screenshots
-    color: '#34d399'
-    parent: orchestrator
-
-  # === Tools ===
-
-  - id: tool-bash
-    label: Bash
-    type: tool
-    role: Command Execution
-    color: '#f472b6'
-    parent: null
-    used_by: All agents
-
-  - id: tool-read-edit
-    label: Read/Edit/Write
-    type: tool
-    role: File Operations
-    color: '#f472b6'
-    parent: null
-    used_by: Orchestrator, Fixer, Designer
-
-  - id: tool-git
-    label: Git
-    type: tool
-    role: Version Control
-    color: '#f472b6'
-    parent: null
-    used_by: Orchestrator
-
-  - id: tool-gh
-    label: gh CLI
-    type: tool
-    role: GitHub Integration
-    color: '#f472b6'
-    parent: null
-    used_by: Orchestrator
-
-  # === Infrastructure ===
-
-  - id: opencode
-    label: OpenCode
-    type: infra
-    role: Entry Point · OMO Slim Plugin
-    color: '#f59e0b'
-    parent: null
-    config: |
-      • Shell: zsh
-      • Providers: bf (Bifrost), bf-a (Anthropic), bf-o (OpenAI)
-      • Models via Bifrost (https://bifrost.ops.gorgias.io)
-      • Plugin: oh-my-opencode-slim
-      • LSP integration: enabled
-      • Tmux: main-vertical layout
-
-  - id: omo-slim
-    label: Oh My OpenCode Slim
-    type: infra
-    role: Agent Orchestration
-    color: '#f59e0b'
-    parent: opencode
-    config: |
-      • Preset: bifrost
-      • 7 built-in agents (council disabled)
-      • 11 custom agents (Navigator, Detective, Sage, Reviewer + 7 reviewer-*)
-      • 4 SDD skills (brainstorming, writing-plans, executing-plans, reviewing-plans) + reviewer
-      • Image routing: auto (Observer)
-
-  - id: zsh-env
-    label: zsh Environment
-    type: infra
-    role: Shell Config
-    color: '#f472b6'
-    parent: null
-    config: |
-      • Shell: zsh (always source ~/.zshrc)
-      • VOLTA_HOME, GORGIAS_ROOT, NPM_TOKEN
-      • Git aliases (gpo, grbm, etc.)
-      • Project aliases (g:chat, g:gorgias)
-
-  - id: rtk
-    label: RTK
-    type: infra
-    role: Token Optimization (Plugin)
-    color: '#f472b6'
-    parent: opencode
-    config: |
-      • Rust Token Killer — 60-90% token reduction
-      • Active OpenCode plugin: ~/.config/opencode/plugins/rtk.ts
-      • Transparently rewrites commands before execution (tool.execute.before hook)
-      • Install: rtk init -g --opencode
-      • /opt/homebrew/bin/rtk
-
-  - id: model-profiles
-    label: Model Profiles
-    type: infra
-    role: Cost vs Performance Switching
-    color: '#f472b6'
-    parent: null
-    config: |
-      • Profiles: default, cost-efficient
-      • Location: profiles/models/*.yml
-      • Deploy: ./deploy.sh --model-profile=cost-efficient
-      • default: Gemini 3 Flash, GPT-5.6 Terra/Luna, Gemini 3 Pro
-      • cost-efficient: DeepSeek V4 Flash/Pro, Gemini 3 Flash
-      • Implementation: scripts/apply-model-profile.py patches oh-my-opencode-slim.json
-
-  - id: bifrost
-    label: Bifrost
-    type: infra
-    role: Model Gateway
-    color: '#f472b6'
-    parent: opencode
-    config: |
-      • URL: https://bifrost.ops.gorgias.io
-      • Providers: OpenAI-compatible, Anthropic, OpenAI
-      • bf: DeepSeek V4, Gemini, GLM
-      • bf-a: Claude Haiku/Sonnet/Opus
-      • bf-o: GPT-4o, GPT-5.x (Luna, Sol, Terra)
+- id: orchestrator
+  label: Orchestrator
+  type: agent
+  role: Master Delegator
+  color: '#60a5fa'
+  parent: null
+  model: Gemini 3 Flash Preview
+  orchestrates: true
+  dispatches:
+  - oracle
+  - explorer
+  - librarian
+  - designer
+  - fixer
+  - observer
+  - navigator
+  - detective
+  - sage
+  mcp_access: codebase-memory-mcp, github
+  constraints: 'Hard-enforced at MCP level: no sentry/gcp-logging/rootly (→ Detective),
+
+    no cortex MCP (→ Sage or Librarian), no mcp-server-browser (→ Navigator), no linear
+    (→ Librarian)
+
+    Must dispatch to appropriate agent for these domains
+
+    '
+  responsibilities: '• Plan & delegate complex tasks
+
+    • Coordinate background subagents
+
+    • Implement simple tasks directly
+
+    • Read security-scan rules before git commit/push/rebase
+
+    • Never run git commands without user confirmation
+
+    • RTK active via plugin (transparent rewrite)
+
+    '
+- id: oracle
+  label: Oracle
+  type: agent
+  role: Strategic Advisor
+  color: '#60a5fa'
+  parent: orchestrator
+  model: GPT-5.6 Terra
+  skills: simplify
+  mcp_access: codebase-memory-mcp
+  trigger: Architecture review, hard debugging, trade-offs, code review
+  constraints: Read-heavy analysis. No sentry/datadog/context-layer MCPs.
+  responsibilities: '• Architecture review & trade-off analysis
+
+    • Hard debugging & root cause from code
+
+    • Code review with simplify skill
+
+    • Strategic technical decisions
+
+    '
+- id: explorer
+  label: Explorer
+  type: agent
+  role: Codebase Reconnaissance
+  color: '#60a5fa'
+  parent: orchestrator
+  model: DeepSeek V4 Flash (low)
+  mcp_access: codebase-memory-mcp
+  trigger: Broad codebase searches, pattern discovery, unfamiliar repos
+  constraints: Read-only exploration. Uses RTK for efficiency.
+  responsibilities: '• Broad codebase scouting & pattern discovery
+
+    • Find definitions, callers, dependencies
+
+    • Map unfamiliar repos quickly
+
+    • Prefer codebase-memory-mcp over grep/glob
+
+    '
+- id: librarian
+  label: Librarian
+  type: agent
+  role: Knowledge Retrieval
+  color: '#60a5fa'
+  parent: orchestrator
+  model: DeepSeek V4 Flash (low)
+  mcp_access: websearch, context7, gh_grep, linear, cortex
+  skills: cortex
+  trigger: Library docs, web research, Linear issues, Gorgias internal docs/Notion
+    via Cortex, GitHub code search
+  constraints: 'Read-only. Linear/Cortex: never create, update, or delete.'
+  responsibilities: '• Fetch current library/API documentation (context7)
+
+    • Web search for external knowledge
+
+    • GitHub code search across repos (gh_grep)
+
+    • Search Linear issues/epics/cycles
+
+    • Retrieve Gorgias internal docs, specs, runbooks via Cortex (replaces Notion)
+
+    • Cross-reference Linear issues with Cortex specs
+
+    • Absorbed former knowledge-agent role
 
+    '
+- id: designer
+  label: Designer
+  type: agent
+  role: UI/UX Excellence
+  color: '#60a5fa'
+  parent: orchestrator
+  model: Gemini 3 Pro Preview (medium)
+  mcp_access: codebase-memory-mcp, figma-desktop
+  trigger: UI/UX implementation, visual components, frontend polish
+  constraints: UI/UX focused. No backend/production tooling.
+  responsibilities: '• Implement UI components & layouts
+
+    • Visual polish & design system adherence
+
+    • Front-end patterns and animations
+
+    • Read design system conventions via codebase-memory-mcp
+
+    • Access Figma designs via figma-desktop MCP
+
+    '
+- id: fixer
+  label: Fixer
+  type: agent
+  role: Implementation Specialist
+  color: '#60a5fa'
+  parent: orchestrator
+  model: GPT-5.6 Luna (xhigh)
+  mcp_access: codebase-memory-mcp
+  trigger: Scoped implementation tasks, bug fixes, code changes
+  constraints: Receives concrete plan from Orchestrator. RTK for commands.
+  responsibilities: '• Fast, scoped code implementation
+
+    • Bug fixes with clear reproduction steps
+
+    • Single-file or bounded multi-file changes
+
+    • Run lint after changes
+
+    • Conventional commits format
+
+    '
+- id: observer
+  label: Observer
+  type: agent
+  role: Visual Analysis
+  color: '#60a5fa'
+  parent: orchestrator
+  model: Gemini 3 Flash Preview
+  trigger: Images, screenshots, PDFs, diagrams (auto-routed from Orchestrator)
+  constraints: Read-only visual analysis. Returns structured observations.
+  responsibilities: '• Read images & screenshots
+
+    • Parse PDFs & diagrams
+
+    • Return observations to Orchestrator
+
+    • Enabled because Orchestrator model is not multimodal
+
+    '
+- id: navigator
+  label: Navigator
+  type: agent
+  role: Browser Automation
+  color: '#f59e0b'
+  parent: orchestrator
+  model: Gemini 3 Flash Preview
+  mcp_access: mcp-server-browser
+  trigger: Browser navigation, screenshots, DOM analysis, form fills, UI automation
+  constraints: 'Browser interaction only — no backend diagnostics or code editing.
+
+    Always headless unless told otherwise.
+
+    '
+  responsibilities: '• Navigate to URLs & interact with pages
+
+    • Take screenshots & capture page state
+
+    • Fill forms & click elements
+
+    • Extract page content (text, markdown)
+
+    • Execute JavaScript in browser console
+
+    '
+- id: detective
+  label: Detective
+  type: agent
+  role: Production Diagnostics
+  color: '#f59e0b'
+  parent: orchestrator
+  model: GPT-5.4 Mini (high)
+  mcp_access: sentry, gcp-logging, rootly, codebase-memory-mcp
+  trigger: Production errors, logs, metrics, traces, incidents, root cause analysis
+  constraints: 'All tools read-only. NEVER resolve/assign/mutate issues or logs.
+
+    Start with narrowest time range (last 1h).
+
+    Base findings solely on tool output — never infer telemetry.
+
+    Datadog: pup CLI (--agent --ro) via Bash — no Datadog MCP.
+
+    '
+  responsibilities: '• Query Sentry for error issues & events
+
+    • Query Datadog via pup CLI: logs, metrics, APM traces, monitors
+
+    • Read GCP Cloud Logging
+
+    • Access Rootly incident data
+
+    • Correlate telemetry to source code via codebase-memory-mcp
+
+    • Root cause analysis & incident investigation
+
+    '
+- id: sage
+  label: Sage
+  type: agent
+  role: Domain Knowledge
+  color: '#f59e0b'
+  parent: orchestrator
+  model: DeepSeek V4 Flash (low)
+  mcp_access: cortex, codebase-memory-mcp
+  skills: cortex
+  trigger: Gorgias metrics, table schemas, business rules, data definitions, Notion/internal
+    docs, design specs
+  constraints: 'Always call get_instruction first. Cortex read-only — never mutate.
+
+    Map metrics to code via codebase-memory-mcp only. Cortex is source of truth.
+
+    '
+  responsibilities: '• Access Gorgias metric definitions (MRR, ARR, churn, NPS, LTV)
+
+    • Query table schemas & column mappings
+
+    • Retrieve business rules & calculations
+
+    • Retrieve Notion/internal documentation, design specs, runbooks via Cortex
+
+    • Map domain concepts to implementation code
+
+    • Explain Gorgias business domain concepts
+
+    '
+- id: reviewer
+  label: Reviewer
+  type: agent
+  role: PR Review Coordinator
+  color: '#f59e0b'
+  parent: orchestrator
+  model: GPT-5.4 Mini (high)
+  mcp_access: github, codebase-memory-mcp
+  skills: reviewer
+  trigger: review a PR, review a branch's changes, pre-commit check, code scope review
+  dispatches:
+  - reviewer-code
+  - reviewer-comments
+  - reviewer-test
+  - reviewer-errors
+  - reviewer-types
+  - reviewer-simplifier
+  - reviewer-accessibility
+  constraints: 'Orchestrator-only dispatch. Spawns reviewer-* sub-agents (Phase A
+    parallel, Phase B sequential simplifier).
+
+    Returns structured report: Critical / Important / Suggestions / Strengths / Action
+    Plan.
+
+    '
+  responsibilities: '• Comprehensive PR and code review coordinator
+
+    • Dispatches 7 reviewer-* specialists in parallel
+
+    • Aggregates findings into one structured report
+
+    • Read-only — never modifies files
+
+    '
+- id: reviewer-code
+  label: reviewer-code
+  type: agent
+  role: CLAUDE.md Compliance & Bugs
+  color: '#f59e0b'
+  parent: reviewer
+  model: GPT-5.6 Terra
+  mcp_access: codebase-memory-mcp, github
+  trigger: Always dispatched by reviewer
+- id: reviewer-comments
+  label: reviewer-comments
+  type: agent
+  role: Comment Accuracy & Rot
+  color: '#f59e0b'
+  parent: reviewer
+  model: DeepSeek V4 Flash (low)
+  mcp_access: codebase-memory-mcp, github
+  trigger: Comments/docs changes in diff
+- id: reviewer-test
+  label: reviewer-test
+  type: agent
+  role: Test Coverage Analysis
+  color: '#f59e0b'
+  parent: reviewer
+  model: GPT-5.6 Luna (high)
+  mcp_access: codebase-memory-mcp, github
+  trigger: Test file changes in diff
+- id: reviewer-errors
+  label: reviewer-errors
+  type: agent
+  role: Silent Failure Hunting
+  color: '#f59e0b'
+  parent: reviewer
+  model: GPT-5.6 Terra
+  mcp_access: codebase-memory-mcp, github
+  trigger: Error handling changes in diff
+- id: reviewer-types
+  label: reviewer-types
+  type: agent
+  role: Type Design Analysis
+  color: '#f59e0b'
+  parent: reviewer
+  model: GPT-5.6 Terra
+  mcp_access: codebase-memory-mcp, github
+  trigger: New types/interfaces in diff
+- id: reviewer-simplifier
+  label: reviewer-simplifier
+  type: agent
+  role: Code Clarity & Simplification
+  color: '#f59e0b'
+  parent: reviewer
+  model: GPT-5.6 Luna (high)
+  mcp_access: codebase-memory-mcp
+  trigger: After other reviews pass (Phase B sequential)
+- id: reviewer-accessibility
+  label: reviewer-accessibility
+  type: agent
+  role: WCAG 2.2 AA Audit
+  color: '#f59e0b'
+  parent: reviewer
+  model: GPT-5.6 Luna (high)
+  mcp_access: codebase-memory-mcp, github
+  trigger: UI file changes in diff (html, jsx, tsx, css, vue, svelte)
+- id: codebase-memory
+  label: codebase-memory-mcp
+  type: mcp
+  role: Code Intelligence
+  color: '#a78bfa'
+  parent: null
+- id: context7-mcp
+  label: context7
+  type: mcp
+  role: Library Docs
+  color: '#a78bfa'
+  parent: librarian
+- id: websearch-mcp
+  label: websearch
+  type: mcp
+  role: Web Search (Exa)
+  color: '#a78bfa'
+  parent: librarian
+- id: gh-grep-mcp
+  label: gh_grep
+  type: mcp
+  role: GitHub Code Search
+  color: '#a78bfa'
+  parent: librarian
+- id: linear-mcp
+  label: linear
+  type: mcp
+  role: Issues & Epics
+  color: '#a78bfa'
+  parent: librarian
+- id: cortex-mcp
+  label: cortex
+  type: mcp
+  role: Gorgias Domain Knowledge (metrics, schemas, rules, Notion docs)
+  color: '#a78bfa'
+  parent: null
+- id: mcp-server-browser
+  label: mcp-server-browser
+  type: mcp
+  role: Browser Automation
+  color: '#a78bfa'
+  parent: navigator
+- id: sentry-mcp
+  label: sentry
+  type: mcp
+  role: Error Monitoring
+  color: '#a78bfa'
+  parent: detective
+- id: pup-cli
+  label: pup CLI
+  type: tool
+  role: Datadog CLI (--agent --ro)
+  color: '#34d399'
+  parent: detective
+- id: gcp-logging-mcp
+  label: gcp-logging
+  type: mcp
+  role: GCP Logs
+  color: '#a78bfa'
+  parent: detective
+- id: rootly-mcp
+  label: rootly
+  type: mcp
+  role: Incident Management
+  color: '#a78bfa'
+  parent: detective
+- id: figma-desktop-mcp
+  label: figma-desktop
+  type: mcp
+  role: Design Files
+  color: '#a78bfa'
+  parent: designer
+- id: github-mcp
+  label: github
+  type: mcp
+  role: PRs, Issues, Repos
+  color: '#a78bfa'
+  parent: orchestrator
+- id: skill-codemap
+  label: codemap
+  type: skill
+  role: Repository Cartography
+  color: '#34d399'
+  parent: orchestrator
+- id: skill-deepwork
+  label: deepwork
+  type: skill
+  role: Heavy Session Workflow
+  color: '#34d399'
+  parent: orchestrator
+- id: skill-verification
+  label: verification-planning
+  type: skill
+  role: Evidence Before Code
+  color: '#34d399'
+  parent: orchestrator
+- id: skill-simplify
+  label: simplify
+  type: skill
+  role: Behavior-Preserving Refactors
+  color: '#34d399'
+  parent: oracle
+- id: skill-worktrees
+  label: worktrees
+  type: skill
+  role: Isolated Coding Lanes
+  color: '#34d399'
+  parent: orchestrator
+- id: skill-clonedeps
+  label: clonedeps
+  type: skill
+  role: Dependency X-Ray
+  color: '#34d399'
+  parent: orchestrator
+- id: skill-reflect
+  label: reflect
+  type: skill
+  role: Workflow Self-Improvement
+  color: '#34d399'
+  parent: orchestrator
+- id: skill-omo-slim
+  label: oh-my-opencode-slim
+  type: skill
+  role: Plugin Self-Configuration
+  color: '#34d399'
+  parent: orchestrator
+- id: skill-project-context
+  label: project-context
+  type: skill
+  role: Project Summaries
+  color: '#34d399'
+  parent: orchestrator
+- id: skill-cortex
+  label: cortex
+  type: skill
+  role: Gorgias Domain Knowledge via Cortex MCP
+  color: '#34d399'
+  parent: null
+- id: skill-dd-pup
+  label: dd-pup
+  type: skill
+  role: Datadog CLI Reference
+  color: '#34d399'
+  parent: detective
+- id: skill-dd-apm
+  label: dd-apm
+  type: skill
+  role: APM Traces & Services
+  color: '#34d399'
+  parent: detective
+- id: skill-dd-logs
+  label: dd-logs
+  type: skill
+  role: Log Search & Management
+  color: '#34d399'
+  parent: detective
+- id: skill-dd-monitors
+  label: dd-monitors
+  type: skill
+  role: Monitor Alerting
+  color: '#34d399'
+  parent: detective
+- id: skill-dd-debugger
+  label: dd-debugger
+  type: skill
+  role: Live Debugger Probes
+  color: '#34d399'
+  parent: detective
+- id: skill-incident-response
+  label: incident-response
+  type: skill
+  role: Incident Tracking & On-call
+  color: '#34d399'
+  parent: detective
+- id: skill-brainstorming
+  label: brainstorming
+  type: skill
+  role: SDD Phase 1 — Socratic Design
+  color: '#34d399'
+  parent: orchestrator
+- id: skill-writing-plans
+  label: writing-plans
+  type: skill
+  role: SDD Phase 2 — Task Decomposition
+  color: '#34d399'
+  parent: orchestrator
+- id: skill-executing-plans
+  label: executing-plans
+  type: skill
+  role: SDD Phase 3 — Agent-Per-Task Execution
+  color: '#34d399'
+  parent: orchestrator
+- id: skill-reviewing-plans
+  label: reviewing-plans
+  type: skill
+  role: SDD Phase 4 — Final Review Gate
+  color: '#34d399'
+  parent: orchestrator
+- id: skill-reviewer
+  label: reviewer
+  type: skill
+  role: PR Review Orchestration (7 specialists)
+  color: '#34d399'
+  parent: reviewer
+- id: skill-screenshot
+  label: screenshot
+  type: skill
+  role: Terminal Screenshots
+  color: '#34d399'
+  parent: orchestrator
+- id: tool-bash
+  label: Bash
+  type: tool
+  role: Command Execution
+  color: '#f472b6'
+  parent: null
+  used_by: All agents
+- id: tool-read-edit
+  label: Read/Edit/Write
+  type: tool
+  role: File Operations
+  color: '#f472b6'
+  parent: null
+  used_by: Orchestrator, Fixer, Designer
+- id: tool-git
+  label: Git
+  type: tool
+  role: Version Control
+  color: '#f472b6'
+  parent: null
+  used_by: Orchestrator
+- id: tool-gh
+  label: gh CLI
+  type: tool
+  role: GitHub Integration
+  color: '#f472b6'
+  parent: null
+  used_by: Orchestrator
+- id: opencode
+  label: OpenCode
+  type: infra
+  role: Entry Point · OMO Slim Plugin
+  color: '#f59e0b'
+  parent: null
+  config: '• Shell: zsh
+
+    • Providers: bf (Bifrost), bf-a (Anthropic), bf-o (OpenAI)
+
+    • Models via Bifrost (https://bifrost.ops.gorgias.io)
+
+    • Plugin: oh-my-opencode-slim
+
+    • LSP integration: enabled
+
+    • Tmux: main-vertical layout
+
+    '
+- id: omo-slim
+  label: Oh My OpenCode Slim
+  type: infra
+  role: Agent Orchestration
+  color: '#f59e0b'
+  parent: opencode
+  config: '• Preset: bifrost
+
+    • 7 built-in agents (council disabled)
+
+    • 11 custom agents (Navigator, Detective, Sage, Reviewer + 7 reviewer-*)
+
+    • 4 SDD skills (brainstorming, writing-plans, executing-plans, reviewing-plans)
+    + reviewer
+
+    • Image routing: auto (Observer)
+
+    '
+- id: zsh-env
+  label: zsh Environment
+  type: infra
+  role: Shell Config
+  color: '#f472b6'
+  parent: null
+  config: '• Shell: zsh (always source ~/.zshrc)
+
+    • VOLTA_HOME, GORGIAS_ROOT, NPM_TOKEN
+
+    • Git aliases (gpo, grbm, etc.)
+
+    • Project aliases (g:chat, g:gorgias)
+
+    '
+- id: rtk
+  label: RTK
+  type: infra
+  role: Token Optimization (Plugin)
+  color: '#f472b6'
+  parent: opencode
+  config: '• Rust Token Killer — 60-90% token reduction
+
+    • Active OpenCode plugin: ~/.config/opencode/plugins/rtk.ts
+
+    • Transparently rewrites commands before execution (tool.execute.before hook)
+
+    • Install: rtk init -g --opencode
+
+    • /opt/homebrew/bin/rtk
+
+    '
+- id: model-profiles
+  label: Model Profiles
+  type: infra
+  role: Cost vs Performance Switching
+  color: '#f472b6'
+  parent: null
+  config: '• Profiles: default, cost-efficient
+
+    • Location: profiles/models/*.yml
+
+    • Deploy: ./deploy.sh --model-profile=cost-efficient
+
+    • default: Gemini 3 Flash, GPT-5.6 Terra/Luna, Gemini 3 Pro
+
+    • cost-efficient: DeepSeek V4 Flash/Pro, Gemini 3 Flash
+
+    • Implementation: scripts/apply-model-profile.py patches oh-my-opencode-slim.json
+
+    '
+- id: bifrost
+  label: Bifrost
+  type: infra
+  role: Model Gateway
+  color: '#f472b6'
+  parent: opencode
+  config: '• URL: https://bifrost.ops.gorgias.io
+
+    • Providers: OpenAI-compatible, Anthropic, OpenAI
+
+    • bf: DeepSeek V4, Gemini, GLM
+
+    • bf-a: Claude Haiku/Sonnet/Opus
+
+    • bf-o: GPT-4o, GPT-5.x (Luna, Sol, Terra)
+
+    '
 links:
-  # Orchestrator dispatches to all agents
-  - source: orchestrator
-    target: oracle
-    label: dispatches
-  - source: orchestrator
-    target: explorer
-    label: dispatches
-  - source: orchestrator
-    target: librarian
-    label: dispatches
-  - source: orchestrator
-    target: designer
-    label: dispatches
-  - source: orchestrator
-    target: fixer
-    label: dispatches
-  - source: orchestrator
-    target: observer
-    label: auto-routes (images)
-  - source: orchestrator
-    target: navigator
-    label: dispatches
-  - source: orchestrator
-    target: detective
-    label: dispatches
-  - source: orchestrator
-    target: sage
-    label: dispatches
-  - source: orchestrator
-    target: reviewer
-    label: dispatches
-
-  # Orchestrator → MCPs
-  - source: orchestrator
-    target: codebase-memory
-    label: uses
-  - source: orchestrator
-    target: github-mcp
-    label: uses
-
-  # Librarian → MCPs
-  - source: librarian
-    target: context7-mcp
-    label: uses
-  - source: librarian
-    target: websearch-mcp
-    label: uses
-  - source: librarian
-    target: gh-grep-mcp
-    label: uses
-  - source: librarian
-    target: linear-mcp
-    label: uses
-  - source: librarian
-    target: cortex-mcp
-    label: uses
-
-  # Designer → MCPs
-  - source: designer
-    target: codebase-memory
-    label: uses
-  - source: designer
-    target: figma-desktop-mcp
-    label: uses
-
-  # Navigator → MCPs
-  - source: navigator
-    target: mcp-server-browser
-    label: uses
-
-  # Detective → MCPs
-  - source: detective
-    target: sentry-mcp
-    label: uses
-  - source: detective
-    target: pup-cli
-    label: uses (Bash)
-  - source: detective
-    target: gcp-logging-mcp
-    label: uses
-  - source: detective
-    target: rootly-mcp
-    label: uses
-  - source: detective
-    target: codebase-memory
-    label: uses
-
-  # Reviewer → sub-agents
-  - source: reviewer
-    target: reviewer-code
-    label: dispatches
-  - source: reviewer
-    target: reviewer-comments
-    label: dispatches (if docs)
-  - source: reviewer
-    target: reviewer-test
-    label: dispatches (if tests)
-  - source: reviewer
-    target: reviewer-errors
-    label: dispatches (if errors)
-  - source: reviewer
-    target: reviewer-types
-    label: dispatches (if types)
-  - source: reviewer
-    target: reviewer-simplifier
-    label: dispatches (sequential)
-  - source: reviewer
-    target: reviewer-accessibility
-    label: dispatches (if UI files)
-
-  # Reviewer → MCPs
-  - source: reviewer
-    target: codebase-memory
-    label: uses
-  - source: reviewer
-    target: github-mcp
-    label: uses
-
-  # Sage → MCPs
-  - source: sage
-    target: cortex-mcp
-    label: uses
-  - source: sage
-    target: codebase-memory
-    label: uses
-
-  # Oracle, Explorer, Fixer → codebase-memory
-  - source: oracle
-    target: codebase-memory
-    label: uses
-  - source: explorer
-    target: codebase-memory
-    label: uses
-  - source: fixer
-    target: codebase-memory
-    label: uses
-
-  # Skills → agents
-  - source: orchestrator
-    target: skill-codemap
-    label: invokes
-  - source: orchestrator
-    target: skill-deepwork
-    label: invokes
-  - source: orchestrator
-    target: skill-verification
-    label: invokes
-  - source: orchestrator
-    target: skill-worktrees
-    label: invokes
-  - source: orchestrator
-    target: skill-clonedeps
-    label: invokes
-  - source: orchestrator
-    target: skill-reflect
-    label: invokes
-  - source: orchestrator
-    target: skill-omo-slim
-    label: invokes
-  - source: orchestrator
-    target: skill-project-context
-    label: invokes
-  - source: oracle
-    target: skill-simplify
-    label: invokes
-  - source: librarian
-    target: skill-cortex
-    label: invokes
-  - source: sage
-    target: skill-cortex
-    label: invokes
-  - source: detective
-    target: skill-dd-pup
-    label: invokes
-  - source: detective
-    target: skill-dd-apm
-    label: invokes
-  - source: detective
-    target: skill-dd-logs
-    label: invokes
-  - source: detective
-    target: skill-dd-monitors
-    label: invokes
-  - source: detective
-    target: skill-dd-debugger
-    label: invokes
-  - source: detective
-    target: skill-incident-response
-    label: invokes
-  - source: orchestrator
-    target: skill-brainstorming
-    label: invokes
-  - source: orchestrator
-    target: skill-writing-plans
-    label: invokes
-  - source: orchestrator
-    target: skill-executing-plans
-    label: invokes
-  - source: orchestrator
-    target: skill-reviewing-plans
-    label: invokes
-  - source: orchestrator
-    target: skill-screenshot
-    label: invokes
-  - source: reviewer
-    target: skill-reviewer
-    label: invokes
-
-  # Tools → agents
-  - source: orchestrator
-    target: tool-bash
-    label: uses
-  - source: orchestrator
-    target: tool-read-edit
-    label: uses
-  - source: orchestrator
-    target: tool-git
-    label: uses
-  - source: orchestrator
-    target: tool-gh
-    label: uses
-
-  # Infrastructure
-  - source: opencode
-    target: orchestrator
-    label: runs
-  - source: opencode
-    target: omo-slim
-    label: plugin
-  - source: model-profiles
-    target: omo-slim
-    label: configures models
-  - source: omo-slim
-    target: bifrost
-    label: models via
-  - source: zsh-env
-    target: tool-bash
-    label: provides
-  - source: rtk
-    target: tool-bash
-    label: wraps
+- source: orchestrator
+  target: oracle
+  label: dispatches
+- source: orchestrator
+  target: explorer
+  label: dispatches
+- source: orchestrator
+  target: librarian
+  label: dispatches
+- source: orchestrator
+  target: designer
+  label: dispatches
+- source: orchestrator
+  target: fixer
+  label: dispatches
+- source: orchestrator
+  target: observer
+  label: auto-routes (images)
+- source: orchestrator
+  target: navigator
+  label: dispatches
+- source: orchestrator
+  target: detective
+  label: dispatches
+- source: orchestrator
+  target: sage
+  label: dispatches
+- source: orchestrator
+  target: reviewer
+  label: dispatches
+- source: orchestrator
+  target: codebase-memory
+  label: uses
+- source: orchestrator
+  target: github-mcp
+  label: uses
+- source: librarian
+  target: context7-mcp
+  label: uses
+- source: librarian
+  target: websearch-mcp
+  label: uses
+- source: librarian
+  target: gh-grep-mcp
+  label: uses
+- source: librarian
+  target: linear-mcp
+  label: uses
+- source: librarian
+  target: cortex-mcp
+  label: uses
+- source: designer
+  target: codebase-memory
+  label: uses
+- source: designer
+  target: figma-desktop-mcp
+  label: uses
+- source: navigator
+  target: mcp-server-browser
+  label: uses
+- source: detective
+  target: sentry-mcp
+  label: uses
+- source: detective
+  target: pup-cli
+  label: uses (Bash)
+- source: detective
+  target: gcp-logging-mcp
+  label: uses
+- source: detective
+  target: rootly-mcp
+  label: uses
+- source: detective
+  target: codebase-memory
+  label: uses
+- source: reviewer
+  target: reviewer-code
+  label: dispatches
+- source: reviewer
+  target: reviewer-comments
+  label: dispatches (if docs)
+- source: reviewer
+  target: reviewer-test
+  label: dispatches (if tests)
+- source: reviewer
+  target: reviewer-errors
+  label: dispatches (if errors)
+- source: reviewer
+  target: reviewer-types
+  label: dispatches (if types)
+- source: reviewer
+  target: reviewer-simplifier
+  label: dispatches (sequential)
+- source: reviewer
+  target: reviewer-accessibility
+  label: dispatches (if UI files)
+- source: reviewer
+  target: codebase-memory
+  label: uses
+- source: reviewer
+  target: github-mcp
+  label: uses
+- source: sage
+  target: cortex-mcp
+  label: uses
+- source: sage
+  target: codebase-memory
+  label: uses
+- source: oracle
+  target: codebase-memory
+  label: uses
+- source: explorer
+  target: codebase-memory
+  label: uses
+- source: fixer
+  target: codebase-memory
+  label: uses
+- source: orchestrator
+  target: skill-codemap
+  label: invokes
+- source: orchestrator
+  target: skill-deepwork
+  label: invokes
+- source: orchestrator
+  target: skill-verification
+  label: invokes
+- source: orchestrator
+  target: skill-worktrees
+  label: invokes
+- source: orchestrator
+  target: skill-clonedeps
+  label: invokes
+- source: orchestrator
+  target: skill-reflect
+  label: invokes
+- source: orchestrator
+  target: skill-omo-slim
+  label: invokes
+- source: orchestrator
+  target: skill-project-context
+  label: invokes
+- source: oracle
+  target: skill-simplify
+  label: invokes
+- source: librarian
+  target: skill-cortex
+  label: invokes
+- source: sage
+  target: skill-cortex
+  label: invokes
+- source: detective
+  target: skill-dd-pup
+  label: invokes
+- source: detective
+  target: skill-dd-apm
+  label: invokes
+- source: detective
+  target: skill-dd-logs
+  label: invokes
+- source: detective
+  target: skill-dd-monitors
+  label: invokes
+- source: detective
+  target: skill-dd-debugger
+  label: invokes
+- source: detective
+  target: skill-incident-response
+  label: invokes
+- source: orchestrator
+  target: skill-brainstorming
+  label: invokes
+- source: orchestrator
+  target: skill-writing-plans
+  label: invokes
+- source: orchestrator
+  target: skill-executing-plans
+  label: invokes
+- source: orchestrator
+  target: skill-reviewing-plans
+  label: invokes
+- source: orchestrator
+  target: skill-screenshot
+  label: invokes
+- source: reviewer
+  target: skill-reviewer
+  label: invokes
+- source: orchestrator
+  target: tool-bash
+  label: uses
+- source: orchestrator
+  target: tool-read-edit
+  label: uses
+- source: orchestrator
+  target: tool-git
+  label: uses
+- source: orchestrator
+  target: tool-gh
+  label: uses
+- source: opencode
+  target: orchestrator
+  label: runs
+- source: opencode
+  target: omo-slim
+  label: plugin
+- source: model-profiles
+  target: omo-slim
+  label: configures models
+- source: omo-slim
+  target: bifrost
+  label: models via
+- source: zsh-env
+  target: tool-bash
+  label: provides
+- source: rtk
+  target: tool-bash
+  label: wraps
+profiles:
+  cost-efficient:
+    orchestrator: bf/gemini/gemini-3-flash-preview
+    oracle: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro
+    explorer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+    librarian: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+    fixer: bf/gemini/gemini-3-flash-preview
+    designer: bf/gemini/gemini-3-flash-preview
+    observer: bf/gemini/gemini-3-flash-preview
+    navigator: bf/gemini/gemini-3-flash-preview
+    sage: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+    detective: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+    reviewer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+    reviewer-code: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro
+    reviewer-comments: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+    reviewer-test: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+    reviewer-errors: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro
+    reviewer-types: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro
+    reviewer-simplifier: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+    reviewer-accessibility: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+  default:
+    orchestrator: bf/gemini/gemini-3-flash-preview
+    oracle: bf-o/gpt-5.6-terra
+    explorer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+    librarian: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+    fixer: bf-o/gpt-5.6-luna
+    designer: bf/gemini/gemini-3-pro-preview
+    observer: bf/gemini/gemini-3-flash-preview
+    navigator: bf/gemini/gemini-3-flash-preview
+    sage: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+    detective: bf-o/gpt-5.4-mini
+    reviewer: bf-o/gpt-5.4-mini
+    reviewer-code: bf-o/gpt-5.6-terra
+    reviewer-comments: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+    reviewer-test: bf-o/gpt-5.6-luna
+    reviewer-errors: bf-o/gpt-5.6-terra
+    reviewer-types: bf-o/gpt-5.6-terra
+    reviewer-simplifier: bf-o/gpt-5.6-luna
+    reviewer-accessibility: bf-o/gpt-5.6-luna
+model_names:
+  bf/gemini/gemini-2.5-flash: Gemini 2.5 Flash
+  bf/gemini/gemini-2.5-pro: Gemini 2.5 Pro
+  bf/gemini/gemini-3-flash-preview: Gemini 3 Flash Preview
+  bf/gemini/gemini-3-pro-preview: Gemini 3 Pro Preview
+  bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash: Deepseek V4 Flash
+  bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro: Deepseek V4 Pro
+  bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Flash: Deepseek V4 Flash
+  bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro: Deepseek V4 Pro
+  bf/huggingface/together/zai-org/GLM-5.2: Glm 5.2
+  bf-a/claude-haiku-4-5: Claude Haiku 4 5
+  bf-a/claude-opus-4-8: Claude Opus 4 8
+  bf-a/claude-sonnet-4-6: Claude Sonnet 4 6
+  bf-a/claude-sonnet-5: Claude Sonnet 5
+  bf-o/gpt-4o: GPT 4O
+  bf-o/gpt-4o-mini: GPT 4O Mini
+  bf-o/gpt-5.4: GPT 5.4
+  bf-o/gpt-5.4-mini: GPT 5.4 Mini
+  bf-o/gpt-5.5: GPT 5.5
+  bf-o/gpt-5.6-luna: GPT 5.6 Luna
+  bf-o/gpt-5.6-sol: GPT 5.6 Sol
+  bf-o/gpt-5.6-terra: GPT 5.6 Terra
+avatars:
+  orchestrator: 🏛️
+  oracle: 🔮
+  explorer: 🧭
+  librarian: 📚
+  designer: 🎨
+  fixer: 🔧
+  observer: 👁️
+  navigator: 🌐
+  detective: 🔍
+  sage: 🧠
+  reviewer: ⚖️
