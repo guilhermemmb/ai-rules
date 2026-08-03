@@ -22,8 +22,8 @@ ping all agents
 
 | Profile | Strategy | Key Models | Location |
 | :--- | :--- | :--- | :--- |
-| **default** | Performance-first | DeepSeek V4 Pro, Claude 3.5 Sonnet, GPT-5.6 Luna, Gemini 3 Flash | `profiles/models/default.yml` |
-| **cost-efficient** | Cost-optimized (90% savings) | DeepSeek V4 Flash/Pro, Gemini 3 Flash | `profiles/models/cost-efficient.yml` |
+| **default** | Performance-first | GPT-5.6 Luna, Claude 3.5 Sonnet, DeepSeek V4 Pro, Gemini 3 Flash | `profiles/models/default.yml` |
+| **cost-efficient** | Cost-optimized (90% savings) | Gemini 3 Flash, DeepSeek V4 Flash/Pro | `profiles/models/cost-efficient.yml` |
 
 ## Agent Pantheon
 
@@ -31,7 +31,7 @@ ping all agents
 
 | Agent | Model (Default) | Model (Cost-Efficient) | Role |
 | :--- | :--- | :--- | :--- |
-| **Orchestrator** | DeepSeek V4 Pro | Gemini 3 Flash | Master delegator & coordinator |
+| **Orchestrator** | GPT-5.6 Luna | Gemini 3 Flash | Master delegator & coordinator |
 | **Oracle** | Claude 3.5 Sonnet | DeepSeek V4 Pro | Strategic advisor, architecture |
 | **Explorer** | DeepSeek V4 Flash | DeepSeek V4 Flash | Codebase reconnaissance |
 | **Librarian** | DeepSeek V4 Flash | DeepSeek V4 Flash | Knowledge retrieval |

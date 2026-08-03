@@ -5,7 +5,7 @@ nodes:
   role: Master Delegator
   color: '#60a5fa'
   parent: null
-  model: DeepSeek V4 Pro
+  model: GPT-5.6 Luna
   orchestrates: true
   dispatches:
   - oracle
@@ -668,7 +668,7 @@ nodes:
 
     • Deploy: ./deploy.sh --model-profile=cost-efficient
 
-    • default: DeepSeek V4 Pro, Claude 3.5 Sonnet, GPT-5.6 Luna, Gemini 3 Flash
+    • default: GPT-5.6 Luna, DeepSeek V4 Pro, Claude 3.5 Sonnet, Gemini 3 Flash
 
     • cost-efficient: DeepSeek V4 Flash/Pro, Gemini 3 Flash
 
@@ -930,7 +930,7 @@ profiles:
     reviewer-simplifier: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     reviewer-accessibility: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
   default:
-    orchestrator: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro
+    orchestrator: bf-o/gpt-5.6-luna
     oracle: bf-a/claude-sonnet-5
     explorer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     librarian: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash

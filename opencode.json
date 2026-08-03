@@ -12,7 +12,7 @@
       "disable": true
     }
   },
-  "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro",
+  "model": "bf-o/gpt-5.6-luna",
   "small_model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash",
   "provider": {
     "bf": {
