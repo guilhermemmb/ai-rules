@@ -477,6 +477,14 @@
         let PROFILES = {};
         let currentProfile = 'default';
 
+        function prettifyModel(modelId) {
+            if (MODEL_NAMES[modelId]) return MODEL_NAMES[modelId];
+            if (!modelId) return 'Unknown Model';
+            const parts = modelId.split('/');
+            let name = parts[parts.length - 1];
+            return name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+
         fetch('./data.yaml')
             .then(r => { if (!r.ok) throw new Error('Failed to load data.yaml'); return r.text(); })
             .then(t => jsyaml.load(t))
