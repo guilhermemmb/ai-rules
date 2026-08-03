@@ -50,9 +50,7 @@ or artifact requirements.
 
 ## Development Environment
 
-- **Never run any git command on your own — always ask and confirm first.** This
-  is the single source of truth for git behavior and covers commit, push,
-  checkout, rebase, and merge.
+- **MANDATORY: Follow all rules in `git-safety.md` for any Git or GitHub operation.**
 - If a test or lint command fails to run, ask me which command to use and where
   the root folder is, then remember it.
 - When tests fail, show me only the errors — filter the console output, don't
@@ -75,7 +73,7 @@ or artifact requirements.
   drop it: `type: description`.
 - Never add `Co-Authored-By:` lines or any AI attribution.
 - Keep it simple: summarize the changed files, don't explain every detail.
-  Reference issue numbers when applicable (#123). Detailed context goes in the
+- Reference issue numbers when applicable (#123). Detailed context goes in the
   body if needed.
 
 **Examples**
@@ -117,7 +115,8 @@ or artifact requirements.
 
 - Temporary-file cleanup period: 7 days.
 
-## Commit / Push Safety
+## Commit / Push Safety Scan
 
 - Before any `git commit`, `git push`, or `git rebase` (and on branch switch, or
   when working on a branch with an open PR), read and apply security-scan rules.
+- **MANDATORY: Follow all rules in `git-safety.md` for any Git or GitHub operation.**

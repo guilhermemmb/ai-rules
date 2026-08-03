@@ -5,27 +5,21 @@ description: AI rules/agent definition for pr-workflow.md
 
 # Pull Request Workflow
 
-## Git Command Safety
+## Git & GitHub Safety
 
-**NEVER** run any git command without asking first. This applies to:
+**MANDATORY: Follow all rules in `git-safety.md` for any Git or GitHub operation.**
 
-- `git commit`
-- `git push` / `git push --force-with-lease`
-- `git checkout` / `git switch`
-- `git rebase`
-- `git merge`
-
-Always confirm the command and context with the user before executing.
+- **Never push**: Provide the command for the user to run.
+- **Commit approval**: Always ask before running `git commit`.
+- **PRs**: Generate title/description and show the `gh` command; never run it.
 
 ## PR Creation & Updates
 
 ### General Rules
 
-- **Always ask for confirmation** before running any `gh pr create` or
-  `gh pr edit` command
-- **Always use `--draft`** by default (unless user explicitly says "ready for
-  review")
-- **Always add label `claude:review`** to every PR (draft or not)
+- **NEVER run `gh pr create` or `gh pr edit`**. Always show the command for me to run manually.
+- **Always use `--draft`** by default in the shown command (unless user explicitly says "ready for review")
+- **Always add label `claude:review`** to the command (draft or not)
 
 ### Title Format
 
