@@ -22,7 +22,7 @@ ping all agents
 
 | Profile | Strategy | Key Models | Location |
 | :--- | :--- | :--- | :--- |
-| **default** | Performance-first | Gemini 3 Flash, GPT-5.6 Terra/Luna, Gemini 3 Pro | `profiles/models/default.yml` |
+| **default** | Performance-first | DeepSeek V4 Pro, Claude 3.5 Sonnet, GPT-5.6 Luna, Gemini 3 Flash | `profiles/models/default.yml` |
 | **cost-efficient** | Cost-optimized (90% savings) | DeepSeek V4 Flash/Pro, Gemini 3 Flash | `profiles/models/cost-efficient.yml` |
 
 ## Agent Pantheon
@@ -31,12 +31,12 @@ ping all agents
 
 | Agent | Model (Default) | Model (Cost-Efficient) | Role |
 | :--- | :--- | :--- | :--- |
-| **Orchestrator** | Gemini 3 Flash | Gemini 3 Flash | Master delegator & coordinator |
-| **Oracle** | GPT-5.6 Terra | DeepSeek V4 Pro | Strategic advisor, architecture |
+| **Orchestrator** | DeepSeek V4 Pro | Gemini 3 Flash | Master delegator & coordinator |
+| **Oracle** | Claude 3.5 Sonnet | DeepSeek V4 Pro | Strategic advisor, architecture |
 | **Explorer** | DeepSeek V4 Flash | DeepSeek V4 Flash | Codebase reconnaissance |
 | **Librarian** | DeepSeek V4 Flash | DeepSeek V4 Flash | Knowledge retrieval |
-| **Designer** | Gemini 3 Pro | Gemini 3 Flash | UI/UX excellence |
-| **Fixer** | GPT-5.6 Luna | DeepSeek V4 Flash | Implementation specialist |
+| **Designer** | Claude 3.5 Sonnet | Gemini 3 Flash | UI/UX excellence |
+| **Fixer** | DeepSeek V4 Pro | DeepSeek V4 Flash | Implementation specialist |
 | **Observer** | Gemini 3 Flash | Gemini 3 Flash | Visual analysis |
 
 ### Custom (11)
@@ -46,15 +46,15 @@ ping all agents
 | **Navigator** | Gemini 3 Flash | Gemini 3 Flash | Browser automation, screenshots |
 | **Detective** | GPT-5.4 Mini | DeepSeek V4 Flash | Production errors, logs, metrics |
 | **Sage** | DeepSeek V4 Flash | DeepSeek V4 Flash | Gorgias metrics, schemas, rules |
-| **Reviewer** | GPT-5.4 Mini | DeepSeek V4 Flash | PR/branch/diff review coordinator |
-| **reviewer-code** | GPT-5.6 Terra | DeepSeek V4 Pro | CLAUDE.md compliance, bugs |
-| **reviewer-errors** | GPT-5.6 Terra | DeepSeek V4 Pro | Silent failures, error handling |
-| **reviewer-types** | GPT-5.6 Terra | DeepSeek V4 Pro | Type encapsulation, invariants |
+| **Reviewer** | GPT-5.6 Luna | DeepSeek V4 Flash | PR/branch/diff review coordinator |
+| **reviewer-code** | GPT-5.6 Luna | DeepSeek V4 Pro | CLAUDE.md compliance, bugs |
+| **reviewer-errors** | GPT-5.6 Luna | DeepSeek V4 Pro | Silent failures, error handling |
+| **reviewer-types** | GPT-5.6 Luna | DeepSeek V4 Pro | Type encapsulation, invariants |
 | **reviewer-* (other)** | GPT-5.6 Luna/DeepSeek | DeepSeek V4 Flash | Specialized review lanes |
 
 **Council** disabled. Observer auto-routes images from Orchestrator.
 
-**Model Profiles Rationale:** The system defaults to a specialized mix of Gemini 3 Flash/Pro and GPT-5.6 models for complex reasoning. The `cost-efficient` profile swaps these for DeepSeek V4 (Flash/Pro) and Gemini 3 Flash, providing ~90-95% cost reduction with competitive performance for most routine development tasks.
+**Model Profiles Rationale:** The system defaults to a specialized mix of DeepSeek V4 Pro, Claude 3.5 Sonnet, GPT-5.6 Luna, and Gemini 3 Flash for complex reasoning. The `cost-efficient` profile swaps these for DeepSeek V4 (Flash/Pro) and Gemini 3 Flash, providing ~90-95% cost reduction with competitive performance for most routine development tasks.
 
 ## Directory Map
 

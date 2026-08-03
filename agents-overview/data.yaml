@@ -5,7 +5,7 @@ nodes:
   role: Master Delegator
   color: '#60a5fa'
   parent: null
-  model: Gemini 3 Flash Preview
+  model: DeepSeek V4 Pro
   orchestrates: true
   dispatches:
   - oracle
@@ -45,7 +45,7 @@ nodes:
   role: Strategic Advisor
   color: '#60a5fa'
   parent: orchestrator
-  model: GPT-5.6 Terra
+  model: Claude 3.5 Sonnet
   skills: simplify
   mcp_access: codebase-memory-mcp
   trigger: Architecture review, hard debugging, trade-offs, code review
@@ -111,7 +111,7 @@ nodes:
   role: UI/UX Excellence
   color: '#60a5fa'
   parent: orchestrator
-  model: Gemini 3 Pro Preview (medium)
+  model: Claude 3.5 Sonnet (medium)
   mcp_access: codebase-memory-mcp, figma-desktop
   trigger: UI/UX implementation, visual components, frontend polish
   constraints: UI/UX focused. No backend/production tooling.
@@ -132,7 +132,7 @@ nodes:
   role: Implementation Specialist
   color: '#60a5fa'
   parent: orchestrator
-  model: GPT-5.6 Luna (xhigh)
+  model: DeepSeek V4 Pro (xhigh)
   mcp_access: codebase-memory-mcp
   trigger: Scoped implementation tasks, bug fixes, code changes
   constraints: Receives concrete plan from Orchestrator. RTK for commands.
@@ -256,7 +256,7 @@ nodes:
   role: PR Review Coordinator
   color: '#f59e0b'
   parent: orchestrator
-  model: GPT-5.4 Mini (high)
+  model: GPT-5.6 Luna (high)
   mcp_access: github, codebase-memory-mcp
   skills: reviewer
   trigger: review a PR, review a branch's changes, pre-commit check, code scope review
@@ -290,7 +290,7 @@ nodes:
   role: CLAUDE.md Compliance & Bugs
   color: '#f59e0b'
   parent: reviewer
-  model: GPT-5.6 Terra
+  model: GPT-5.6 Luna
   mcp_access: codebase-memory-mcp, github
   trigger: Always dispatched by reviewer
 - id: reviewer-comments
@@ -317,7 +317,7 @@ nodes:
   role: Silent Failure Hunting
   color: '#f59e0b'
   parent: reviewer
-  model: GPT-5.6 Terra
+  model: GPT-5.6 Luna
   mcp_access: codebase-memory-mcp, github
   trigger: Error handling changes in diff
 - id: reviewer-types
@@ -326,7 +326,7 @@ nodes:
   role: Type Design Analysis
   color: '#f59e0b'
   parent: reviewer
-  model: GPT-5.6 Terra
+  model: GPT-5.6 Luna
   mcp_access: codebase-memory-mcp, github
   trigger: New types/interfaces in diff
 - id: reviewer-simplifier
@@ -666,7 +666,7 @@ nodes:
 
     • Deploy: ./deploy.sh --model-profile=cost-efficient
 
-    • default: Gemini 3 Flash, GPT-5.6 Terra/Luna, Gemini 3 Pro
+    • default: DeepSeek V4 Pro, Claude 3.5 Sonnet, GPT-5.6 Luna, Gemini 3 Flash
 
     • cost-efficient: DeepSeek V4 Flash/Pro, Gemini 3 Flash
 
@@ -928,22 +928,22 @@ profiles:
     reviewer-simplifier: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     reviewer-accessibility: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
   default:
-    orchestrator: bf/gemini/gemini-3-flash-preview
-    oracle: bf-o/gpt-5.6-terra
+    orchestrator: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro
+    oracle: bf-a/claude-sonnet-5
     explorer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     librarian: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    fixer: bf-o/gpt-5.6-luna
-    designer: bf/gemini/gemini-3-pro-preview
+    fixer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro
+    designer: bf-a/claude-sonnet-5
     observer: bf/gemini/gemini-3-flash-preview
     navigator: bf/gemini/gemini-3-flash-preview
     sage: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     detective: bf-o/gpt-5.4-mini
-    reviewer: bf-o/gpt-5.4-mini
-    reviewer-code: bf-o/gpt-5.6-terra
+    reviewer: bf-o/gpt-5.6-luna
+    reviewer-code: bf-o/gpt-5.6-luna
     reviewer-comments: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     reviewer-test: bf-o/gpt-5.6-luna
-    reviewer-errors: bf-o/gpt-5.6-terra
-    reviewer-types: bf-o/gpt-5.6-terra
+    reviewer-errors: bf-o/gpt-5.6-luna
+    reviewer-types: bf-o/gpt-5.6-luna
     reviewer-simplifier: bf-o/gpt-5.6-luna
     reviewer-accessibility: bf-o/gpt-5.6-luna
 model_names:
@@ -959,7 +959,7 @@ model_names:
   bf-a/claude-haiku-4-5: Claude Haiku 4 5
   bf-a/claude-opus-4-8: Claude Opus 4 8
   bf-a/claude-sonnet-4-6: Claude Sonnet 4 6
-  bf-a/claude-sonnet-5: Claude Sonnet 5
+  bf-a/claude-sonnet-5: Claude 3.5 Sonnet
   bf-o/gpt-4o: GPT 4O
   bf-o/gpt-4o-mini: GPT 4O Mini
   bf-o/gpt-5.4: GPT 5.4

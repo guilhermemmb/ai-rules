@@ -12,7 +12,7 @@
       "disable": true
     }
   },
-  "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash",
+  "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro",
   "small_model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash",
   "provider": {
     "bf": {
@@ -151,6 +151,7 @@
           "release_date": "2026-04-24",
           "options": {
             "fallbacks": [
+              "bf-a/claude-sonnet-5",
               "gemini/gemini-3-flash-preview",
               "openai/gpt-5.4",
               "anthropic/claude-haiku-4-5"
@@ -171,6 +172,7 @@
           "release_date": "2026-04-24",
           "options": {
             "fallbacks": [
+              "bf-a/claude-sonnet-5",
               "gemini/gemini-3-flash-preview",
               "openai/gpt-5.4",
               "anthropic/claude-haiku-4-5"
@@ -191,6 +193,7 @@
           "release_date": "2026-04-24",
           "options": {
             "fallbacks": [
+              "bf-a/claude-sonnet-5",
               "gemini/gemini-3-flash-preview",
               "openai/gpt-5.4",
               "anthropic/claude-haiku-4-5"
@@ -211,6 +214,7 @@
           "release_date": "2026-04-24",
           "options": {
             "fallbacks": [
+              "bf-a/claude-sonnet-5",
               "gemini/gemini-3-flash-preview",
               "openai/gpt-5.4",
               "anthropic/claude-haiku-4-5"
