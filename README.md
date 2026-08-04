@@ -22,7 +22,7 @@ ping all agents
 
 | Profile | Strategy | Key Models | Location |
 | :--- | :--- | :--- | :--- |
-| **default** | Performance-first | GPT-5.6 Luna, Claude 3.5 Sonnet, DeepSeek V4 Pro, Gemini 3 Flash | `profiles/models/default.yml` |
+| **default** | Performance-first | GPT-5.6 Luna, Claude Sonnet 5, DeepSeek V4 Pro, Gemini 3 Flash | `profiles/models/default.yml` |
 | **cost-efficient** | Cost-optimized (90% savings) | Gemini 3 Flash, DeepSeek V4 Flash/Pro | `profiles/models/cost-efficient.yml` |
 
 ## Agent Pantheon
@@ -32,10 +32,10 @@ ping all agents
 | Agent | Model (Default) | Model (Cost-Efficient) | Role |
 | :--- | :--- | :--- | :--- |
 | **Orchestrator** | GPT-5.6 Luna | Gemini 3 Flash | Master delegator & coordinator |
-| **Oracle** | Claude 3.5 Sonnet | DeepSeek V4 Pro | Strategic advisor, architecture |
+| **Oracle** | Claude Sonnet 5 | DeepSeek V4 Pro | Strategic advisor, architecture |
 | **Explorer** | DeepSeek V4 Flash | DeepSeek V4 Flash | Codebase reconnaissance |
 | **Librarian** | DeepSeek V4 Flash | DeepSeek V4 Flash | Knowledge retrieval |
-| **Designer** | Claude 3.5 Sonnet | Gemini 3 Flash | UI/UX excellence |
+| **Designer** | Claude Sonnet 5 | Gemini 3 Flash | UI/UX excellence |
 | **Fixer** | DeepSeek V4 Pro | DeepSeek V4 Flash | Implementation specialist |
 | **Observer** | Gemini 3 Flash | Gemini 3 Flash | Visual analysis |
 
@@ -44,7 +44,7 @@ ping all agents
 | Agent | Model (Default) | Model (Cost-Efficient) | Dispatch when |
 | :--- | :--- | :--- | :--- |
 | **Navigator** | Gemini 3 Flash | Gemini 3 Flash | Browser automation, screenshots |
-| **Detective** | GPT-5.4 Mini | DeepSeek V4 Flash | Production errors, logs, metrics |
+| **Detective** | DeepSeek V4 Flash | DeepSeek V4 Flash | Production errors, logs, metrics |
 | **Sage** | DeepSeek V4 Flash | DeepSeek V4 Flash | Gorgias metrics, schemas, rules |
 | **Reviewer** | GPT-5.6 Luna | DeepSeek V4 Flash | PR/branch/diff review coordinator |
 | **reviewer-code** | GPT-5.6 Luna | DeepSeek V4 Pro | CLAUDE.md compliance, bugs |
@@ -54,32 +54,31 @@ ping all agents
 
 **Council** disabled. Observer auto-routes images from Orchestrator.
 
-**Model Profiles Rationale:** The system defaults to a specialized mix of DeepSeek V4 Pro, Claude 3.5 Sonnet, GPT-5.6 Luna, and Gemini 3 Flash for complex reasoning. The `cost-efficient` profile swaps these for DeepSeek V4 (Flash/Pro) and Gemini 3 Flash, providing ~90-95% cost reduction with competitive performance for most routine development tasks.
+**Model Profiles Rationale:** The system defaults to a specialized mix of DeepSeek V4 Pro, Claude Sonnet 5, GPT-5.6 Luna, and Gemini 3 Flash for complex reasoning. The `cost-efficient` profile swaps these for DeepSeek V4 (Flash/Pro) and Gemini 3 Flash, providing ~90-95% cost reduction with competitive performance for most routine development tasks.
 
 ## Directory Map
 
 ```
 ai-rules/
-├── openpackage.yml            # Manifest: declares rules, agents, skills, commands, MCP
-├── opencode.jsonc             # Project-level OpenCode config (MCPs)
-├── rules/                     # Rule files (distributed as prompt overrides)
-│   ├── overview.md            # GitHub/git/PR rules
-│   ├── custom-rules.md        # Workflow, packages, commits, dispatch rules
-│   ├── git-remote-confirmation.md  # gh CLI + git safety
-│   ├── pr-workflow.md         # PR creation workflow
-│   ├── security-scan.md       # On-demand commit/push safety checklist
-│   ├── rtk.md                 # RTK token optimization
-│   ├── user-config.md         # Machine config, env vars, aliases
-│   └── codebase-memory.md     # Codebase Memory MCP usage guide
-├── agents/                    # Custom agent prompt definitions
-│   ├── navigator.md           # Browser automation
-│   ├── detective.md           # Production diagnostics
-│   └── sage.md                # Gorgias domain knowledge
-├── commands/
-│   └── review-pr.md           # PR review command
-├── skills/
-│   └── project-context/       # Summarize project context
-└── agents-overview/           # Interactive visualization (data.yaml + index.html)
+├── opencode.json               # Manifest: declares rules, agents, skills, commands, MCP
+├── .rulesync/                  # Synchronized rules and subagents
+│   ├── rules/                  # Rule files (distributed as prompt overrides)
+│   │   ├── overview.md         # GitHub/git/PR rules
+│   │   ├── custom-rules.md     # Workflow, packages, commits, dispatch rules
+│   │   ├── pr-workflow.md      # PR creation workflow
+│   │   ├── security-scan.md    # On-demand commit/push safety checklist
+│   │   ├── rtk.md              # RTK token optimization
+│   │   ├── user-config.md      # Machine config, env vars, aliases
+│   │   └── codebase-memory.md  # Codebase Memory MCP usage guide
+│   ├── subagents/              # Custom agent prompt definitions
+│   │   ├── navigator.md        # Browser automation
+│   │   ├── detective.md        # Production diagnostics
+│   │   └── sage.md             # Gorgias domain knowledge
+│   ├── commands/
+│   │   └── review-pr.md        # PR review command
+│   └── skills/
+│       └── project-context/    # Summarize project context
+└── agents-overview/            # Interactive visualization (data.yaml + index.html)
 ```
 
 ## SDD Artifacts — `docs/.planning/`
@@ -112,8 +111,8 @@ See `docs/sdd-workflow.md` for the full flowchart and agent usage matrix.
 
 | Agent | Output path |
 |-------|-------------|
-| Navigator | `~/developer/.ai-work/tmp/navigator/` |
-| Sage | `~/developer/.ai-work/tmp/sage/` |
+| Navigator | `/tmp/navigator/` |
+| Sage | `/tmp/sage/` |
 
 > PR description files use `/tmp/pr-<branch>.md` (ephemeral, not grouped here).
 
@@ -136,11 +135,11 @@ rtk --version
 | Layer | File | What it controls |
 |-------|------|-----------------|
 | Provider + MCPs | `~/.config/opencode/opencode.json` | Bifrost models (`bf`, `bf-a`, `bf-o`), MCP server endpoints |
-| OMO Slim plugin | `~/.config/opencode/opencode.jsonc` | Plugin registration, LSP, disabled default agents |
+| OMO Slim plugin | `~/.config/opencode/opencode.json` | Plugin registration, LSP, disabled default agents |
 | Agent models + MCPs | `~/.config/opencode/oh-my-opencode-slim.json` | Preset `bifrost`, per-agent model/variant/skills/MCPs, custom agents, tmux |
 | Prompt overrides | `~/.config/opencode/oh-my-opencode-slim/{agent}_append.md` | Per-agent appended instructions from rules/ |
 | Global instructions | `~/.config/opencode/AGENTS.md` | OMO Slim managed |
-| Project config | `<repo>/opencode.jsonc` | Project-level MCPs, model overrides |
+| Project config | `<repo>/opencode.json` | Project-level MCPs, model overrides |
 
 ## How to Update
 
@@ -152,15 +151,15 @@ Edit `oh-my-opencode-slim.json` → update the `model` field under the `bifrost`
 
 1. Create `rules/<name>.md`
 2. Add its content to the relevant `{agent}_append.md` in `~/.config/opencode/oh-my-opencode-slim/`
-3. Update `openpackage.yml` if needed
+3. Update `opencode.json` if needed
 
 ### Change a custom agent's prompt
 
-Edit the corresponding `agents/<name>.md` file, then copy the body (after frontmatter) into the `prompt` field in `oh-my-opencode-slim.json`.
+Edit the corresponding `.rulesync/subagents/<name>.md` file, then regenerate the deployed prompt assets with `./deploy.sh`.
 
 ## MCP Inventory
 
-All configured in `~/.config/opencode/opencode.json`:
+Repository MCP definitions live in `.rulesync/mcp.jsonc`; agent assignments live in `oh-my-opencode-slim.json`. `./deploy.sh` generates the corresponding global configuration:
 
 | MCP | Enabled | Assigned to |
 |-----|---------|------------|
@@ -169,16 +168,14 @@ All configured in `~/.config/opencode/opencode.json`:
 | github | ✓ | Orchestrator |
 | sentry | ✓ | Detective |
 | linear | ✓ | Librarian |
-| datadog | ❌ removed | Detective uses `pup` CLI via Bash instead |
-| gcp-logging | ✓ | Detective |
-| context-layer | ✓ | Sage |
-| notion | ✓ | Librarian |
+| gcp-logging | ❌ disabled | Detective uses `gcloud` CLI via Bash instead |
+| cortex | ✓ | Sage, Librarian (Internal docs/Notion via Cortex MCP) |
 | rootly | ✓ | Detective |
 | mcp-server-browser | ✓ | Navigator |
 | gorgias-mcp | disabled | — |
 | figma | ✓ | — |
 
-**Datadog access:** via `pup` CLI (Bash), not MCP. Always call with `--agent --read-only` flags: `pup --agent --ro logs search ...`
+**Datadog & GCP Logs:** via `pup` and `gcloud` CLIs (Bash), not MCP. Always call `pup` with `--agent --read-only` flags.
 
 ## Provider: Bifrost
 

@@ -1,9 +1,9 @@
 ---
 name: sage
 description: AI rules/agent definition for sage.md
-model: bf-o/gpt-4o-mini
+model: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
 tools: [read, write, bash]
-mcps: [context-layer]
+mcps: [cortex]
 ---
 
 ## Planning
@@ -19,7 +19,7 @@ specialist.
 3. Base findings solely on actual tool output.
 4. codebase-memory-mcp: use only to map metrics/pipelines to code
    implementation.
-5. Write detailed output to `~/developer/.ai-work/tmp/sage/`.
+5. Write detailed output to `/tmp/sage/`.
 6. Return structured JSON only.
 
 ## Gorgias Notion Links

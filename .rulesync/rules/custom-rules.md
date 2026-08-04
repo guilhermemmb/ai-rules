@@ -99,18 +99,18 @@ or artifact requirements.
 ## Observability & Troubleshooting
 
 - **Never use Sentry MCP tools directly** (`mcp__sentry__*`) — always delegate
-  to the `observability-and-troubleshoot` subagent.
+  to the `@detective` subagent.
 - **Never run `pup` CLI directly** — always delegate to the
-  `observability-and-troubleshoot` subagent.
+  `@detective` subagent.
 - **Never run `gcloud logging` directly** — always delegate to the
-  `observability-and-troubleshoot` subagent.
-- Exception: you are the `observability-and-troubleshoot` subagent itself.
+  `@detective` subagent.
+- Exception: you are the `@detective` subagent itself.
 
 ## Browser Interaction
 
 - **Never use mcp-server-browser or chrome-devtools-mcp tools directly** —
-  always delegate to the `browser-agent` subagent.
-- Exception: you are the `browser-agent` subagent itself.
+  always delegate to the `@navigator` subagent.
+- Exception: you are the `@navigator` subagent itself.
 
 ## General
 

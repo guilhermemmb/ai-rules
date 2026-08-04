@@ -33,7 +33,7 @@ For local Figma Desktop app access:
 ```json
 {
   "mcpServers": {
-    "figma-desktop": {
+    "figma-mcp": {
       "url": "http://127.0.0.1:3845/mcp"
     }
   }

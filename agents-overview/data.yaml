@@ -45,11 +45,11 @@ nodes:
   role: Strategic Advisor
   color: '#60a5fa'
   parent: orchestrator
-  model: Claude 3.5 Sonnet
+  model: Claude Sonnet 5
   skills: simplify
   mcp_access: codebase-memory-mcp
   trigger: Architecture review, hard debugging, trade-offs, code review
-  constraints: Read-heavy analysis. No sentry/datadog/context-layer MCPs.
+  constraints: Read-heavy analysis. No sentry/datadog/cortex MCPs.
   responsibilities: '• Architecture review & trade-off analysis
 
     • Hard debugging & root cause from code
@@ -111,8 +111,8 @@ nodes:
   role: UI/UX Excellence
   color: '#60a5fa'
   parent: orchestrator
-  model: Claude 3.5 Sonnet (medium)
-  mcp_access: codebase-memory-mcp, figma-desktop
+  model: Claude Sonnet 5 (medium)
+  mcp_access: codebase-memory-mcp, figma-mcp
   trigger: UI/UX implementation, visual components, frontend polish
   constraints: UI/UX focused. No backend/production tooling.
   responsibilities: '• Implement UI components & layouts
@@ -198,8 +198,8 @@ nodes:
   role: Production Diagnostics
   color: '#f59e0b'
   parent: orchestrator
-  model: GPT-5.4 Mini (high)
-  mcp_access: sentry, gcp-logging, rootly, codebase-memory-mcp
+  model: DeepSeek V4 Flash
+  mcp_access: sentry, rootly, codebase-memory-mcp
   trigger: Production errors, logs, metrics, traces, incidents, root cause analysis
   constraints: 'All tools read-only. NEVER resolve/assign/mutate issues or logs.
 
@@ -229,7 +229,7 @@ nodes:
   role: Domain Knowledge
   color: '#f59e0b'
   parent: orchestrator
-  model: DeepSeek V4 Flash (low)
+  model: DeepSeek V4 Flash
   mcp_access: cortex, codebase-memory-mcp
   skills: cortex
   trigger: Gorgias metrics, table schemas, business rules, data definitions, Notion/internal
@@ -415,8 +415,8 @@ nodes:
   role: Incident Management
   color: '#a78bfa'
   parent: detective
-- id: figma-desktop-mcp
-  label: figma-desktop
+- id: figma-mcp
+  label: figma-mcp
   type: mcp
   role: Design Files
   color: '#a78bfa'
@@ -662,19 +662,10 @@ nodes:
   role: Cost vs Performance Switching
   color: '#f472b6'
   parent: null
-  config: '• Profiles: default, cost-efficient
-
-    • Location: profiles/models/*.yml
-
-    • Deploy: ./deploy.sh --model-profile=cost-efficient
-
-    • default: GPT-5.6 Luna, DeepSeek V4 Pro, Claude 3.5 Sonnet, Gemini 3 Flash
-
-    • cost-efficient: DeepSeek V4 Flash/Pro, Gemini 3 Flash
-
-    • Implementation: scripts/apply-model-profile.py patches oh-my-opencode-slim.json
-
-    '
+  config: '• Profiles: default, cost-efficient • Location: profiles/models/*.yml •
+    Deploy: ./deploy.sh --model-profile=cost-efficient • default: GPT-5.6 Luna, DeepSeek
+    V4 Pro, Claude Sonnet 5, Gemini 3 Flash • cost-efficient: DeepSeek V4 Flash/Pro,
+    Gemini 3 Flash • Implementation: scripts/apply-model-profile.py patches oh-my-opencode-slim.json '
 - id: bifrost
   label: Bifrost
   type: infra
@@ -748,7 +739,7 @@ links:
   target: codebase-memory
   label: uses
 - source: designer
-  target: figma-desktop-mcp
+  target: figma-mcp
   label: uses
 - source: navigator
   target: mcp-server-browser
@@ -759,9 +750,6 @@ links:
 - source: detective
   target: pup-cli
   label: uses (Bash)
-- source: detective
-  target: gcp-logging-mcp
-  label: uses
 - source: detective
   target: rootly-mcp
   label: uses

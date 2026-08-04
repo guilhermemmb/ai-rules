@@ -153,15 +153,15 @@ nodes:
 
 Update the visualization whenever you change:
 
-- Add/remove/rename agents in `agents/`
-- Modify MCPs or tool access in `CLAUDE.md`
-- Change subagent dispatch rules in `agents/routing.md`
-- Update infrastructure/config in `MCP_SERVERS.md`
+- Add/remove/rename agents in `.rulesync/subagents/`
+- Modify MCPs or tool access in `.rulesync/rules/`
+- Change subagent dispatch rules in `oh-my-opencode-slim.json`
+- Update infrastructure/config in `.rulesync/mcp.jsonc`
 - Modify skills in the global rules
 
 ### Claude Instruction
 
-Add this reminder to CLAUDE.md or your memory:
+Add this reminder to `.rulesync/rules/custom-rules.md` or your memory:
 
 ```markdown
 ## Architecture Visualization
@@ -195,7 +195,7 @@ No code needed—YAML drives everything.
 - **orchestrator** — Master delegator; plans, implements directly, dispatches subagents
 - **oracle** — Strategic advisor; architecture review, hard debugging, code review
 - **explorer** — Codebase reconnaissance; broad searches, pattern discovery
-- **librarian** — Knowledge retrieval; library docs (context7), web search, Linear, Notion, GitHub code search
+- **librarian** — Knowledge retrieval; library docs (context7), web search, Linear, Gorgias internal docs/Notion (via Cortex), GitHub code search
 - **designer** — UI/UX implementation; visual components, frontend polish, Figma Desktop
 - **fixer** — Bounded implementation; scoped bug fixes, mechanical code changes
 - **observer** — Visual analysis; images, screenshots, PDFs (auto-routed from orchestrator)
@@ -203,7 +203,7 @@ No code needed—YAML drives everything.
 **Custom:**
 - **navigator** — Browser automation; navigation, screenshots, DOM, form fills
 - **detective** — Production diagnostics; Sentry, Datadog (pup CLI), GCP logs, Rootly, root cause analysis
-- **sage** — Domain knowledge; Gorgias metrics, table schemas, business rules (cortex/context-layer)
+- **sage** — Domain knowledge; Gorgias metrics, table schemas, business rules (cortex)
 
 ### MCPs (Model Context Protocol)
 
@@ -216,7 +216,7 @@ No code needed—YAML drives everything.
 - **websearch** — Web search via Exa
 - **gh_grep** — GitHub code search across repos
 - **linear** — Issues, epics, cycles (read-only)
-- **notion** — Design docs, specs, runbooks (read-only)
+- **cortex** — Gorgias internal docs, specs, runbooks (read-only)
 
 **designer:**
 - **figma-desktop** — Design files (local Figma Desktop app, http://127.0.0.1:3845/mcp)
@@ -227,11 +227,11 @@ No code needed—YAML drives everything.
 **detective:**
 - **sentry** — Error monitoring (read-only)
 - **pup CLI** — Datadog CLI (--agent --ro): logs, metrics, APM, monitors
-- **gcp-logging** — GCP Cloud Logging
+- **gcloud CLI** — GCP Cloud Logging (Bash, no enabled MCP)
 - **rootly** — Incident management data
 
 **sage:**
-- **context-layer** — Gorgias domain knowledge, metrics, BigQuery
+- **cortex** — Gorgias domain knowledge, metrics, BigQuery
 
 ### Tools
 - **Bash** — Command execution (all agents)
@@ -415,8 +415,8 @@ flowchart TD
 
 **Orchestrator hard-enforced dispatch rules (no direct access):**
 - mcp-server-browser → dispatch to navigator
-- sentry, gcp-logging, rootly → dispatch to detective
-- context-layer → dispatch to sage
-- linear, notion → dispatch to librarian
+- sentry, rootly → dispatch to detective (gcp-logging disabled)
+- cortex → dispatch to sage
+- linear, cortex → dispatch to librarian (internal docs/Notion)
 
 This enforces proper tool isolation and prevents unauthorized access.

@@ -1,9 +1,9 @@
 ---
 name: detective
 description: AI rules/agent definition for detective.md
-model: bf-o/gpt-5.4
+model: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
 tools: [read, write, bash]
-mcps: [sentry, gcp-logging, rootly]
+mcps: [sentry, rootly]
 skills:
   [
     dd-pup,
