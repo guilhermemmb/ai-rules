@@ -1,6 +1,7 @@
 ---
 name: rtk
 description: AI rules/agent definition for rtk.md
+root: true
 ---
 
 # RTK — Rust Token Killer

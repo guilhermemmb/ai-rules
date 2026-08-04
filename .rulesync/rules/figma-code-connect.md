@@ -4,6 +4,7 @@ description: Creates and maintains Figma Code Connect template files that map Fi
 disable-model-invocation: false
 globs: 
 alwaysApply: false
+root: true
 ---
 
 # Code Connect

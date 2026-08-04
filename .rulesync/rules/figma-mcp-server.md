@@ -2,6 +2,7 @@
 description: Figma MCP Server connection configuration and tool reference (read-only scope)
 globs: 
 alwaysApply: false
+root: true
 ---
 
 # Figma MCP Server Reference

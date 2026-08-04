@@ -1,6 +1,7 @@
 ---
 name: security-scan
 description: AI rules/agent definition for security-scan.md
+root: true
 ---
 
 # Commit / Push Safety Scan

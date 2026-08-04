@@ -1,6 +1,7 @@
 ---
 name: pr-workflow
 description: AI rules/agent definition for pr-workflow.md
+root: true
 ---
 
 # Pull Request Workflow

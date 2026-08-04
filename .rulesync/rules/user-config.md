@@ -1,6 +1,7 @@
 ---
 name: user-config
 description: AI rules/agent definition for user-config.md
+root: true
 ---
 
 ## Git Configuration

@@ -1,6 +1,7 @@
 ---
 name: git-safety
 description: Centralized rules for Git and GitHub safety
+root: true
 ---
 
 # Git & GitHub Safety Rules

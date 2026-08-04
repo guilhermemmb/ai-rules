@@ -13,8 +13,9 @@
 set -euo pipefail
 
 OPENDIR="${HOME}/.config/opencode"
-OCMONITOR_DIR="${HOME}/.config/ocmonitor"
 SRCDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CODEBASE_MEMORY_MCP_BIN="${HOME}/.local/bin/codebase-memory-mcp"
+CODEBASE_MEMORY_MCP_INSTALLER_URL="https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/install.sh"
 MODE="deploy"
 MODEL_PROFILE="default"
 
@@ -55,54 +56,27 @@ omo_installed() {
   return 1
 }
 
-# ── check ──
-check_file() {
-  local label="$1" src="$2" dst="$3"
-  if [ ! -f "$src" ] && [ ! -d "$src" ]; then
-    red "  MISSING source: $src"
-    return 1
+# ── install codebase-memory-mcp if missing ──
+install_codebase_memory_mcp() {
+  if [ -x "$CODEBASE_MEMORY_MCP_BIN" ]; then
+    green "  ✅ codebase-memory-mcp already installed — skipping"
+    return 0
   fi
-  if [ ! -e "$dst" ]; then
-    red "  NEW      $label → $dst"
-    return
-  fi
-  if diff -q "$src" "$dst" > /dev/null 2>&1; then
-    green "  OK       $label"
-  else
-    red "  DIFF     $label"
-  fi
-}
 
-check_dir() {
-  local label="$1" src="$2" dst="$3"
-  local diff_count=0 new=0
-
-  if [ ! -d "$src" ]; then
-    red "  MISSING source dir: $src"
+  if ! command -v curl >/dev/null 2>&1; then
+    red "  ❌ curl is required to install codebase-memory-mcp"
     return 1
   fi
 
-  while IFS= read -r -d '' srcf; do
-    rel="${srcf#$src/}"
-    dstf="$dst/$rel"
-    if [ ! -e "$dstf" ]; then
-      ((new++))
-    elif ! diff -q "$srcf" "$dstf" > /dev/null 2>&1; then
-      ((diff_count++))
-    fi
-  done < <(find "$src" -type f -print0)
+  cyan "  ⚡ codebase-memory-mcp not found — installing UI variant..."
+  curl -fsSL "$CODEBASE_MEMORY_MCP_INSTALLER_URL" | bash -s -- --ui
 
-  if [ "$new" -eq 0 ] && [ "$diff_count" -eq 0 ]; then
-    green "  OK       $label"
-  else
-    local parts=()
-    [ "$new" -gt 0 ] && parts+=("$new new")
-    [ "$diff_count" -gt 0 ] && parts+=("$diff_count changed")
-    local msg
-    printf -v msg '%s' "${parts[*]}"
-    msg=${msg// /, }
-    red "  DIFF     $label ($msg)"
+  if [ ! -x "$CODEBASE_MEMORY_MCP_BIN" ]; then
+    red "  ❌ codebase-memory-mcp installation completed without creating $CODEBASE_MEMORY_MCP_BIN"
+    return 1
   fi
+
+  green "  ✅ codebase-memory-mcp installed globally"
 }
 
 # ── install omo plugin if missing ──
@@ -132,22 +106,28 @@ run_rulesync() {
   # Ensure target dir exists
   mkdir -p "$OPENDIR"
   
-  # Break symlinks and copy base files
+  # Break symlinks and clear manually managed directories
   rm -f "$OPENDIR/opencode.json" "$OPENDIR/oh-my-opencode-slim.json" "$OPENDIR/rulesync.jsonc"
+  rm -rf "$OPENDIR/oh-my-opencode-slim" "$OPENDIR/commands"
+  rm -f "$OPENDIR/AGENTS.md" "$OPENDIR/opencode.jsonc"
+  rm -rf "$OPENDIR/agents" "$OPENDIR/skills"
+
+  cyan "  🔄 Merging MCPs and rules via rulesync (Global Mode)..."
+  # We run rulesync generate in global mode so it targets the home directory structure
+  (cd "$SRCDIR" && bunx rulesync generate --global --targets opencode)
+
+  # Distribute assets that rulesync doesn't manage natively
   cp "$SRCDIR/opencode.json" "$OPENDIR/opencode.json"
   cp "$SRCDIR/oh-my-opencode-slim.json" "$OPENDIR/oh-my-opencode-slim.json"
   cp "$SRCDIR/rulesync.jsonc" "$OPENDIR/rulesync.jsonc"
-  
-  # Distribute assets that rulesync doesn't manage natively
-  rm -rf "$OPENDIR/oh-my-opencode-slim" "$OPENDIR/skills" "$OPENDIR/commands"
   cp -r "$SRCDIR/.rulesync/oh-my-opencode-slim" "$OPENDIR/oh-my-opencode-slim"
-  cp -r "$SRCDIR/.rulesync/skills" "$OPENDIR/skills"
   cp -r "$SRCDIR/.rulesync/commands" "$OPENDIR/commands"
   
-  cyan "  🔄 Merging MCPs and rules via rulesync..."
-  # We run rulesync generate in the repo root; it targets the paths in rulesync.jsonc
-  bunx rulesync generate
-  
+  # Remove stale local-mode assets if they exist
+  if [ -d "$OPENDIR/.opencode" ]; then
+    rm -rf "$OPENDIR/.opencode"
+  fi
+
   green "  ✅ Deployment complete via rulesync"
 }
 
@@ -163,6 +143,7 @@ deploy() {
   # Ensure restoration on exit
   trap 'if [ -f "$BACKUP_FILE" ]; then mv "$BACKUP_FILE" "$SRCDIR/oh-my-opencode-slim.json"; fi' EXIT
 
+  install_codebase_memory_mcp
   apply_model_profile
   run_rulesync
   install_omo
@@ -171,26 +152,84 @@ deploy() {
 # ── main ──
 case "$MODE" in
   "--check")
-    echo "🔍 deploy.sh --check (rulesync dry-run)"
+    echo "🔍 Building temporary global deployment to check for drift..."
     echo ""
-    check_file "opencode.json"            "$SRCDIR/opencode.json"            "$OPENDIR/opencode.json"
-    check_file "rulesync.jsonc"           "$SRCDIR/rulesync.jsonc"           "$OPENDIR/rulesync.jsonc"
-    check_file "oh-my-opencode-slim.json" "$SRCDIR/oh-my-opencode-slim.json" "$OPENDIR/oh-my-opencode-slim.json"
-    check_dir  ".rulesync/oh-my-opencode-slim/" "$SRCDIR/.rulesync/oh-my-opencode-slim" "$OPENDIR/oh-my-opencode-slim"
-    check_dir  ".rulesync/commands/"      "$SRCDIR/.rulesync/commands"       "$OPENDIR/commands"
-    check_dir  ".rulesync/skills/"        "$SRCDIR/.rulesync/skills"         "$OPENDIR/skills"
-    echo ""
-    echo "Run './deploy.sh' to apply."
-    ;;
-  "--force")
-    FORCE=true
-    echo "⚡ deploy.sh — ai-rules (rulesync global)"
-    echo ""
-    deploy
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "  ✅ Migration complete."
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    DRIFT=0
+    if [ ! -x "$CODEBASE_MEMORY_MCP_BIN" ]; then
+      DRIFT=1
+      red "  ⚠️  MISSING: global codebase-memory-mcp at $CODEBASE_MEMORY_MCP_BIN"
+    fi
+
+    PROFILE_STAGE=$(mktemp -d)
+    trap 'rm -rf "$PROFILE_STAGE"' EXIT
+    cp "$SRCDIR/oh-my-opencode-slim.json" "$PROFILE_STAGE/oh-my-opencode-slim.json"
+    cp -r "$SRCDIR/profiles" "$PROFILE_STAGE/profiles"
+    python3 "$SRCDIR/scripts/apply-model-profile.py" "$PROFILE_STAGE" "$MODEL_PROFILE" > /dev/null
+
+    # Let Rulesync validate generated global assets without writing files.
+    local_rulesync_output=""
+    if ! local_rulesync_output=$(cd "$SRCDIR" && bunx rulesync generate --global --targets opencode --check 2>&1); then
+      DRIFT=1
+      red "  ⚠️  Rulesync-managed OpenCode assets are out of date:"
+      printf '%s\n' "$local_rulesync_output"
+    fi
+
+    # Compare files and directories managed directly by this script.
+    compare_path() {
+      local src="$1" dst="$2" label="$3"
+
+      if [ ! -e "$src" ]; then
+        if [ -e "$dst" ]; then
+          DRIFT=1
+          red "  ⚠️  STALE: $label"
+        fi
+      elif [ ! -e "$dst" ]; then
+        DRIFT=1
+        red "  ⚠️  NEW (missing in live): $label"
+      elif [ -d "$src" ]; then
+        local differences
+        differences=$(diff -rq -x .DS_Store "$src" "$dst" 2>&1 || true)
+        if [ -n "$differences" ]; then
+          DRIFT=1
+          red "  ⚠️  DRIFT detected in $label:"
+          printf '%s\n' "$differences"
+        fi
+      elif ! cmp -s "$src" "$dst"; then
+        DRIFT=1
+        red "  ⚠️  CHANGED: $label"
+      fi
+    }
+
+    for managed_path in \
+      "oh-my-opencode-slim" \
+      "commands"; do
+      compare_path \
+        "$SRCDIR/.rulesync/$managed_path" \
+        "$HOME/.config/opencode/$managed_path" \
+        ".config/opencode/$managed_path"
+    done
+
+    compare_path "$SRCDIR/opencode.json" "$HOME/.config/opencode/opencode.json" ".config/opencode/opencode.json"
+    compare_path "$PROFILE_STAGE/oh-my-opencode-slim.json" "$HOME/.config/opencode/oh-my-opencode-slim.json" ".config/opencode/oh-my-opencode-slim.json"
+    compare_path "$SRCDIR/rulesync.jsonc" "$HOME/.config/opencode/rulesync.jsonc" ".config/opencode/rulesync.jsonc"
+    compare_path "$SRCDIR/.rulesync/oh-my-opencode-slim" "$HOME/.config/opencode/oh-my-opencode-slim" ".config/opencode/oh-my-opencode-slim"
+    compare_path "$SRCDIR/.rulesync/commands" "$HOME/.config/opencode/commands" ".config/opencode/commands"
+
+    # 3. Check for stale .opencode directory
+    if [ -d "$OPENDIR/.opencode" ]; then
+      DRIFT=1
+      red "  ⚠️  STALE local-mode directory found: $OPENDIR/.opencode"
+    fi
+
+    if [ "$DRIFT" -eq 0 ]; then
+      green "  ✅ Live deployment matches repository."
+      exit 0
+    else
+      echo ""
+      echo "Run './deploy.sh' to apply changes."
+      exit 1
+    fi
     ;;
   "deploy"|"")
     echo "⚡ deploy.sh — ai-rules (rulesync global)"

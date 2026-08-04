@@ -1,6 +1,7 @@
 ---
 name: context7
 description: AI rules/agent definition for context7.md
+root: true
 ---
 
 # Context7 MCP — Library Documentation

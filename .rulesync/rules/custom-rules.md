@@ -1,6 +1,7 @@
 ---
 name: custom-rules
 description: AI rules/agent definition for custom-rules.md
+root: true
 ---
 
 # Custom Rules (always applied)
