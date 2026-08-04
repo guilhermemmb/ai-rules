@@ -2,15 +2,15 @@
   "$schema": "https://github.com/dyoshikawa/rulesync/releases/latest/download/mcp-schema.json",
   "mcpServers": {
     "codebase-memory-mcp": {
-      "type": "stdio",
-      "command": "/Users/guilhermebomfim/.local/bin/codebase-memory-mcp",
-      "enabled": true
+      "enabled": true,
+      "type": "local",
+      "command": ["/Users/guilhermebomfim/.local/bin/codebase-memory-mcp"],
     },
     "context7": {
       "type": "sse",
       "url": "https://mcp.context7.com/mcp",
       "headers": {
-        "CONTEXT7_API_KEY": "ctx7sk-5a43d734-feb8-4f4f-8c67-746ac7e3cee0"
+        "CONTEXT7_API_KEY": "ctx7sk-5a43d734-feb8-4f4f-8c67-746ac7e3cee0",
       },
       "enabled": true
     },
@@ -18,58 +18,55 @@
       "type": "sse",
       "url": "https://api.githubcopilot.com/mcp/",
       "headers": {
-        "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+        "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}",
       },
-      "enabled": true
+      "enabled": true,
     },
     "sentry": {
       "type": "sse",
       "url": "https://mcp.sentry.dev/mcp",
-      "enabled": true
+      "enabled": true,
     },
     "linear": {
       "type": "sse",
       "url": "https://mcp.linear.app/mcp",
-      "enabled": true
+      "enabled": true,
     },
     "gcp-logging": {
       "type": "sse",
       "url": "https://logging.googleapis.com/mcp",
-      "enabled": false
+      "enabled": false,
     },
     "context-layer": {
       "type": "sse",
       "url": "https://cortex.mcp.gorgias-decision-engine.com/mcp",
-      "enabled": true
+      "enabled": true,
     },
     "notion": {
       "type": "sse",
       "url": "https://mcp.notion.com/mcp",
-      "enabled": true
+      "enabled": true,
     },
     "rootly": {
       "type": "sse",
       "url": "https://mcp.rootly.com/mcp",
-      "enabled": true
+      "enabled": true,
     },
     "gorgias-mcp": {
       "type": "sse",
       "url": "https://mcp.gorgias.com/mcp",
-      "enabled": false
+      "enabled": false,
     },
     "figma-desktop": {
       "type": "sse",
       "url": "http://127.0.0.1:3845/mcp",
-      "enabled": true
+      "enabled": true,
     },
     "mcp-server-browser": {
       "type": "stdio",
       "command": "npx",
-      "args": [
-        "-y",
-        "@agent-infra/mcp-server-browser@latest"
-      ],
-      "enabled": true
-    }
-  }
+      "args": ["-y", "@agent-infra/mcp-server-browser@latest"],
+      "enabled": true,
+    },
+  },
 }

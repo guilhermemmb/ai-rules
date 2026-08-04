@@ -59,7 +59,7 @@
       "designer": {
         "model": "bf-a/claude-sonnet-5",
         "variant": "medium",
-        "skills": [],
+        "skills": ["figma-design-to-code", "figma-code-connect", "figma-use", "figma-implement-motion", "figma-generate-library"],
         "mcps": [
           "codebase-memory-mcp",
           "figma-desktop"

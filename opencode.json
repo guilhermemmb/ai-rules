@@ -3,7 +3,7 @@
   "shell": "zsh",
   "default_agent": "orchestrator",
   "lsp": true,
-  "plugin": ["oh-my-opencode-slim", "@warp-dot-dev/opencode-warp"],
+  "plugin": ["oh-my-opencode-slim"],
   "agent": {
     "explore": {
       "disable": true

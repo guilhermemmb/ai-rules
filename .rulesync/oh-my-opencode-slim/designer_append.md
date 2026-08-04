@@ -11,6 +11,13 @@
 
 See rules: `figma-design-to-code`, `figma-code-connect`, `figma-mcp-server`.
 
+Invoke the following skills:
+- figma-design-to-code: Figma-to-code implementation
+- figma-code-connect: .figma.ts Code Connect templates
+- figma-use: write-to-canvas Plugin API work
+- figma-implement-motion: motion translation
+- figma-generate-library: design-system library generation
+
 - Use `get_design_context` as primary tool for reading design specs — never
   `get_metadata` or `get_screenshot` as substitutes.
 - Adapt Figma output to project's actual framework, component library, and

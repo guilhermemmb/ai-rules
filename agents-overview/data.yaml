@@ -915,7 +915,7 @@ profiles:
     oracle: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro
     explorer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     librarian: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    fixer: bf/gemini/gemini-3-flash-preview
+    fixer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     designer: bf/gemini/gemini-3-flash-preview
     observer: bf/gemini/gemini-3-flash-preview
     navigator: bf/gemini/gemini-3-flash-preview
@@ -939,7 +939,7 @@ profiles:
     observer: bf/gemini/gemini-3-flash-preview
     navigator: bf/gemini/gemini-3-flash-preview
     sage: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    detective: bf-o/gpt-5.4-mini
+    detective: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     reviewer: bf-o/gpt-5.6-luna
     reviewer-code: bf-o/gpt-5.6-luna
     reviewer-comments: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
@@ -961,7 +961,7 @@ model_names:
   bf-a/claude-haiku-4-5: Claude Haiku 4 5
   bf-a/claude-opus-4-8: Claude Opus 4 8
   bf-a/claude-sonnet-4-6: Claude Sonnet 4 6
-  bf-a/claude-sonnet-5: Claude 3.5 Sonnet
+  bf-a/claude-sonnet-5: Claude Sonnet 5
   bf-o/gpt-4o: GPT 4O
   bf-o/gpt-4o-mini: GPT 4O Mini
   bf-o/gpt-5.4: GPT 5.4
