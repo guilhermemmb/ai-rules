@@ -3,7 +3,6 @@
 ## Machine Config
 
 - Always use zsh. Source `~/.zshrc` before running commands.
-- RTK is active via plugin — commands are automatically optimized.
 - Node: Volta (`$VOLTA_HOME/bin`). Package manager: start with pnpm.
 
 ## Context7 — Library Documentation

@@ -3,7 +3,6 @@
 ## Machine Config
 
 - Always use zsh. Source `~/.zshrc` before running commands.
-- RTK is active via plugin — commands are automatically optimized.
 - Git user: Guilherme Bomfim (guilherme.bomfim@gorgias.com).
 - Node: Volta (`$VOLTA_HOME/bin`). PATH: `$VOLTA_HOME/bin`, `~/.local/bin`.
 
@@ -53,14 +52,9 @@ Use these skills for specific Datadog investigation tasks:
 - `traces` — APM trace and span queries
 - `logs` — Datadog log queries
 
-## Codebase Memory MCP
+## Source Correlation
 
-Use codebase-memory-mcp to correlate errors/traces back to source code:
-
-- `search_graph` — find suspect symbols by name or natural language
-- `trace_path` — follow call chains from error location
-- `get_code_snippet` — read source for a specific symbol
-- `get_architecture` — understand service boundaries
+Follow `code-exploration` rule. Use Graph MCP (search_graph, trace_path, get_code_snippet) only to correlate errors/traces to source — not for broad structural exploration. Prefer `rtk grep`/`rtk read` for exact symbol or log searches; fall back immediately if Graph MCP is empty/incomplete.
 
 ## Strict Investigation Rules
 

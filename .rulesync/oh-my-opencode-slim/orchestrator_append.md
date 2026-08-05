@@ -4,8 +4,7 @@
 
 - Always use zsh. Before running any command, source `~/.zshrc` first so the
   environment matches the interactive terminal.
-- RTK is active via plugin and rewrites commands transparently — `git status`
-  automatically becomes `rtk git status`. No manual prefixing needed.
+- RTK plugin transparently optimizes ordinary commands. See `code-exploration` rule for discovery routing.
 
 ## Git Configuration
 
@@ -213,43 +212,6 @@ needed.**
 - **Never use Linear MCP directly** — dispatch to **Librarian**
 - **For Gorgias/internal Notion links or docs** — delegate to **Sage** (extracts page ID, uses Cortex)
 - **For public Notion pages** — delegate to **Librarian**
-
-## Codebase Memory MCP
-
-**MANDATORY: use codebase-memory-mcp graph tools FIRST — before reading files or
-making code changes.**
-
-Call `list_projects` first when project name unknown. Use the `display_name` or
-exact `name` returned.
-
-**Tools:**
-
-- `search_graph` — primary entry point. Full-text BM25 query, name_pattern
-  regex, semantic_query vector. Narrow with label, file_pattern, min_degree.
-  Paginate via offset/limit.
-- `search_code` — graph-augmented text search ranked by importance
-- `get_architecture` — high-level overview: packages, services, routes,
-  hotspots, clusters
-- `trace_path` — follow CALLS/DATA_FLOW/CROSS_SERVICE edges; impact analysis,
-  call chains
-- `get_code_snippet` — read source for a symbol (find qualified_name via
-  search_graph first)
-- `query_graph` — Cypher for multi-hop patterns, aggregations, complexity
-  queries
-- `get_graph_schema` / `detect_changes` — inspect schema; map git diff to
-  affected symbols
-- `index_repository` — build/update graph
-  (full/moderate/fast/cross-repo-intelligence)
-- `list_projects` / `index_status` / `delete_project` — manage indexed projects
-- `ingest_traces` / `manage_adr` — validate call edges; read/write Architecture
-  Decision Records
-
-**Workflow:** list_projects → get_architecture → search_graph (find symbol) →
-get_code_snippet or trace_path → query_graph for complex patterns. Fall back to
-Read/grep only for exact line-level edits or unindexed symbols.
-
-**Project name** = absolute root_path slugified:
-`/Users/foo/developer/gorgias-chat` → `Users-foo-developer-gorgias-chat`
 
 ## Security Scan (on-demand)
 

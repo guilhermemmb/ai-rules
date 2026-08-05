@@ -63,13 +63,12 @@ ai-rules/
 ├── opencode.json               # Manifest: declares rules, agents, skills, commands, MCP
 ├── .rulesync/                  # Synchronized rules and subagents
 │   ├── rules/                  # Rule files (distributed as prompt overrides)
-│   │   ├── overview.md         # GitHub/git/PR rules
-│   │   ├── custom-rules.md     # Workflow, packages, commits, dispatch rules
-│   │   ├── pr-workflow.md      # PR creation workflow
-│   │   ├── security-scan.md    # On-demand commit/push safety checklist
-│   │   ├── rtk.md              # RTK token optimization
-│   │   ├── user-config.md      # Machine config, env vars, aliases
-│   │   └── codebase-memory.md  # Codebase Memory MCP usage guide
+│   │   ├── overview.md             # GitHub/git/PR rules
+│   │   ├── custom-rules.md         # Workflow, packages, commits, dispatch rules
+│   │   ├── pr-workflow.md          # PR creation workflow
+│   │   ├── security-scan.md        # On-demand commit/push safety checklist
+│   │   ├── user-config.md          # Machine config, env vars, aliases
+│   │   └── code-exploration.md     # Centralized RTK/Graph MCP discovery routing
 │   ├── subagents/              # Custom agent prompt definitions
 │   │   ├── navigator.md        # Browser automation
 │   │   ├── detective.md        # Production diagnostics
@@ -118,7 +117,9 @@ See `docs/sdd-workflow.md` for the full flowchart and agent usage matrix.
 
 ## RTK — Token Optimization Plugin
 
-RTK is installed as a real OpenCode plugin that transparently rewrites commands before execution. No manual prefixing needed.
+RTK is installed as an OpenCode plugin that transparently rewrites ordinary development commands before execution — `git status` automatically becomes `rtk git status` with no manual prefixing.
+
+For **code discovery**, use explicit RTK subcommands: `rtk grep`, `rtk read`, `rtk find`. See the `code-exploration` rule for the full routing protocol between RTK CLI and Graph MCP.
 
 ```bash
 # Install (already done — plugin at ~/.config/opencode/plugins/rtk.ts)
@@ -149,9 +150,10 @@ Edit `oh-my-opencode-slim.json` → update the `model` field under the `bifrost`
 
 ### Add a rule
 
-1. Create `rules/<name>.md`
-2. Add its content to the relevant `{agent}_append.md` in `~/.config/opencode/oh-my-opencode-slim/`
-3. Update `opencode.json` if needed
+1. Create `.rulesync/rules/<name>.md` for global behavior.
+2. Add content to `{agent}_append.md` only when it is genuinely agent-specific;
+   do not copy global routing or tool-selection rules into agent appends.
+3. Update `opencode.json` if needed.
 
 ### Change a custom agent's prompt
 

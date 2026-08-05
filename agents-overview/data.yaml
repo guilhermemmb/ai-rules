@@ -36,7 +36,7 @@ nodes:
 
     • Never run git commands without user confirmation
 
-    • RTK active via plugin (transparent rewrite)
+    • RTK plugin transparently optimizes commands; follow code-exploration rule for discovery routing
 
     '
 - id: oracle
@@ -68,14 +68,14 @@ nodes:
   model: DeepSeek V4 Flash (low)
   mcp_access: codebase-memory-mcp
   trigger: Broad codebase searches, pattern discovery, unfamiliar repos
-  constraints: Read-only exploration. Uses RTK for efficiency.
+  constraints: Read-only exploration. Follows code-exploration rule.
   responsibilities: '• Broad codebase scouting & pattern discovery
 
     • Find definitions, callers, dependencies
 
     • Map unfamiliar repos quickly
 
-    • Prefer codebase-memory-mcp over grep/glob
+    • Follow code-exploration rule: RTK for exact/local discovery, Graph MCP for structural analysis
 
     '
 - id: librarian
@@ -137,7 +137,7 @@ nodes:
   model: DeepSeek V4 Pro (xhigh)
   mcp_access: codebase-memory-mcp
   trigger: Scoped implementation tasks, bug fixes, code changes
-  constraints: Receives concrete plan from Orchestrator. RTK for commands.
+  constraints: Receives concrete plan from Orchestrator. Follows code-exploration rule.
   responsibilities: '• Fast, scoped code implementation
 
     • Bug fixes with clear reproduction steps
@@ -649,7 +649,9 @@ nodes:
 
     • Active OpenCode plugin: ~/.config/opencode/plugins/rtk.ts
 
-    • Transparently rewrites commands before execution (tool.execute.before hook)
+    • Transparently rewrites ordinary commands before execution (tool.execute.before hook)
+
+    • Discovery subcommands: rtk grep, rtk read, rtk find
 
     • Install: rtk init -g --opencode
 
