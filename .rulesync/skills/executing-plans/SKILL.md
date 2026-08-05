@@ -59,21 +59,47 @@ Assign the right agent per task type:
 
 **1. Dispatch the implementer**
 
-Choose agent: @fixer for code, @designer for UI.
+Choose agent: @fixer for code, @designer for UI. Select the model tier from the agent dispatch rules table above.
 
-The dispatch prompt includes:
-- The exact task text (copy verbatim from the plan)
-- Exact file paths, interfaces, and Global Constraints
+The dispatch payload includes, verbatim:
+- `Goal` — one-sentence task objective
+- `Files` — exact file paths with create/modify/test annotations
+- `Steps` — ordered checkbox steps from the plan (exclude any commit steps; see below)
+- `Interfaces/Constraints` — what the task consumes, produces, and must preserve
+- `Validation` — exact commands and expected results
+- `Lint Autofix` — (optional) if lint autofix is desired, list permitted files. Omit to default to check-only.
+- `Stop Conditions` — conditions requiring early escalation (if present in plan)
+- Global Constraints — copied from the plan header
+- Selected model tier — Pro (xhigh) or Flash (cost-efficient)
 - A report file path: `docs/.planning/reports/<plan-basename>-task-<N>.md`
-- Instruction: "Write your complete status, commit SHAs, test summary, and any concerns to the report file. Return only: status (DONE / NEEDS_CONTEXT / BLOCKED), commits, one-line test summary, concerns."
+
+Also instruct the agent not to run `git commit` or `git push` autonomously.
+
+**Commit steps in plan tasks:** If the plan includes `- [ ] Commit` steps, exclude them from the dispatched `Steps` and append: `Commits are orchestrator-owned — do not commit.` The fixer implements and reports; only the orchestrator stages and commits after review.
+
+**Pre-dispatch scope check:** If a task combines unrelated concerns, spans files not in the `Files` list, or has missing acceptance criteria, split or refine it before dispatch. Do not hand ambiguous tasks to the implementer.
 
 **2. Handle the report**
 
+The implementer returns a structured status report:
+
+```
+<status>DONE|NEEDS_CONTEXT|BLOCKED</status>
+<summary>Brief summary</summary>
+<changes>- file1.ts: Changed X to Y</changes>
+<verification>
+- Tests passed: [yes/no/skip reason]
+- Lint: [passed/failed/autofixed — list files if autofixed]
+- Validation: [passed/failed/skip reason]
+</verification>
+<concerns>- [any concerns or "none"]</concerns>
+```
+
 | Status | Action |
 |---|---|
-| DONE | Proceed to review |
-| NEEDS_CONTEXT | Provide missing info, re-dispatch |
-| BLOCKED | Assess: context problem → provide context and re-dispatch. Task too hard → escalate to @oracle. Plan wrong → report to user. |
+| DONE | All steps completed with passing validation — proceed to review |
+| NEEDS_CONTEXT | Handoff missing required fields or ambiguous acceptance criteria — provide missing info, re-dispatch. Do not adjust the task scope; the plan is authoritative. |
+| BLOCKED | Plan or environment prevents completion (stale paths, missing dependencies, incompatible constraints). Assess: fixable context gap → provide context and re-dispatch. Task exceeds fixer bounds → escalate to @oracle. Plan wrong → report to user. |
 
 **3. Review the task**
 

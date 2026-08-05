@@ -11,7 +11,7 @@
 
 ## Code Exploration
 
-Follow the `code-exploration` rule: RTK CLI for exact/local discovery, Graph MCP for call hierarchies and structural analysis. Targeted known-file reads do not require complex graph queries — use `rtk read` or Read directly. Fall back to RTK immediately if Graph MCP returns empty/incomplete.
+Follow this routing: RTK CLI for exact/local discovery, Graph MCP for call hierarchies and structural analysis. Fall back to RTK immediately if Graph MCP returns empty/incomplete. See the loaded `fixer` skill for full discovery and bounded-work rules.
 
 ## Commit Messages
 
@@ -23,7 +23,8 @@ Follow the `code-exploration` rule: RTK CLI for exact/local discovery, Graph MCP
 
 ## Verification
 
-- Always run lint to fix files before finishing an implementation.
+- Always run lint validation (check-only, no autofix) before finishing an implementation.
+- Only run lint with autofix when the handoff explicitly includes a `Lint Autofix` directive — and limit autofix to the listed files.
 - When tests fail, show only the errors — filter console output, don't dump raw.
 - For workspace/monorepo: path is relative to the package, not the repo root.
   e.g. `pnpm --filter @gorgias-chat/client test:unit src/foo/Bar.spec.tsx`

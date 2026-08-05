@@ -68,7 +68,7 @@
       "fixer": {
         "model": "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro",
         "variant": "xhigh",
-        "skills": [],
+        "skills": ["fixer"],
         "mcps": [
           "codebase-memory-mcp"
         ]

@@ -135,18 +135,32 @@ nodes:
   color: '#60a5fa'
   parent: orchestrator
   model: DeepSeek V4 Pro (xhigh)
+  skills: fixer
   mcp_access: codebase-memory-mcp
   trigger: Scoped implementation tasks, bug fixes, code changes
-  constraints: Receives concrete plan from Orchestrator. Follows code-exploration rule.
-  responsibilities: '• Fast, scoped code implementation
+  constraints: Receives concrete plan from Orchestrator with required handoff fields
+    (Goal, Files, Steps, Interfaces/Constraints, Validation, Stop Conditions). Follows
+    code-exploration rule. Loads fixer skill.
+  responsibilities: '• Fast, scoped code implementation within bounded plan
 
     • Bug fixes with clear reproduction steps
 
-    • Single-file or bounded multi-file changes
+    • Single-file or bounded multi-file changes (single-concept for Flash)
 
-    • Run lint after changes
+    • Scope-check before implementation — return NEEDS_CONTEXT for ambiguous or over-scoped
+    tasks
 
-    • Conventional commits format
+    • Escalate early for stale paths, missing criteria, or cross-boundary changes (no
+    speculative rounds)
+
+    • Report with explicit status (DONE / NEEDS_CONTEXT / BLOCKED), summary, changed files,
+    verification, lint outcome, and concerns
+
+    • Run lint validation (check-only) after changes; autofix only when handoff directive
+    lists permitted files
+
+    • Follows conventional commits format but never commits or pushes — commits are
+    orchestrator-owned
 
     '
 - id: observer
@@ -553,6 +567,12 @@ nodes:
   role: PR Review Orchestration (7 specialists)
   color: '#34d399'
   parent: reviewer
+- id: skill-fixer
+  label: fixer
+  type: skill
+  role: Bounded Implementation Specialist
+  color: '#34d399'
+  parent: fixer
 - id: skill-screenshot
   label: screenshot
   type: skill
@@ -800,6 +820,9 @@ links:
 - source: fixer
   target: codebase-memory
   label: uses
+- source: fixer
+  target: skill-fixer
+  label: invokes
 - source: orchestrator
   target: skill-codemap
   label: invokes

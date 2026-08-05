@@ -178,7 +178,7 @@ def function(input):
 Run: `pytest tests/path/test.py::test_name -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit (orchestrator-owned; exclude from fixer dispatch)**
 
 ```bash
 git add tests/path/test.py src/path/file.py
@@ -195,6 +195,32 @@ Every step must contain the actual content an engineer needs. These are **plan f
 - "Similar to Task N" (repeat the code — the engineer may be reading tasks out of order)
 - Steps that describe what to do without showing how (code blocks required for code steps)
 - References to types, functions, or methods not defined in any task
+
+## Fixer Task Handoff Contract
+
+Every implementation task dispatched to @fixer must include these fields in the task structure. Missing fields prevent dispatch — resolve them during planning:
+
+| Field | Required | Content |
+|---|---|---|
+| Goal | Yes | One sentence describing what this task builds |
+| Files | Yes | Exact paths with Create/Modify/Test annotations |
+| Steps | Yes | Ordered checkbox steps with concrete code blocks |
+| Interfaces/Constraints | Yes | What this task consumes, produces, and must preserve |
+| Validation | Yes | Commands to run and expected results |
+| Lint Autofix | If omitted | List of files where autofix is permitted. Omit to default to check-only. |
+| Stop Conditions | If omitted | Conditions that require escalation instead of continuation |
+
+Tasks without explicit file paths, acceptance criteria, or validation commands must be refined before dispatch. Unresolved cross-boundary or architecture decisions must be surfaced in `Interfaces/Constraints` — fixers do not make design calls.
+
+**Commit steps:** Plans may include `- [ ] Commit` steps with `git commit` commands. These steps MUST be excluded when dispatching to @fixer. Commits are orchestrator-owned: the fixer implements code and reports status, but does not stage or commit. If the plan's task text contains a commit step, the dispatch payload must explicitly exclude it or append `Commits are orchestrator-owned — do not commit.` to the `Steps` field.
+
+### Task-Size Guidance by Model Tier
+
+**Pro (xhigh)** — may receive bounded multi-file changes when every file and acceptance criterion is named in the plan. Cohesive outcome across explicitly listed files; still a single concept.
+
+**Flash (cost-efficient)** — single-file or single-concept work. Complex refactors, integration changes, and multi-area work must be split into separate tasks before dispatch. A Flash task that touches 4+ unrelated files or combines concepts is a planning bug.
+
+Split unrelated areas at plan time — do not rely on the fixer to discover the split. When in doubt, prefer smaller Flash tasks over fewer Pro tasks.
 
 ## L/XL SDD Self-Review
 
