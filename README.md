@@ -67,7 +67,6 @@ ai-rules/
 │   │   ├── custom-rules.md         # Workflow, packages, commits, dispatch rules
 │   │   ├── pr-workflow.md          # PR creation workflow
 │   │   ├── security-scan.md        # On-demand commit/push safety checklist
-│   │   ├── user-config.md          # Machine config, env vars, aliases
 │   │   └── code-exploration.md     # Centralized RTK/Graph MCP discovery routing
 │   ├── subagents/              # Custom agent prompt definitions
 │   │   ├── navigator.md        # Browser automation
