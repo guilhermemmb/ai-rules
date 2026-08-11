@@ -36,7 +36,8 @@ nodes:
 
     • Never run git commands without user confirmation
 
-    • RTK plugin transparently optimizes commands; follow code-exploration rule for discovery routing
+    • RTK plugin transparently optimizes commands; follow code-exploration rule for
+    discovery routing
 
     '
 - id: oracle
@@ -75,7 +76,8 @@ nodes:
 
     • Map unfamiliar repos quickly
 
-    • Follow code-exploration rule: RTK for exact/local discovery, Graph MCP for structural analysis
+    • Follow code-exploration rule: RTK for exact/local discovery, Graph MCP for structural
+    analysis
 
     '
 - id: librarian
@@ -150,11 +152,11 @@ nodes:
     • Scope-check before implementation — return NEEDS_CONTEXT for ambiguous or over-scoped
     tasks
 
-    • Escalate early for stale paths, missing criteria, or cross-boundary changes (no
-    speculative rounds)
+    • Escalate early for stale paths, missing criteria, or cross-boundary changes
+    (no speculative rounds)
 
-    • Report with explicit status (DONE / NEEDS_CONTEXT / BLOCKED), summary, changed files,
-    verification, lint outcome, and concerns
+    • Report with explicit status (DONE / NEEDS_CONTEXT / BLOCKED), summary, changed
+    files, verification, lint outcome, and concerns
 
     • Run lint validation (check-only) after changes; autofix only when handoff directive
     lists permitted files
@@ -669,7 +671,8 @@ nodes:
 
     • Active OpenCode plugin: ~/.config/opencode/plugins/rtk.ts
 
-    • Transparently rewrites ordinary commands before execution (tool.execute.before hook)
+    • Transparently rewrites ordinary commands before execution (tool.execute.before
+    hook)
 
     • Discovery subcommands: rtk grep, rtk read, rtk find
 
@@ -947,7 +950,7 @@ profiles:
     oracle: bf-a/claude-sonnet-5
     explorer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     librarian: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    fixer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro
+    fixer: bf-a/claude-sonnet-5
     designer: bf-a/claude-sonnet-5
     observer: bf/gemini/gemini-3-flash-preview
     navigator: bf/gemini/gemini-3-flash-preview

@@ -36,7 +36,7 @@ ping all agents
 | **Explorer** | DeepSeek V4 Flash | DeepSeek V4 Flash | Codebase reconnaissance |
 | **Librarian** | DeepSeek V4 Flash | DeepSeek V4 Flash | Knowledge retrieval |
 | **Designer** | Claude Sonnet 5 | Gemini 3 Flash | UI/UX excellence |
-| **Fixer** | DeepSeek V4 Pro | DeepSeek V4 Flash | Implementation specialist |
+| **Fixer** | Claude Sonnet 5 | DeepSeek V4 Flash | Implementation specialist |
 | **Observer** | Gemini 3 Flash | Gemini 3 Flash | Visual analysis |
 
 ### Custom (11)

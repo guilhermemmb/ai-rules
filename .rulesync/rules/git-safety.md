@@ -19,6 +19,7 @@ root: true
 
 - **Action**: Before committing, show the staged changes (`git diff --staged`) and the proposed commit message.
 - **Confirmation**: Only proceed if the user gives explicit approval (e.g., "yes", "go", "commit it").
+- **Planning artifacts**: Do not stage or commit files under `docs/.planning/` unless the user explicitly requests it.
 
 ## GitHub PRs — GENERATE ONLY
 
