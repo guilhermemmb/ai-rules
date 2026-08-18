@@ -44,7 +44,7 @@ nodes:
   label: Oracle
   type: agent
   role: Strategic Advisor
-  color: '#60a5fa'
+  color: '#a78bfa'
   parent: orchestrator
   model: Claude Sonnet 5
   skills: simplify
@@ -64,7 +64,7 @@ nodes:
   label: Explorer
   type: agent
   role: Codebase Reconnaissance
-  color: '#60a5fa'
+  color: '#38bdf8'
   parent: orchestrator
   model: DeepSeek V4 Flash (low)
   mcp_access: codebase-memory-mcp
@@ -84,7 +84,7 @@ nodes:
   label: Librarian
   type: agent
   role: Knowledge Retrieval
-  color: '#60a5fa'
+  color: '#94a3b8'
   parent: orchestrator
   model: DeepSeek V4 Flash (low)
   mcp_access: websearch, context7, gh_grep, linear, cortex
@@ -111,7 +111,7 @@ nodes:
   label: Designer
   type: agent
   role: UI/UX Excellence
-  color: '#60a5fa'
+  color: '#f59e0b'
   parent: orchestrator
   model: Claude Sonnet 5 (medium)
   mcp_access: codebase-memory-mcp, figma-mcp
@@ -134,7 +134,7 @@ nodes:
   label: Fixer
   type: agent
   role: Implementation Specialist
-  color: '#60a5fa'
+  color: '#34d399'
   parent: orchestrator
   model: DeepSeek V4 Pro (xhigh)
   skills: fixer
@@ -169,7 +169,7 @@ nodes:
   label: Observer
   type: agent
   role: Visual Analysis
-  color: '#60a5fa'
+  color: '#94a3b8'
   parent: orchestrator
   model: Gemini 3 Flash Preview
   trigger: Images, screenshots, PDFs, diagrams (auto-routed from Orchestrator)
@@ -187,7 +187,7 @@ nodes:
   label: Navigator
   type: agent
   role: Browser Automation
-  color: '#f59e0b'
+  color: '#38bdf8'
   parent: orchestrator
   model: Gemini 3 Flash Preview
   mcp_access: mcp-server-browser
@@ -212,7 +212,7 @@ nodes:
   label: Detective
   type: agent
   role: Production Diagnostics
-  color: '#f59e0b'
+  color: '#f87171'
   parent: orchestrator
   model: DeepSeek V4 Flash
   mcp_access: sentry, rootly, codebase-memory-mcp
@@ -243,7 +243,7 @@ nodes:
   label: Sage
   type: agent
   role: Domain Knowledge
-  color: '#f59e0b'
+  color: '#60a5fa'
   parent: orchestrator
   model: DeepSeek V4 Flash
   mcp_access: cortex, codebase-memory-mcp
@@ -306,7 +306,7 @@ nodes:
   label: reviewer-code
   type: agent
   role: CLAUDE.md Compliance & Bugs
-  color: '#f59e0b'
+  color: '#f87171'
   parent: reviewer
   model: GPT-5.6 Luna
   mcp_access: codebase-memory-mcp, github
@@ -315,7 +315,7 @@ nodes:
   label: reviewer-comments
   type: agent
   role: Comment Accuracy & Rot
-  color: '#f59e0b'
+  color: '#94a3b8'
   parent: reviewer
   model: DeepSeek V4 Flash (low)
   mcp_access: codebase-memory-mcp, github
@@ -324,7 +324,7 @@ nodes:
   label: reviewer-test
   type: agent
   role: Test Coverage Analysis
-  color: '#f59e0b'
+  color: '#34d399'
   parent: reviewer
   model: GPT-5.6 Luna (high)
   mcp_access: codebase-memory-mcp, github
@@ -333,7 +333,7 @@ nodes:
   label: reviewer-errors
   type: agent
   role: Silent Failure Hunting
-  color: '#f59e0b'
+  color: '#f87171'
   parent: reviewer
   model: GPT-5.6 Luna
   mcp_access: codebase-memory-mcp, github
@@ -342,7 +342,7 @@ nodes:
   label: reviewer-types
   type: agent
   role: Type Design Analysis
-  color: '#f59e0b'
+  color: '#a78bfa'
   parent: reviewer
   model: GPT-5.6 Luna
   mcp_access: codebase-memory-mcp, github
@@ -351,7 +351,7 @@ nodes:
   label: reviewer-simplifier
   type: agent
   role: Code Clarity & Simplification
-  color: '#f59e0b'
+  color: '#38bdf8'
   parent: reviewer
   model: GPT-5.6 Luna (high)
   mcp_access: codebase-memory-mcp
@@ -947,11 +947,11 @@ profiles:
     reviewer-accessibility: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
   default:
     orchestrator: bf-o/gpt-5.6-luna
-    oracle: bf-a/claude-sonnet-5
+    oracle: bf-o/gpt-5.6-luna
     explorer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     librarian: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    fixer: bf-a/claude-sonnet-5
-    designer: bf-a/claude-sonnet-5
+    fixer: bf-o/gpt-5.6-luna
+    designer: bf-o/gpt-5.6-luna
     observer: bf/gemini/gemini-3-flash-preview
     navigator: bf/gemini/gemini-3-flash-preview
     sage: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash

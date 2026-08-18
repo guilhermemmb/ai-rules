@@ -42,6 +42,45 @@ rationale.
 Subagents follow the assigned T-shirt workflow and must not bypass its approval
 or artifact requirements.
 
+## Parallel Specialist Decomposition
+
+Before implementing any non-trivial work, the Orchestrator must inspect the
+plan for independent concepts, files, packages, or phases that can be executed
+concurrently. When meaningful independent boundaries exist, split the work into
+the smallest complete pieces and dispatch multiple fresh specialist lanes in
+the same turn:
+
+- Use `@fixer` for independent code or mechanical implementation lanes.
+- Use `@designer` for independent visual, responsive, motion, hierarchy, or
+  component-feel lanes.
+- Assign each lane explicit, non-overlapping file ownership, interfaces,
+  acceptance criteria, validation commands, and stop conditions.
+- Include the complete handoff contract for every lane: `Goal`, `Files`,
+  `Steps`, `Interfaces/Constraints`, `Validation`, and `Stop Conditions`.
+- Serialize lanes that share files, depend on one another's output, require a
+  migration or integration sequence, or would create conflicting writers.
+- Do not create artificial micro-tasks when the work is tiny, tightly coupled,
+  or coordination would cost more than the parallelism saves.
+- Preserve designer intent across later lanes. Use `@fixer` for follow-up UI
+  work only when it is mechanical and does not change visual or interaction
+  decisions; route design changes back to `@designer`.
+
+Track every dispatched task/session ID and wait for hook-driven completion of
+all relevant writers before advancing. After the lanes finish, reconcile their
+terminal reports against the complete plan and combined diff:
+
+1. Map every planned item to a completed specialist result or an explicit
+   escalation; do not silently treat partial work as complete.
+2. Confirm each lane changed only its assigned files and that overlapping edits
+   or conflicts have been resolved.
+3. Verify every acceptance criterion and validation result, including any
+   designer-to-fixer handoff constraints.
+4. Inspect the combined result for missing work, unaddressed concerns, and
+   regressions before running final validation.
+
+Do not declare completion while any relevant lane is missing a report, has
+status `NEEDS_CONTEXT` or `BLOCKED`, or has an unverified acceptance criterion.
+
 ## SDD Artifact Persistence
 
 - SDD artifacts live in `docs/.planning/` within the working repo:

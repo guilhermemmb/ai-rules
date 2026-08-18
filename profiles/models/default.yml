@@ -1,10 +1,10 @@
 # .planning/model-profiles/default.yaml
 orchestrator: "bf-o/gpt-5.6-luna"
-oracle: "bf-a/claude-sonnet-5"
+oracle: "bf-o/gpt-5.6-luna"
 explorer: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
 librarian: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
-fixer: "bf-a/claude-sonnet-5"
-designer: "bf-a/claude-sonnet-5"
+fixer: "bf-o/gpt-5.6-luna"
+designer: "bf-o/gpt-5.6-luna"
 observer: "bf/gemini/gemini-3-flash-preview"
 navigator: "bf/gemini/gemini-3-flash-preview"
 sage: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
