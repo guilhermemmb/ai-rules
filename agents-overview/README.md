@@ -201,7 +201,7 @@ No code needed—YAML drives everything.
 - **observer** — Visual analysis; images, screenshots, PDFs (auto-routed from orchestrator)
 
 **Custom:**
-- **navigator** — Browser automation; navigation, screenshots, DOM, form fills
+- **navigator** — Browser automation via the agent-browser CLI; snapshots/refs, navigation, screenshots, forms, extraction
 - **detective** — Production diagnostics; Sentry, Datadog (pup CLI), GCP logs, Rootly, root cause analysis
 - **sage** — Domain knowledge; Gorgias metrics, table schemas, business rules (cortex)
 
@@ -221,9 +221,6 @@ No code needed—YAML drives everything.
 **designer:**
 - **figma-desktop** — Design files (local Figma Desktop app, http://127.0.0.1:3845/mcp)
 
-**navigator:**
-- **mcp-server-browser** — Browser navigation, screenshots, interaction
-
 **detective:**
 - **sentry** — Error monitoring (read-only)
 - **pup CLI** — Datadog CLI (--agent --ro): logs, metrics, APM, monitors
@@ -235,6 +232,7 @@ No code needed—YAML drives everything.
 
 ### Tools
 - **Bash** — Command execution (all agents)
+- **agent-browser CLI** — Browser automation via Bash (Navigator)
 - **Read/Edit/Write** — File operations (orchestrator, fixer, designer)
 - **Git** — Version control (orchestrator)
 - **gh CLI** — GitHub integration (orchestrator)
@@ -414,7 +412,7 @@ flowchart TD
 ## Constraints
 
 **Orchestrator hard-enforced dispatch rules (no direct access):**
-- mcp-server-browser → dispatch to navigator
+- agent-browser CLI or chrome-devtools-mcp → dispatch to navigator; Navigator runs agent-browser through Bash
 - sentry, rootly → dispatch to detective (gcp-logging disabled)
 - cortex → dispatch to sage
 - linear, cortex → dispatch to librarian (internal docs/Notion)

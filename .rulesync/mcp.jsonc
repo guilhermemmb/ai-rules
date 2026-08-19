@@ -62,11 +62,5 @@
       "url": "http://127.0.0.1:3845/mcp",
       "enabled": true,
     },
-    "mcp-server-browser": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@agent-infra/mcp-server-browser@latest"],
-      "enabled": true,
-    },
   },
 }

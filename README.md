@@ -43,7 +43,7 @@ ping all agents
 
 | Agent | Model (Default) | Model (Cost-Efficient) | Dispatch when |
 | :--- | :--- | :--- | :--- |
-| **Navigator** | Gemini 3 Flash | Gemini 3 Flash | Browser automation, screenshots |
+| **Navigator** | Gemini 3 Flash | Gemini 3 Flash | agent-browser CLI, snapshots/refs, screenshots, extraction |
 | **Detective** | DeepSeek V4 Flash | DeepSeek V4 Flash | Production errors, logs, metrics |
 | **Sage** | DeepSeek V4 Flash | DeepSeek V4 Flash | Gorgias metrics, schemas, rules |
 | **Reviewer** | GPT-5.6 Luna | DeepSeek V4 Flash | PR/branch/diff review coordinator |
@@ -159,9 +159,9 @@ Edit `oh-my-opencode-slim.json` → update the `model` field under the `bifrost`
 
 Edit the corresponding `.rulesync/subagents/<name>.md` file, then regenerate the deployed prompt assets with `./deploy.sh`.
 
-## MCP Inventory
+## MCP & Browser CLI Inventory
 
-Repository MCP definitions live in `.rulesync/mcp.jsonc`; agent assignments live in `oh-my-opencode-slim.json`. `./deploy.sh` generates the corresponding global configuration:
+Repository MCP definitions live in `.rulesync/mcp.jsonc`; agent assignments live in `oh-my-opencode-slim.json`. Navigator's browser CLI comes from the `agent-browser` skill and runs via Bash. `./deploy.sh` generates the corresponding global configuration:
 
 | MCP | Enabled | Assigned to |
 |-----|---------|------------|
@@ -173,7 +173,7 @@ Repository MCP definitions live in `.rulesync/mcp.jsonc`; agent assignments live
 | gcp-logging | ❌ disabled | Detective uses `gcloud` CLI via Bash instead |
 | cortex | ✓ | Sage, Librarian (Internal docs/Notion via Cortex MCP) |
 | rootly | ✓ | Detective |
-| mcp-server-browser | ✓ | Navigator |
+| agent-browser CLI | ✓ | Navigator via Bash and the `agent-browser` skill |
 | gorgias-mcp | disabled | — |
 | figma | ✓ | — |
 

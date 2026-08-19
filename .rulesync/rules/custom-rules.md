@@ -155,9 +155,10 @@ status `NEEDS_CONTEXT` or `BLOCKED`, or has an unverified acceptance criterion.
 
 ## Browser Interaction
 
-- **Never use mcp-server-browser or chrome-devtools-mcp tools directly** —
-  always delegate to the `@navigator` subagent.
-- Exception: you are the `@navigator` subagent itself.
+- **Never invoke the `agent-browser` CLI or use `chrome-devtools-mcp` directly** —
+  always delegate browser automation to the `@navigator` subagent.
+- Exception: you are the `@navigator` subagent itself; Navigator runs
+  `agent-browser` through Bash.
 
 ## General
 

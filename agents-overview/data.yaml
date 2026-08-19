@@ -18,9 +18,9 @@ nodes:
   - detective
   - sage
   mcp_access: codebase-memory-mcp, github
-  constraints: 'Hard-enforced at MCP level: no sentry/gcp-logging/rootly (→ Detective),
+  constraints: 'Hard-enforced at tool/config level: no sentry/gcp-logging/rootly (→ Detective),
 
-    no cortex MCP (→ Sage or Librarian), no mcp-server-browser (→ Navigator), no linear
+    no cortex MCP (→ Sage or Librarian), no agent-browser CLI or chrome-devtools-mcp (→ Navigator), no linear
     (→ Librarian)
 
     Must dispatch to appropriate agent for these domains
@@ -190,22 +190,29 @@ nodes:
   color: '#38bdf8'
   parent: orchestrator
   model: Gemini 3 Flash Preview
-  mcp_access: mcp-server-browser
+  mcp_access: agent-browser CLI
   trigger: Browser navigation, screenshots, DOM analysis, form fills, UI automation
   constraints: 'Browser interaction only — no backend diagnostics or code editing.
 
     Always headless unless told otherwise.
 
+    Run the agent-browser CLI through Bash. Use accessibility snapshots and @eN refs
+    for interaction. Other agents must delegate browser work to Navigator.
+
     '
-  responsibilities: '• Navigate to URLs & interact with pages
+  responsibilities: '• Load the core agent-browser CLI skill before the first browser command
+
+    • Navigate to URLs & interact with pages
+
+    • Use accessibility snapshots and @eN refs for reliable interaction
 
     • Take screenshots & capture page state
 
     • Fill forms & click elements
 
-    • Extract page content (text, markdown)
+    • Extract page content and structured data
 
-    • Execute JavaScript in browser console
+    • Load specialized agent-browser CLI skills when needed
 
     '
 - id: detective
@@ -401,12 +408,13 @@ nodes:
   role: Gorgias Domain Knowledge (metrics, schemas, rules, Notion docs)
   color: '#a78bfa'
   parent: null
-- id: mcp-server-browser
-  label: mcp-server-browser
-  type: mcp
-  role: Browser Automation
-  color: '#a78bfa'
+- id: agent-browser-cli
+  label: agent-browser CLI
+  type: tool
+  role: Browser Automation via Bash
+  color: '#34d399'
   parent: navigator
+  used_by: Navigator
 - id: sentry-mcp
   label: sentry
   type: mcp
@@ -767,8 +775,8 @@ links:
   target: figma-mcp
   label: uses
 - source: navigator
-  target: mcp-server-browser
-  label: uses
+  target: agent-browser-cli
+  label: uses (Bash)
 - source: detective
   target: sentry-mcp
   label: uses
