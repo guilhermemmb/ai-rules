@@ -19,7 +19,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
 
-**Save plans to:** `docs/.planning/plans/YYYY-MM-DD-<feature-name>.md`
+**Save plans to:** `~/developer/planning-docs/{{repository-name}}/.planning/plans/YYYY-MM-DD-<feature-name>.md`
 
 ## Scope Check
 
@@ -56,7 +56,7 @@ Use this format only for S/M work. S is small local work using established
 patterns and straightforward validation. M is one cohesive bounded outcome
 across a small set of related files, with no architecture, security, migration,
 data-integrity, or external-integration uncertainty. Save exactly one document
-to `docs/.planning/plans/YYYY-MM-DD-<topic>.md`:
+to `~/developer/planning-docs/{{repository-name}}/.planning/plans/YYYY-MM-DD-<topic>.md`:
 
 ````markdown
 # [Outcome] S/M Combined SDD + Implementation Plan
@@ -236,7 +236,7 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 
 After saving an L/XL SDD plan, tell the user:
 
-**"Plan complete and saved to `docs/.planning/plans/<filename>.md`. Ready to execute — I'll dispatch a fresh subagent per task with review after each. Shall I proceed?"**
+**"Plan complete and saved to `~/developer/planning-docs/{{repository-name}}/.planning/plans/<filename>.md`. Ready to execute — I'll dispatch a fresh subagent per task with review after each. Shall I proceed?"**
 
 **If user says yes:**
 - Load skill `executing-plans`

@@ -48,7 +48,7 @@ Assign the right agent per task type:
 ### Setup
 
 1. Read the plan file once. Note its Global Constraints.
-2. Create a ledger file at `docs/.planning/ledger-<plan-basename>.md`:
+2. Create a ledger file at `~/developer/planning-docs/{{repository-name}}/.planning/ledger-<plan-basename>.md`:
    ```
    # Execution Ledger — plan: <plan file path>
    ```
@@ -71,7 +71,7 @@ The dispatch payload includes, verbatim:
 - `Stop Conditions` — conditions requiring early escalation (if present in plan)
 - Global Constraints — copied from the plan header
 - Selected model tier — Pro (xhigh) or Flash (cost-efficient)
-- A report file path: `docs/.planning/reports/<plan-basename>-task-<N>.md`
+- A report file path: `~/developer/planning-docs/{{repository-name}}/.planning/reports/<plan-basename>-task-<N>.md`
 
 Also instruct the agent not to run `git commit` or `git push` autonomously.
 
@@ -137,7 +137,7 @@ After all tasks complete, commit the ledger file and ask the user whether to run
 ## Ledger Format
 
 ```
-# Execution Ledger — plan: docs/.planning/plans/2026-07-29-feature.md
+# Execution Ledger — plan: ~/developer/planning-docs/{{repository-name}}/.planning/plans/2026-07-29-feature.md
 
 Task 1: complete (commits a1b2c3d..d4e5f6a, review clean)
 Task 2: fix round 1/3 (2 addressed, 0 open — missing validation, magic number; commits d4e5f6a..b7c8d9e)

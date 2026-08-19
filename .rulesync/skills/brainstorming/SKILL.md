@@ -35,7 +35,7 @@ For L/XL work, you MUST complete each of these items in order:
 3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
 4. **Propose 2-3 approaches** — with trade-offs and your recommendation; consult @oracle for architecture questions
 5. **Present design** — in sections scaled to their complexity, get user approval after each section; dispatch @designer for UI-heavy sections
-6. **Write design doc** — save to `docs/.planning/specs/YYYY-MM-DD-<topic>-design.md` and commit
+6. **Write design doc** — save to `~/developer/planning-docs/{{repository-name}}/.planning/specs/YYYY-MM-DD-<topic>-design.md`; do not commit it
 7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope
 8. **User reviews written spec** — ask user to review the spec file before proceeding
 9. **Transition to implementation** — load skill `writing-plans` to create the implementation plan
@@ -54,7 +54,7 @@ Propose 2-3 approaches with trade-offs
 Present design sections → User approves?
     ├── no, revise → back to Present design sections
     └── yes ↓
-Write design doc → docs/.planning/specs/YYYY-MM-DD-<topic>-design.md
+Write design doc → ~/developer/planning-docs/{{repository-name}}/.planning/specs/YYYY-MM-DD-<topic>-design.md
     ↓
 Spec self-review (fix inline)
     ↓
@@ -114,7 +114,7 @@ brainstorming is `writing-plans`, and only after the separate spec is approved.
 
 **Documentation:**
 
-- Write the validated design (spec) to `docs/.planning/specs/YYYY-MM-DD-<topic>-design.md`
+- Write the validated design (spec) to `~/developer/planning-docs/{{repository-name}}/.planning/specs/YYYY-MM-DD-<topic>-design.md`
 - Commit the design document to git
 
 **Spec Self-Review:**

@@ -79,12 +79,13 @@ ai-rules/
 └── agents-overview/            # Interactive visualization (data.yaml + index.html)
 ```
 
-## SDD Artifacts — `docs/.planning/`
+## SDD Artifacts — `~/developer/planning-docs/{{repository-name}}/.planning/`
 
-Spec Driven Development artifacts live inside each working repo at `docs/.planning/`:
+Spec Driven Development artifacts live outside each working repo at
+`~/developer/planning-docs/{{repository-name}}/.planning/`:
 
 ```
-<repo>/docs/.planning/
+~/developer/planning-docs/{{repository-name}}/.planning/
 ├── specs/                          # Design docs (brainstorming phase)
 │   └── YYYY-MM-DD-<topic>-design.md
 ├── plans/                          # Implementation plans (writing-plans phase)

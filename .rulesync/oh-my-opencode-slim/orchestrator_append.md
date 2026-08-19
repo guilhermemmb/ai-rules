@@ -159,7 +159,7 @@ Use the selected size and rationale shown above to choose exactly one path:
   external-integration uncertainty.
 
   S and M use `writing-plans` to create one concise merged SDD +
-  implementation plan in `docs/.planning/plans/`, containing rationale,
+  implementation plan in `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, containing rationale,
   scope/files, concrete steps, and validation. Present it once and wait for
   one approval, then execute directly with proportionate validation. Do not
   create a separate spec, load `executing-plans`, create a ledger, run a
@@ -173,8 +173,9 @@ Use the selected size and rationale shown above to choose exactly one path:
   is approved, present the implementation plan for approval, then load
   `executing-plans` and retain its execution/review flow.
 
-**Artifacts live in-repo at `docs/.planning/` — no external CLI or tooling
-needed.**
+**Artifacts live outside the repo at
+`~/developer/planning-docs/{{repository-name}}/.planning/` — no external CLI or tooling
+is needed.**
 
 ## Development Environment
 

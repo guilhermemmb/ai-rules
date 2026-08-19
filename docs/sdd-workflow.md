@@ -23,7 +23,7 @@ flowchart TD
     subgraph SM["S/M path"]
         direction TB
         SM1["S: small local established-pattern work\nM: cohesive bounded work across related files\n(no architecture/security/migration/data-integrity/\nexternal-integration uncertainty)"]
-        SM2["Write one concise merged SDD + implementation plan\ndocs/.planning/plans/"]
+        SM2["Write one concise merged SDD + implementation plan\n~/developer/planning-docs/{{repository-name}}/.planning/plans/"]
         SM3["Show plan once"]
         SM4{"Approve plan once?"}
         SM5["Execute directly"]
@@ -55,7 +55,7 @@ flowchart TD
         B6["@oracle — architecture assessment"]
         B7["Show separate design/spec\n@designer for UI-heavy sections"]
         B8{"Approve design/spec?"}
-        B9["Save design/spec:\ndocs/.planning/specs/"]
+        B9["Save design/spec:\n~/developer/planning-docs/{{repository-name}}/.planning/specs/"]
         B10["Spec self-review\n(placeholders, consistency, scope)"]
         B11{"User approves spec?"}
 
@@ -82,7 +82,7 @@ flowchart TD
         P3["Decompose into bite-sized tasks\n(2-5 min each, TDD)"]
         P4["Write implementation plan:\n- Exact file paths\n- Complete code\n- Test commands\n- NO placeholders"]
         P5["Self-review:\nspec coverage, placeholder scan,\ntype consistency"]
-        P6["Save implementation plan:\ndocs/.planning/plans/"]
+        P6["Save implementation plan:\n~/developer/planning-docs/{{repository-name}}/.planning/plans/"]
         P7{"User approves plan?"}
 
         P1 --> P2
@@ -98,7 +98,7 @@ flowchart TD
     subgraph PHASE3["⚡ L/XL — Phase 3: Executing Plans"]
         direction TB
         E1["Load skill: executing-plans"]
-        E2["Create ledger:\ndocs/.planning/\nledger-<plan>.md"]
+        E2["Create ledger:\n~/developer/planning-docs/{{repository-name}}/.planning/\nledger-<plan>.md"]
         E3["Read plan, create todos"]
         E4["Scan for pre-flight conflicts"]
         E5["Dispatch implementer\n@fixer (code) / @designer (UI)"]
@@ -190,7 +190,7 @@ short rationale first, before exploration or implementation:
   architecture/security/migration/data-integrity/external-integration
   uncertainty.
 - **S/M** — use one concise merged SDD + implementation plan in
-  `docs/.planning/plans/`, show it once, and obtain one approval before direct
+  `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, show it once, and obtain one approval before direct
   execution with proportionate validation. Do not create a separate spec, load
   `executing-plans`, create a ledger, run a per-task review, or prompt for a
   final review.
@@ -198,8 +198,8 @@ short rationale first, before exploration or implementation:
 - **XL** — architecture, migration, security/data-integrity, production-impact,
   or major external-dependency work.
 - **L/XL** — use full SDD. Show and approve a separate design/spec in
-  `docs/.planning/specs/` before writing the implementation plan in
-  `docs/.planning/plans/`; retain plan approval and the existing
+  `~/developer/planning-docs/{{repository-name}}/.planning/specs/` before writing the implementation plan in
+  `~/developer/planning-docs/{{repository-name}}/.planning/plans/`; retain plan approval and the existing
   execution/review flow.
 
 ## Agent Usage by Phase

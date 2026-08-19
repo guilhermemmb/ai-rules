@@ -26,7 +26,7 @@ rationale.
   external-integration uncertainty.
 
   S and M produce one concise merged SDD + implementation plan in
-  `docs/.planning/plans/`, containing rationale, scope/files, concrete steps,
+  `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, containing rationale, scope/files, concrete steps,
   and validation. Present it once, wait for one approval, then execute directly
   with proportionate validation. Do not create a separate spec, load
   `executing-plans`, create a ledger, run a per-task review loop, or ask for a
@@ -83,10 +83,18 @@ status `NEEDS_CONTEXT` or `BLOCKED`, or has an unverified acceptance criterion.
 
 ## SDD Artifact Persistence
 
-- SDD artifacts live in `docs/.planning/` within the working repo:
-  `docs/.planning/specs/` for design docs, `docs/.planning/plans/` for implementation plans.
-- Before planning or resuming work, check `docs/.planning/` for existing artifacts and use them as context.
-- Cross-repo reference: if you need to reference a spec/plan from another repo, note the path explicitly — no automated centralization.
+- SDD artifacts live outside the working repo at
+  `~/developer/planning-docs/{{repository-name}}/.planning/`, where `{{repository-name}}` is the
+  current repository directory name:
+  `~/developer/planning-docs/{{repository-name}}/.planning/specs/` for design docs and
+  `~/developer/planning-docs/{{repository-name}}/.planning/plans/` for implementation plans.
+- Before planning or resuming work, check
+  `~/developer/planning-docs/{{repository-name}}/.planning/` for existing artifacts and
+  use them as context.
+- Never create planning artifacts under `docs/.planning/` inside the working
+  repo; use the external path above.
+- Cross-repo references should use the corresponding repository directory under
+  `~/developer/planning-docs/`.
 
 ## Development Environment
 

@@ -286,7 +286,7 @@ determines whether work is direct, uses a merged plan, or follows full SDD.
   architecture/security/migration/data-integrity/external-integration
   uncertainty.
 - **S/M** — use one concise merged SDD + implementation plan in
-  `docs/.planning/plans/`, show it once, and obtain one approval before direct
+  `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, show it once, and obtain one approval before direct
   execution with proportionate validation. Do not create a separate spec, load
   `executing-plans`, create a ledger, run a per-task review, or prompt for a
   final review.
@@ -294,8 +294,8 @@ determines whether work is direct, uses a merged plan, or follows full SDD.
 - **XL** — architecture, migration, security/data-integrity, production-impact,
   or major external-dependency work.
 - **L/XL** — use full SDD. Show and approve a separate design/spec in
-  `docs/.planning/specs/` before writing the implementation plan in
-  `docs/.planning/plans/`; retain plan approval and the existing
+  `~/developer/planning-docs/{{repository-name}}/.planning/specs/` before writing the implementation plan in
+  `~/developer/planning-docs/{{repository-name}}/.planning/plans/`; retain plan approval and the existing
   execution/review flow.
 
 ```mermaid
@@ -315,7 +315,7 @@ flowchart TD
     subgraph SM["S/M path"]
         direction TB
         SM1["S: small local established-pattern work\nM: cohesive bounded work across related files\n(no architecture/security/migration/data-integrity/\nexternal-integration uncertainty)"]
-        SM2["Write one concise merged SDD + implementation plan\ndocs/.planning/plans/"]
+        SM2["Write one concise merged SDD + implementation plan\n~/developer/planning-docs/{{repository-name}}/.planning/plans/"]
         SM3["Show plan once"]
         SM4{"Approve plan once?"}
         SM5["Execute directly"]
@@ -345,7 +345,7 @@ flowchart TD
         B4 --> B5[Show separate design/spec]
         B5 --> B6{"Approve design/spec?"}
         B6 -->|revise| B5
-        B6 -->|yes| B7[Save design/spec\ndocs/.planning/specs/]
+        B6 -->|yes| B7[Save design/spec\n~/developer/planning-docs/{{repository-name}}/.planning/specs/]
         B7 --> B8[Spec self-review]
         B8 --> B9{"User approves spec?"}
         B9 -->|changes requested| B8
@@ -356,7 +356,7 @@ flowchart TD
     subgraph P2["📋 L/XL — Phase 2: Writing Plans"]
         direction TB
         W1[Map file structure\n& task boundaries] --> W2[Decompose into\nbite-sized tasks 2-5min]
-        W2 --> W3[Write implementation plan\ndocs/.planning/plans/\nwith Global Constraints]
+        W2 --> W3[Write implementation plan\n~/developer/planning-docs/{{repository-name}}/.planning/plans/\nwith Global Constraints]
         W3 --> W4{User approves plan?}
     end
 
@@ -397,13 +397,13 @@ flowchart TD
 - Always report `T-shirt size: XS | S | M | L | XL` and a short rationale
   before taking action.
 - XS work is immediate and has no approval, artifact, or SDD.
-- S/M work gets one concise merged plan in `docs/.planning/plans/`, shown once
+- S/M work gets one concise merged plan in `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, shown once
   and approved once before direct execution with proportionate validation. It
   skips a separate spec, `executing-plans`, a ledger, per-task review, and the
   final-review prompt.
 - L/XL work is full SDD: show and approve the separate design/spec in
-  `docs/.planning/specs/` before writing the implementation plan in
-  `docs/.planning/plans/`, then retain plan approval and the existing
+  `~/developer/planning-docs/{{repository-name}}/.planning/specs/` before writing the implementation plan in
+  `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, then retain plan approval and the existing
   execution/review flow.
 - The fix loop in Phase 3 is capped at **3 rounds** before escalating to
   `@oracle`.

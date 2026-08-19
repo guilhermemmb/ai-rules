@@ -22,7 +22,7 @@ Run a final comprehensive review of all changes produced by the execution phase.
 
 Collect these inputs:
 - **Plan file**: the original implementation plan from `writing-plans`
-- **Execution ledger**: `docs/.planning/ledger-<plan-basename>.md` with all task completions, parked items, and fix-round history
+- **Execution ledger**: `~/developer/planning-docs/{{repository-name}}/.planning/ledger-<plan-basename>.md` with all task completions, parked items, and fix-round history
 - **Branch diff**: the full diff from merge-base to HEAD
 
 ### 2. Dispatch @reviewer
