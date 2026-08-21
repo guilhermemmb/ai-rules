@@ -8,7 +8,7 @@
   "multiplexer": {
     "type": "auto",
     "layout": "main-vertical",
-    "main_pane_size": 75
+    "main_pane_size": 70
   },
   "presets": {
     "bifrost": {

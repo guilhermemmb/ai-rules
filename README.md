@@ -5,11 +5,11 @@ Source of truth for OpenCode agent rules, custom agents, skills, and commands. U
 ## Quick Start
 
 ```bash
-# Install OMO Slim with tmux
-bunx oh-my-opencode-slim@latest install --tmux=yes
-
-# Deploy configuration (default profile)
+# Deploy configuration; deploy.sh installs or refreshes oh-my-opencode-slim@latest when needed
 ./deploy.sh
+
+# Force-install or refresh oh-my-opencode-slim@latest and deploy (not all dependencies)
+./deploy.sh --force
 
 # Deploy cost-efficient profile (DeepSeek V4 + Gemini Flash)
 ./deploy.sh --model-profile=cost-efficient
@@ -130,6 +130,130 @@ rtk --version
 ```
 
 > **Note:** After installing the plugin, restart OpenCode. Test with `git status` — RTK rewrites it transparently.
+
+## Worktrunk → Orca → OpenCode workflow
+
+Worktrunk is the only Git worktree lifecycle owner. It creates and removes
+worktrees; Orca attaches to an existing Worktrunk path and must not create a
+second checkout. OpenCode and oh-my-opencode-slim (OMO) run inside the
+Orca-owned terminal. `ai-rules/deploy.sh` is the source of truth for generated
+OpenCode configuration; do not edit generated files under
+`~/.config/opencode/` directly.
+
+### Normal operator flow
+
+For Orca environment recipes, `gorgias-chat/orca.yaml` invokes the installed
+`wt-orca start` and `wt-orca stop` commands. `start` provisions the checkout
+through Worktrunk, waits for readiness, attaches Orca, and returns the one
+`provisioned-root` result Orca consumes:
+
+```zsh
+wt-orca start --branch feature/example --name feature-example --base main
+wt-orca stop --name feature-example       # refuses dirty worktrees by default
+wt-orca stop --name feature-example --force  # explicit destructive override
+```
+
+The `--force` stop option must be supplied explicitly by the destroy hook or
+operator; it is never inferred from an uncommitted worktree.
+
+`wt-orca stop` does not invoke cleanup directly. Worktrunk's `pre-remove` hook
+remains the cleanup and retry-queue owner, so cleanup runs once during the
+delegated `wt remove` operation.
+
+For manual operation outside an Orca recipe:
+
+Run the following from the primary repository. The Worktrunk post-start hooks
+publish `pending` while setup runs and then publish `ready` (or an explicit
+`degraded` state):
+
+```zsh
+wt switch --create feature/example
+wt-orca attach
+wt-orca status
+wt-orca detach
+wt remove --force   # explicit Worktrunk-owned removal
+```
+
+`wt-orca start` uses Worktrunk's `switch --create --no-cd --format json`
+contract and captures its absolute path without changing the caller's shell.
+It waits for setup readiness, registers the primary repository
+with Orca if necessary, and attaches to the existing path with a
+`path:<absolute-worktree-path>` selector. `status` reports readiness and the
+Orca terminal; `detach` closes only that terminal. `wt-orca stop` detaches the
+owned terminal, runs cleanup, and delegates removal to Worktrunk. Neither
+adapter operation creates or removes a Git worktree directly. Worktrunk's
+pre-remove cleanup handles the
+codebase-memory project, local `.codebase-memory/`, and context-mode indexes;
+the generated local graph can make a non-forced removal refuse to proceed.
+
+### Recovery and cleanup
+
+- **`ready`** — attach normally. A successful attach reports the Orca terminal
+  handle and keeps the Worktrunk checkout in place.
+- **`failed`** — do not attach. Fix the reported setup error, then rerun the
+  Worktrunk setup hook/script for the same workspace and root. Both
+  `$WORKSPACE_PATH` and `$ROOT_PATH` come from Worktrunk/setup output; the
+  complete manual retry uses the failed workspace as the explicit status and
+  attachment target:
+
+  ```zsh
+  WORKSPACE_PATH="/absolute/path/to/worktree"
+  ROOT_PATH="/absolute/path/to/primary-repository"
+  wt-orca status "$WORKSPACE_PATH"
+  ~/developer/dotfiles/worktree-setup.sh \
+    --workspace-path "$WORKSPACE_PATH" \
+    --root-path "$ROOT_PATH"
+  wt-orca attach \
+    --workspace-path "$WORKSPACE_PATH" \
+    --root-path "$ROOT_PATH" \
+    --timeout 120
+  ```
+
+  Replace both paths with the canonical workspace/root pair from the
+  Worktrunk/setup output. Setup is idempotent and republishes readiness after
+  a successful retry.
+- **`degraded`** — the setup completed with an explicitly non-blocking
+  fallback. The adapter refuses this state by default; use
+  `wt-orca attach --allow-degraded` only when that fallback is acceptable, or
+  retry setup to reach `ready`.
+- **timeout** — attachment stops with a timeout and OpenCode is not launched.
+  Check `wt-orca status "$WORKSPACE_PATH"`, allow setup more time, or retry the
+  setup before attaching again. A timeout does not remove the worktree.
+- **pending cleanup** — a failed pre-remove cleanup writes a durable queue
+  record keyed by the canonical root/workspace pair. Retry it without needing
+  the removed directory:
+
+  ```zsh
+  ~/developer/dotfiles/worktree-cleanup.sh --retry-pending --limit 100
+  ```
+
+  Failed retries remain queued and observable; repeat the retry after fixing
+  the external failure. `--state-key <64-hex-key>` scopes a retry, and
+  `--prune-state` removes only ordinary state for gone workspaces—it preserves
+  pending cleanup records. Cleanup never invokes `wt remove` or Git worktree
+  removal.
+
+Orca repository registration is intentionally retained after `wt-orca detach`
+and after the Worktrunk path is removed. The observed Orca CLI exposes
+`repo list` and `repo add`, but no `repo remove` command. This retained
+registration is expected runtime metadata, not a second worktree.
+
+### Credentials and runtime ownership
+
+Context7 credentials are injected at runtime through the approved
+`CONTEXT7_API_KEY` environment variable; the tracked MCP configuration uses
+`{env:CONTEXT7_API_KEY}` and must not contain the credential itself. A
+historical Context7 credential previously exposed during configuration work
+still requires external revocation/rotation. Until that action is complete,
+real deployment is blocked; the credential value is deliberately not printed
+or stored here.
+
+The validated OMO-inside-Orca probe observed `OpenCode` exit `0`, the
+sanitized identifier `OMO_HANDSHAKE=observed:oh-my-opencode-identifier`, and no
+conventional nested `tmux`, `screen`, or `zellij` session (`TMUX`, `STY`, and
+`ZELLIJ` were empty; `NEW_CONVENTIONAL_MUX=none`). `TERM_PROGRAM=Orca` and
+Orca's terminal/session topology remain the outer runtime boundary; OMO does
+not own that outer terminal.
 
 ## Configuration Layers
 
