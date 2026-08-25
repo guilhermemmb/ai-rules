@@ -185,6 +185,14 @@ resolve_orca_command() {
   export ORCA_CLI_COMMAND
 }
 
+preflight_pyyaml() {
+  if ! "$PYTHON_BIN" -c 'import yaml' >/dev/null 2>&1; then
+    red "  ❌ missing Python dependency: PyYAML for $PYTHON_BIN"
+    red "     Install it with: $PYTHON_BIN -m pip install PyYAML"
+    return 1
+  fi
+}
+
 install_codebase_memory_mcp() {
   if [[ -x "$CODEBASE_MEMORY_MCP_BIN" ]]; then
     green "  ✅ codebase-memory-mcp already installed — skipping"
@@ -238,6 +246,9 @@ preflight_dependencies() {
   resolve_command BUNX_BIN "bunx" bunx || failed=1
   resolve_command PNPM_BIN "pnpm" pnpm || failed=1
   resolve_command PYTHON_BIN "Python 3" python3 || failed=1
+  if [[ -n "${PYTHON_BIN:-}" && -x "${PYTHON_BIN:-}" ]]; then
+    preflight_pyyaml || failed=1
+  fi
 
   if [[ -x "$CODEBASE_MEMORY_MCP_BIN" ]]; then
     :
@@ -476,6 +487,8 @@ build_staged_payload() {
   validate_json_file "$payload/oh-my-opencode-slim.json" || return 1
   validate_jsonc_file "$payload/rulesync.jsonc" || return 1
   validate_jsonc_file "$payload/opencode.jsonc" || return 1
+  "$PYTHON_BIN" "$SRCDIR/scripts/validate-ai-rules.py" \
+    --root "$SRCDIR" --payload "$payload" --profile "$MODEL_PROFILE" || return 1
   validate_tracked_worktrunk_config || {
     fail "tracked Worktrunk config is not canonical"
     return 1

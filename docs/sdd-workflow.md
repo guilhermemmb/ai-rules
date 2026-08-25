@@ -146,7 +146,7 @@ flowchart TD
         direction TB
         R1["Load skill: reviewing-plans"]
         R2["Gather context:\nplan file + ledger +\nfull branch diff"]
-        R3["Dispatch @reviewer\n(7 reviewer-* specialists\nin parallel)"]
+        R3["@reviewer selects up to 10 applicable specialists\nDispatch concern lanes in bounded parallel batches\nthen run reviewer-simplifier final pass after Phase A"]
         R4["@reviewer returns\nstructured report"]
         R5{"Critical issues = 0?"}
         R6["✅ Plan executed\nwith success\n\nReport to orchestrator:\n- Tasks completed\n- Review summary\n- Strengths\n- Merge ready"]
@@ -204,11 +204,11 @@ short rationale first, before exploration or implementation:
 
 ## Agent Usage by Phase
 
-| T-shirt path / phase | @explorer | @librarian | @oracle | @designer | @fixer | @reviewer |
-|---|---|---|---|---|---|---|
-| XS/direct | — | — | — | as needed | ✅ immediate implementation | — |
-| S/M merged plan | optional context | optional research | optional architecture | optional UI input | ✅ direct execution | — |
-| L/XL — 1. Brainstorming | ✅ codebase recon | ✅ external research | ✅ architecture | ✅ UI sections | — | — |
-| L/XL — 2. Writing Plans | ✅ context | ✅ research | ✅ architecture | ✅ UI planning | — | — |
-| L/XL — 3. Executing | — | — | ✅ escalation | ✅ UI tasks | ✅ code tasks | ✅ per-task review |
-| L/XL — 4. Reviewing (optional) | — | — | — | — | — | ✅ final gate (all 7 specialists) |
+| T-shirt path / phase           | @explorer         | @librarian           | @oracle               | @designer         | @fixer                      | @reviewer                         |
+| ------------------------------ | ----------------- | -------------------- | --------------------- | ----------------- | --------------------------- | --------------------------------- |
+| XS/direct                      | —                 | —                    | —                     | as needed         | ✅ immediate implementation | —                                 |
+| S/M merged plan                | optional context  | optional research    | optional architecture | optional UI input | ✅ direct execution         | —                                 |
+| L/XL — 1. Brainstorming        | ✅ codebase recon | ✅ external research | ✅ architecture       | ✅ UI sections    | —                           | —                                 |
+| L/XL — 2. Writing Plans        | ✅ context        | ✅ research          | ✅ architecture       | ✅ UI planning    | —                           | —                                 |
+| L/XL — 3. Executing            | —                 | —                    | ✅ escalation         | ✅ UI tasks       | ✅ code tasks               | ✅ per-task review                |
+| L/XL — 4. Reviewing (optional) | —                 | —                    | —                     | —                 | —                           | ✅ final gate (all 10 specialists) |

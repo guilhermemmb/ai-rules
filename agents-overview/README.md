@@ -42,9 +42,22 @@ flowchart TD
     REVIEWER --> REVIEWERTEST["Reviewer Test (if tests)"]
     REVIEWER --> REVIEWERERRORS["Reviewer Errors (if errors)"]
     REVIEWER --> REVIEWERTYPES["Reviewer Types (if types)"]
-    REVIEWER --> REVIEWERSIMPLIFIER["Reviewer Simplifier (sequential)"]
+    REVIEWER --> REVIEWERSECURITY["Reviewer Security (if security-sensitive)"]
+    REVIEWER --> REVIEWERPERFORMANCE["Reviewer Performance (if performance-sensitive)"]
+    REVIEWER --> REVIEWERDATA["Reviewer Data Integrity (if data-sensitive)"]
     REVIEWER --> REVIEWERACCESSIBILITY["Reviewer Accessibility (if UI files)"]
+    REVIEWER --> REVIEWERSIMPLIFIER["Reviewer Simplifier (conditional, sequential after Phase A for source/config changes)"]
 ```
+
+Reviewer dispatches applicable concern lanes in independent background batches.
+After Phase A completes, reviewer-simplifier runs exactly once sequentially only
+when selected/applicable—when the normalized diff contains a non-empty
+executable/source/config diff and the aspect filter permits it—and receives the
+consolidated Phase A findings. The runtime setting
+`REVIEWER_MAX_PARALLEL` controls each concern batch; unset or invalid values
+default to `10`, values from `1` through `10` are used, and values above `10`
+are clamped to `10`. Any non-empty lane `errors` array makes Review Health
+Degraded/inconclusive.
 
 ## Using the Visualization
 
@@ -70,21 +83,21 @@ Edit `data.yaml` to keep the visualization in sync with your system. No code cha
 
 ```yaml
 nodes:
-  - id: unique-id                 # Required: unique identifier
-    label: Display Name            # Required: shown in UI
-    type: agent|mcp|tool|skill|infra  # Required: node category
-    role: Brief role description   # Required: 1-line summary
-    color: '#hexcolor'             # Required: badge/box color
-    parent: parent-id              # Optional: nesting (agent contains MCPs)
-    trigger: When to dispatch      # Agents: conditions for dispatch
-    tools: Tool names              # Agents: available MCPs/tools
-    constraints: Cannot access X   # Agents: access restrictions
+  - id: unique-id # Required: unique identifier
+    label: Display Name # Required: shown in UI
+    type: agent|mcp|tool|skill|infra # Required: node category
+    role: Brief role description # Required: 1-line summary
+    color: "#hexcolor" # Required: badge/box color
+    parent: parent-id # Optional: nesting (agent contains MCPs)
+    trigger: When to dispatch # Agents: conditions for dispatch
+    tools: Tool names # Agents: available MCPs/tools
+    constraints: Cannot access X # Agents: access restrictions
     responsibilities: What it does # Agents: bullet-point list
     description: Brief description # Tools/Skills: what it does
-    used_by: Which agents          # Tools: who uses it
-    when: When to invoke           # Skills: when to use
-    location: File path            # Infrastructure: config location
-    config: Configuration details  # Infrastructure: setup details
+    used_by: Which agents # Tools: who uses it
+    when: When to invoke # Skills: when to use
+    location: File path # Infrastructure: config location
+    config: Configuration details # Infrastructure: setup details
 ```
 
 ### Adding an Agent
@@ -95,7 +108,7 @@ nodes:
     label: my-agent
     type: agent
     role: Specific purpose
-    color: '#60a5fa'
+    color: "#60a5fa"
     parent: main
     trigger: Conditions to dispatch
     tools: List of available MCPs
@@ -113,8 +126,8 @@ nodes:
     label: my-mcp-name
     type: mcp
     role: What it provides
-    color: '#a78bfa'
-    parent: agent-id  # Which agent owns it
+    color: "#a78bfa"
+    parent: agent-id # Which agent owns it
 ```
 
 ### Adding a Tool
@@ -125,7 +138,7 @@ nodes:
     label: My Tool
     type: tool
     role: What it does
-    color: '#34d399'
+    color: "#34d399"
     parent: null
     description: Detailed description
     used_by: Which agents use it
@@ -139,7 +152,7 @@ nodes:
     label: Config Name
     type: infra
     role: What it configures
-    color: '#f472b6'
+    color: "#f472b6"
     parent: null
     location: ~/.config/file.json
     config: |
@@ -192,6 +205,7 @@ No code needed—YAML drives everything.
 ### Agents
 
 **Built-in (Pantheon):**
+
 - **orchestrator** — Master delegator; plans, implements directly, dispatches subagents
 - **oracle** — Strategic advisor; architecture review, hard debugging, code review
 - **explorer** — Codebase reconnaissance; broad searches, pattern discovery
@@ -201,17 +215,31 @@ No code needed—YAML drives everything.
 - **observer** — Visual analysis; images, screenshots, PDFs (auto-routed from orchestrator)
 
 **Custom:**
+
 - **navigator** — Browser automation via the agent-browser CLI; snapshots/refs, navigation, screenshots, forms, extraction
 - **detective** — Production diagnostics; Sentry, Datadog (pup CLI), GCP logs, Rootly, root cause analysis
 - **sage** — Domain knowledge; Gorgias metrics, table schemas, business rules (cortex)
+- **reviewer** — PR review orchestrator; bounded parallel batches of applicable specialist lanes
+- **reviewer-code** — Always-on general correctness and project-guideline review
+- **reviewer-test** — Behavioral test coverage (test files or uncovered production behavior)
+- **reviewer-errors** — Error, retry, fallback, and failure-propagation review
+- **reviewer-types** — Type, interface, class, schema, and invariant review
+- **reviewer-security** — Authentication, authorization, secrets, input safety, and security boundaries
+- **reviewer-performance** — Algorithms, queries, I/O, allocations, concurrency, and hot paths
+- **reviewer-data-integrity** — Persistence, transactions, migrations, idempotency, and state integrity
+- **reviewer-accessibility** — WCAG and UI accessibility review
+- **reviewer-comments** — Comment, documentation, example, and explanatory-text review
+- **reviewer-simplifier** — Post-Phase-A clarity and maintainability pass
 
 ### MCPs (Model Context Protocol)
 
 **orchestrator:**
+
 - **codebase-memory-mcp** — Code search, graph-based exploration (shared by oracle, explorer, fixer, designer, detective, sage)
 - **github** — GitHub CLI integration (PRs, issues, checks)
 
 **librarian:**
+
 - **context7** — Current library documentation
 - **websearch** — Web search via Exa
 - **gh_grep** — GitHub code search across repos
@@ -219,18 +247,22 @@ No code needed—YAML drives everything.
 - **cortex** — Gorgias internal docs, specs, runbooks (read-only)
 
 **designer:**
+
 - **figma-desktop** — Design files (local Figma Desktop app, http://127.0.0.1:3845/mcp)
 
 **detective:**
+
 - **sentry** — Error monitoring (read-only)
 - **pup CLI** — Datadog CLI (--agent --ro): logs, metrics, APM, monitors
 - **gcloud CLI** — GCP Cloud Logging (Bash, no enabled MCP)
 - **rootly** — Incident management data
 
 **sage:**
+
 - **cortex** — Gorgias domain knowledge, metrics, BigQuery
 
 ### Tools
+
 - **Bash** — Command execution (all agents)
 - **agent-browser CLI** — Browser automation via Bash (Navigator)
 - **Read/Edit/Write** — File operations (orchestrator, fixer, designer)
@@ -240,20 +272,22 @@ No code needed—YAML drives everything.
 ### Skills
 
 **Orchestrator:**
+
 - **codemap** — Repository cartography
 - **deepwork** — Heavy session workflow
 - **verification-planning** — Evidence before code
-- **worktrees** — Isolated coding lanes
 - **clonedeps** — Dependency X-ray
 - **reflect** — Workflow self-improvement
 - **oh-my-opencode-slim** — Plugin self-configuration
 - **project-context** — Project summaries
-- **openspec-propose / apply / archive / explore / update / sync** — SDD workflow
+- **brainstorming / writing-plans / executing-plans / reviewing-plans** — SDD workflow
 
 **Oracle:**
+
 - **simplify** — Behavior-preserving refactors
 
 **Detective:**
+
 - **dd-pup** — Datadog CLI reference
 - **dd-apm** — APM traces & services
 - **dd-logs** — Log search & management
@@ -262,6 +296,7 @@ No code needed—YAML drives everything.
 - **incident-response** — Incident tracking & on-call
 
 ### Infrastructure
+
 - **OpenCode** — Entry point, OMO Slim plugin host
 - **Oh My OpenCode Slim** — Agent orchestration (preset: bifrost)
 - **Model Profiles** — Switch between `default` (performance) and `cost-efficient` (90% savings) via `deploy.sh --model-profile=<name>`
@@ -412,6 +447,7 @@ flowchart TD
 ## Constraints
 
 **Orchestrator hard-enforced dispatch rules (no direct access):**
+
 - agent-browser CLI or chrome-devtools-mcp → dispatch to navigator; Navigator runs agent-browser through Bash
 - sentry, rootly → dispatch to detective (gcp-logging disabled)
 - cortex → dispatch to sage

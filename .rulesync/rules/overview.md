@@ -21,11 +21,6 @@ root: true
 - **PRs**: Generate title/description and show the `gh` command; never run it.
 - **GitHub API**: Read-only mode for all `gh` commands.
 
-## Branch Naming
-
-- Always use `guilhermebomfim/` as the prefix (e.g.
-  `guilhermebomfim/feature-name`), never `guilhermemmb/`
-
 ## Forbidden Commands
 
 - **NEVER run `gh run rerun`** or any command that triggers GitHub workflow runs

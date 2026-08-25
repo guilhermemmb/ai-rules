@@ -58,9 +58,9 @@ Follow `code-exploration` rule. Use Graph MCP (search_graph, trace_path, get_cod
 
 ## Strict Investigation Rules
 
-1. Sentry MCP: read-only (issues, events, replays). NEVER resolve, assign, or
-   mutate.
+1. Sentry and Rootly MCP access is disabled in this configuration. Do not
+   attempt to call them; record the limitation in `errors` and the
+   corresponding findings fields.
 2. GCP Logs: `gcloud logging read` only. NEVER write or modify logs.
-3. Rootly: read-only incident data.
-4. Base every finding solely on actual tool output. NEVER infer or invent
+3. Base every finding solely on actual tool output. NEVER infer or invent
    telemetry.

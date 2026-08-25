@@ -18,39 +18,59 @@ Source of truth for OpenCode agent rules, custom agents, skills, and commands. U
 ping all agents
 ```
 
+### Reviewer concurrency
+
+Reviewer runs applicable concern lanes in independent background batches.
+When selected/applicable—when the normalized diff contains a non-empty
+executable/source/config diff and the aspect filter permits it—the
+reviewer-simplifier runs exactly once after Phase A with the Phase A findings.
+Set `REVIEWER_MAX_PARALLEL` in the runtime environment to control the batch size:
+values from `1` to `10` are accepted; unset, empty, non-integer, zero, and
+negative values fall back to `10`, and values above `10` are clamped to `10`.
+Failed, timed-out, unavailable, malformed, or incomplete lane results populate
+`errors` and make Review Health Degraded/inconclusive. This is a runtime setting
+documented in the reviewer prompt/skill, not an OpenCode top-level configuration
+key.
+
 ## Model Profiles
 
-| Profile | Strategy | Key Models | Location |
-| :--- | :--- | :--- | :--- |
-| **default** | Performance-first | GPT-5.6 Luna, Claude Sonnet 5, DeepSeek V4 Pro, Gemini 3 Flash | `profiles/models/default.yml` |
-| **cost-efficient** | Cost-optimized (90% savings) | Gemini 3 Flash, DeepSeek V4 Flash/Pro | `profiles/models/cost-efficient.yml` |
+| Profile            | Strategy                     | Key Models                                                     | Location                             |
+| :----------------- | :--------------------------- | :------------------------------------------------------------- | :----------------------------------- |
+| **default**        | Performance-first            | GPT-5.6 Luna, Claude Sonnet 5, DeepSeek V4 Pro, Gemini 3 Flash | `profiles/models/default.yml`        |
+| **cost-efficient** | Cost-optimized (90% savings) | Gemini 3 Flash, DeepSeek V4 Flash/Pro                          | `profiles/models/cost-efficient.yml` |
 
 ## Agent Pantheon
 
 ### Built-in (7 — OMO Slim)
 
-| Agent | Model (Default) | Model (Cost-Efficient) | Role |
-| :--- | :--- | :--- | :--- |
-| **Orchestrator** | GPT-5.6 Luna | Gemini 3 Flash | Master delegator & coordinator |
-| **Oracle** | Claude Sonnet 5 | DeepSeek V4 Pro | Strategic advisor, architecture |
-| **Explorer** | DeepSeek V4 Flash | DeepSeek V4 Flash | Codebase reconnaissance |
-| **Librarian** | DeepSeek V4 Flash | DeepSeek V4 Flash | Knowledge retrieval |
-| **Designer** | Claude Sonnet 5 | Gemini 3 Flash | UI/UX excellence |
-| **Fixer** | Claude Sonnet 5 | DeepSeek V4 Flash | Implementation specialist |
-| **Observer** | Gemini 3 Flash | Gemini 3 Flash | Visual analysis |
+| Agent            | Model (Default)   | Model (Cost-Efficient) | Role                            |
+| :--------------- | :---------------- | :--------------------- | :------------------------------ |
+| **Orchestrator** | GPT-5.6 Luna      | Gemini 3 Flash         | Master delegator & coordinator  |
+| **Oracle**       | Claude Sonnet 5   | DeepSeek V4 Pro        | Strategic advisor, architecture |
+| **Explorer**     | DeepSeek V4 Flash | DeepSeek V4 Flash      | Codebase reconnaissance         |
+| **Librarian**    | DeepSeek V4 Flash | DeepSeek V4 Flash      | Knowledge retrieval             |
+| **Designer**     | Claude Sonnet 5   | Gemini 3 Flash         | UI/UX excellence                |
+| **Fixer**        | Claude Sonnet 5   | DeepSeek V4 Flash      | Implementation specialist       |
+| **Observer**     | Gemini 3 Flash    | Gemini 3 Flash         | Visual analysis                 |
 
-### Custom (11)
+### Custom (14)
 
-| Agent | Model (Default) | Model (Cost-Efficient) | Dispatch when |
-| :--- | :--- | :--- | :--- |
-| **Navigator** | Gemini 3 Flash | Gemini 3 Flash | agent-browser CLI, snapshots/refs, screenshots, extraction |
-| **Detective** | DeepSeek V4 Flash | DeepSeek V4 Flash | Production errors, logs, metrics |
-| **Sage** | DeepSeek V4 Flash | DeepSeek V4 Flash | Gorgias metrics, schemas, rules |
-| **Reviewer** | GPT-5.6 Luna | DeepSeek V4 Flash | PR/branch/diff review coordinator |
-| **reviewer-code** | GPT-5.6 Luna | DeepSeek V4 Pro | CLAUDE.md compliance, bugs |
-| **reviewer-errors** | GPT-5.6 Luna | DeepSeek V4 Pro | Silent failures, error handling |
-| **reviewer-types** | GPT-5.6 Luna | DeepSeek V4 Pro | Type encapsulation, invariants |
-| **reviewer-* (other)** | GPT-5.6 Luna/DeepSeek | DeepSeek V4 Flash | Specialized review lanes |
+| Agent                       | Model (Default)   | Model (Cost-Efficient) | Dispatch when                                              |
+| :-------------------------- | :---------------- | :--------------------- | :--------------------------------------------------------- |
+| **Navigator**               | Gemini 3 Flash    | Gemini 3 Flash         | agent-browser CLI, snapshots/refs, screenshots, extraction |
+| **Detective**               | DeepSeek V4 Flash | DeepSeek V4 Flash      | Production errors, logs, metrics                           |
+| **Sage**                    | DeepSeek V4 Flash | DeepSeek V4 Flash      | Gorgias metrics, schemas, rules                            |
+| **Reviewer**                | GPT-5.6 Luna      | DeepSeek V4 Flash      | PR/branch/diff review coordinator                          |
+| **reviewer-code**           | GPT-5.6 Luna      | DeepSeek V4 Pro        | CLAUDE.md compliance, bugs                                 |
+| **reviewer-test**           | GPT-5.6 Luna      | DeepSeek V4 Flash      | Behavioral test coverage                                   |
+| **reviewer-errors**         | GPT-5.6 Luna      | DeepSeek V4 Pro        | Silent failures, error handling                            |
+| **reviewer-types**          | GPT-5.6 Luna      | DeepSeek V4 Pro        | Type encapsulation, invariants                             |
+| **reviewer-security**       | GPT-5.6 Luna      | DeepSeek V4 Pro        | Security boundaries, secrets, input safety                 |
+| **reviewer-performance**    | GPT-5.6 Luna      | DeepSeek V4 Pro        | Algorithms, I/O, queries, hot paths                        |
+| **reviewer-data-integrity** | GPT-5.6 Luna      | DeepSeek V4 Pro        | Persistence, transactions, state integrity                 |
+| **reviewer-accessibility**  | GPT-5.6 Luna      | DeepSeek V4 Flash      | WCAG and UI accessibility                                  |
+| **reviewer-comments**       | DeepSeek V4 Flash | DeepSeek V4 Flash      | Comment and documentation accuracy                         |
+| **reviewer-simplifier**     | GPT-5.6 Luna      | DeepSeek V4 Flash      | Post-Phase-A clarity and maintainability pass              |
 
 **Council** disabled. Observer auto-routes images from Orchestrator.
 
@@ -97,21 +117,21 @@ Spec Driven Development artifacts live outside each working repo at
 
 ### SDD Workflow (4-step)
 
-| Phase | Skill | Key agents |
-|---|---|---|
-| 1. Brainstorm | `brainstorming` | @explorer, @librarian, @oracle, @designer |
-| 2. Plan | `writing-plans` | — (orchestrator writes plan directly) |
-| 3. Execute | `executing-plans` | @fixer (code), @designer (UI), @reviewer (per-task gate), @oracle (escalation) |
-| 4. Review (optional; user-confirmed) | `reviewing-plans` | @reviewer (final gate — 7 reviewer-* specialists, only after opt-in) |
+| Phase                                | Skill             | Key agents                                                                              |
+| ------------------------------------ | ----------------- | --------------------------------------------------------------------------------------- |
+| 1. Brainstorm                        | `brainstorming`   | @explorer, @librarian, @oracle, @designer                                               |
+| 2. Plan                              | `writing-plans`   | — (orchestrator writes plan directly)                                                   |
+| 3. Execute                           | `executing-plans` | @fixer (code), @designer (UI), @reviewer (per-task gate), @oracle (escalation)          |
+| 4. Review (optional; user-confirmed) | `reviewing-plans` | @reviewer (final gate — up to 10 applicable reviewer-\* specialists, only after opt-in) |
 
 See `docs/sdd-workflow.md` for the full flowchart and agent usage matrix.
 
 ## Agent tmp paths
 
-| Agent | Output path |
-|-------|-------------|
+| Agent     | Output path       |
+| --------- | ----------------- |
 | Navigator | `/tmp/navigator/` |
-| Sage | `/tmp/sage/` |
+| Sage      | `/tmp/sage/`      |
 
 > PR description files use `/tmp/pr-<branch>.md` (ephemeral, not grouped here).
 
@@ -212,6 +232,7 @@ the generated local graph can make a non-forced removal refuse to proceed.
   Replace both paths with the canonical workspace/root pair from the
   Worktrunk/setup output. Setup is idempotent and republishes readiness after
   a successful retry.
+
 - **`degraded`** — the setup completed with an explicitly non-blocking
   fallback. The adapter refuses this state by default; use
   `wt-orca attach --allow-degraded` only when that fallback is acceptable, or
@@ -257,14 +278,14 @@ not own that outer terminal.
 
 ## Configuration Layers
 
-| Layer | File | What it controls |
-|-------|------|-----------------|
-| Provider + MCPs | `~/.config/opencode/opencode.json` | Bifrost models (`bf`, `bf-a`, `bf-o`), MCP server endpoints |
-| OMO Slim plugin | `~/.config/opencode/opencode.json` | Plugin registration, LSP, disabled default agents |
-| Agent models + MCPs | `~/.config/opencode/oh-my-opencode-slim.json` | Preset `bifrost`, per-agent model/variant/skills/MCPs, custom agents, tmux |
-| Prompt overrides | `~/.config/opencode/oh-my-opencode-slim/{agent}_append.md` | Per-agent appended instructions from rules/ |
-| Global instructions | `~/.config/opencode/AGENTS.md` | OMO Slim managed |
-| Project config | `<repo>/opencode.json` | Project-level MCPs, model overrides |
+| Layer               | File                                                       | What it controls                                                           |
+| ------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Provider + MCPs     | `~/.config/opencode/opencode.json`                         | Bifrost models (`bf`, `bf-a`, `bf-o`), MCP server endpoints                |
+| OMO Slim plugin     | `~/.config/opencode/opencode.json`                         | Plugin registration, LSP, disabled default agents                          |
+| Agent models + MCPs | `~/.config/opencode/oh-my-opencode-slim.json`              | Preset `bifrost`, per-agent model/variant/skills/MCPs, custom agents, tmux |
+| Prompt overrides    | `~/.config/opencode/oh-my-opencode-slim/{agent}_append.md` | Per-agent appended instructions from rules/                                |
+| Global instructions | `~/.config/opencode/AGENTS.md`                             | OMO Slim managed                                                           |
+| Project config      | `<repo>/opencode.json`                                     | Project-level MCPs, model overrides                                        |
 
 ## How to Update
 
@@ -287,19 +308,19 @@ Edit the corresponding `.rulesync/subagents/<name>.md` file, then regenerate the
 
 Repository MCP definitions live in `.rulesync/mcp.jsonc`; agent assignments live in `oh-my-opencode-slim.json`. Navigator's browser CLI comes from the `agent-browser` skill and runs via Bash. `./deploy.sh` generates the corresponding global configuration:
 
-| MCP | Enabled | Assigned to |
-|-----|---------|------------|
-| codebase-memory-mcp | ✓ | Orchestrator, Oracle, Explorer, Fixer, Detective, Sage |
-| context7 | ✓ | Librarian |
-| github | ✓ | Orchestrator |
-| sentry | ✓ | Detective |
-| linear | ✓ | Librarian |
-| gcp-logging | ❌ disabled | Detective uses `gcloud` CLI via Bash instead |
-| cortex | ✓ | Sage, Librarian (Internal docs/Notion via Cortex MCP) |
-| rootly | ✓ | Detective |
-| agent-browser CLI | ✓ | Navigator via Bash and the `agent-browser` skill |
-| gorgias-mcp | disabled | — |
-| figma | ✓ | — |
+| MCP                 | Enabled     | Assigned to                                            |
+| ------------------- | ----------- | ------------------------------------------------------ |
+| codebase-memory-mcp | ✓           | Orchestrator, Oracle, Explorer, Fixer, Detective, Sage |
+| context7            | ✓           | Librarian                                              |
+| github              | ✓           | Orchestrator                                           |
+| sentry              | ✓           | Detective                                              |
+| linear              | ✓           | Librarian                                              |
+| gcp-logging         | ❌ disabled | Detective uses `gcloud` CLI via Bash instead           |
+| cortex              | ✓           | Sage, Librarian (Internal docs/Notion via Cortex MCP)  |
+| rootly              | ✓           | Detective                                              |
+| agent-browser CLI   | ✓           | Navigator via Bash and the `agent-browser` skill       |
+| gorgias-mcp         | disabled    | —                                                      |
+| figma               | ✓           | —                                                      |
 
 **Datadog & GCP Logs:** via `pup` and `gcloud` CLIs (Bash), not MCP. Always call `pup` with `--agent --read-only` flags.
 

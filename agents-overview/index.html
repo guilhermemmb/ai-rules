@@ -717,8 +717,11 @@
     REVIEWER --> REVIEWERTEST["Reviewer Test (if tests)"]
     REVIEWER --> REVIEWERERRORS["Reviewer Errors (if errors)"]
     REVIEWER --> REVIEWERTYPES["Reviewer Types (if types)"]
-    REVIEWER --> REVIEWERSIMPLIFIER["Reviewer Simplifier (sequential)"]
-    REVIEWER --> REVIEWERACCESSIBILITY["Reviewer Accessibility (if UI files)"]`;
+    REVIEWER --> REVIEWERSECURITY["Reviewer Security (if security-sensitive)"]
+    REVIEWER --> REVIEWERPERFORMANCE["Reviewer Performance (if performance-sensitive)"]
+    REVIEWER --> REVIEWERDATA["Reviewer Data Integrity (if data-sensitive)"]
+    REVIEWER --> REVIEWERACCESSIBILITY["Reviewer Accessibility (if UI files)"]
+    REVIEWER --> REVIEWERSIMPLIFIER["Reviewer Simplifier (conditional, sequential after Phase A for source/config changes)"]`;
 
         const GRAPH_CONTAINER_ID = 'dispatch-graph-container';
         const GRAPH_FALLBACK_TEXT = 'Dispatch graph unavailable.';
