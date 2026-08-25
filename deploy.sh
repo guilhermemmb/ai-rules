@@ -254,7 +254,7 @@ preflight_dependencies() {
 validate_tracked_worktrunk_config() {
   [[ -f "$WORKTRUNK_CONFIG_SOURCE" ]] || return 1
   grep -Fq '[[post-start]]' "$WORKTRUNK_CONFIG_SOURCE" || return 1
-  grep -Fq 'install-deps = "~/developer/dotfiles/worktree-pnpm-install.sh"' "$WORKTRUNK_CONFIG_SOURCE" || return 1
+  grep -Fq 'install-deps = "~/developer/dotfiles/worktree-pnpm-install.sh --workspace-path {{ worktree_path }}"' "$WORKTRUNK_CONFIG_SOURCE" || return 1
   grep -Fq 'worktree-setup = "~/developer/dotfiles/worktree-setup.sh' "$WORKTRUNK_CONFIG_SOURCE" || return 1
   grep -Fq '[pre-remove]' "$WORKTRUNK_CONFIG_SOURCE" || return 1
   grep -Fq 'worktree-cleanup = "bash ~/developer/dotfiles/worktree-cleanup.sh' "$WORKTRUNK_CONFIG_SOURCE" || return 1
