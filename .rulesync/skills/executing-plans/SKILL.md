@@ -26,9 +26,12 @@ stopping.
 - Tasks are mostly independent
 - You are staying in the current session
 
-Do not use this skill for XS, S, or M work, or for explicitly direct-execution
-work. S/M combined plans are executed directly after one approval with
-proportionate validation; they are not converted into execution plans.
+Do not use this skill for XS, S, or M work. S/M combined plans follow their own
+workflow: after one approval, dispatch implementation to `@fixer` for code or
+`@designer` for UI/UX as appropriate, then automatically dispatch one
+post-implementation `@reviewer` and run proportionate validation. S/M does not
+use this skill, its ledger, or its per-task review loop, and does not ask for a
+review choice; the reviewer is required through the combined-plan workflow.
 
 ## Agent Dispatch Rules
 

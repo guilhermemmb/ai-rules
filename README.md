@@ -115,13 +115,28 @@ Spec Driven Development artifacts live outside each working repo at
     └── <plan>-task-<N>-report.md
 ```
 
-### SDD Workflow (4-step)
+### SDD Workflow
+
+XS work is immediate: dispatch implementation to `@fixer` for code or
+`@designer` for UI/UX as appropriate, with no approval, planning artifact, SDD,
+or reviewer.
+
+S/M work uses one concise merged SDD + implementation plan, one approval, and
+implementation dispatched to `@fixer` for code or `@designer` for UI/UX as
+appropriate. It then always runs exactly one automatic post-implementation
+`@reviewer` gate; it does not use `executing-plans`, a ledger, or per-task
+reviews, and does not ask the user to choose whether to review.
+
+L/XL work keeps the full SDD and `executing-plans` flow, including its required
+per-task reviews. Its final comprehensive `reviewing-plans` pass remains
+optional and requires explicit user opt-in; this is separate from the required
+S/M post-implementation reviewer gate.
 
 | Phase                                | Skill             | Key agents                                                                              |
 | ------------------------------------ | ----------------- | --------------------------------------------------------------------------------------- |
 | 1. Brainstorm                        | `brainstorming`   | @explorer, @librarian, @oracle, @designer                                               |
-| 2. Plan                              | `writing-plans`   | — (orchestrator writes plan directly)                                                   |
-| 3. Execute                           | `executing-plans` | @fixer (code), @designer (UI), @reviewer (per-task gate), @oracle (escalation)          |
+| 2. Plan                              | `writing-plans`   | — (orchestrator writes the S/M combined plan or L/XL plan)                              |
+| 3. Execute                           | S/M combined-plan; `executing-plans` for L/XL | @fixer (code), @designer (UI/UX), @reviewer (S/M post-implementation or L/XL per-task), @oracle (escalation) |
 | 4. Review (optional; user-confirmed) | `reviewing-plans` | @reviewer (final gate — up to 10 applicable reviewer-\* specialists, only after opt-in) |
 
 See `docs/sdd-workflow.md` for the full flowchart and agent usage matrix.

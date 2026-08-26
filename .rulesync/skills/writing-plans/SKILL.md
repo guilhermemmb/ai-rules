@@ -32,7 +32,8 @@ cohesive outcome.
 ## Mode Selection
 
 - **S/M:** use the combined-plan format below. Do not require a
-  separate spec or split the outcome into independently reviewed tasks.
+  separate spec or split the outcome into independently reviewed tasks; after
+  implementation, dispatch one automatic post-implementation `@reviewer`.
 - **L/XL:** use the full SDD implementation-plan format below after
   the separate spec has been approved.
 
@@ -61,7 +62,7 @@ to `~/developer/planning-docs/{{repository-name}}/.planning/plans/YYYY-MM-DD-<to
 ````markdown
 # [Outcome] S/M Combined SDD + Implementation Plan
 
-> **T-shirt size:** S or M — direct execution after one approval
+> **T-shirt size:** S or M — one approval, specialist implementation, and one automatic post-implementation review
 
 ## Design Rationale
 
@@ -90,9 +91,11 @@ implementation steps, and validation rather than reproducing a separate spec.
 ### Combined-Plan Handoff
 
 Present the completed document once and ask for one approval. After approval,
-execute it directly with proportionate validation. Do **not** load
+dispatch implementation to `@fixer` for code or `@designer` for UI/UX as
+appropriate, then automatically dispatch exactly one post-implementation
+`@reviewer` and run proportionate validation. Do **not** load
 `executing-plans`, create a ledger, dispatch a per-task review loop, or ask for
-a final-review choice.
+a review choice.
 
 ## L/XL Full SDD Implementation-Plan Format
 

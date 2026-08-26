@@ -17,8 +17,9 @@ Before choosing a workflow, evaluate the request and show the user the scale
 `T-shirt size: XS | S | M | L | XL`, then report one selection with a short
 rationale.
 
-- **XS** — one obvious, isolated, reversible edit. State XS and execute
-  immediately; no approval, planning artifact, or SDD.
+- **XS** — one obvious, isolated, reversible edit. State XS and immediately
+  dispatch implementation to `@fixer` for code or `@designer` for UI/UX as
+  appropriate; no approval, planning artifact, SDD, or reviewer.
 - **S** — small local work using established patterns and straightforward
   validation.
 - **M** — one cohesive bounded outcome across a small set of related files, with
@@ -27,10 +28,11 @@ rationale.
 
   S and M produce one concise merged SDD + implementation plan in
   `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, containing rationale, scope/files, concrete steps,
-  and validation. Present it once, wait for one approval, then execute directly
-  with proportionate validation. Do not create a separate spec, load
-  `executing-plans`, create a ledger, run a per-task review loop, or ask for a
-  final-review choice.
+  and validation. Present it once and wait for one approval, then dispatch
+  implementation to `@fixer` for code or `@designer` for UI/UX as appropriate,
+  followed automatically by one post-implementation `@reviewer`. Do not create
+  a separate spec, load `executing-plans`, create a ledger, run a per-task
+  review loop, or ask for a review choice.
 - **L** — a multi-area or cross-system change, or material uncertainty.
 - **XL** — architecture, migration, security/data-integrity, production-impact,
   or major external-dependency work.

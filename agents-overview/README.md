@@ -206,7 +206,7 @@ No code needed—YAML drives everything.
 
 **Built-in (Pantheon):**
 
-- **orchestrator** — Master delegator; plans, implements directly, dispatches subagents
+- **orchestrator** — Master delegator; plans, dispatches the appropriate implementation specialist (@fixer or @designer), and coordinates/reviews results
 - **oracle** — Strategic advisor; architecture review, hard debugging, code review
 - **explorer** — Codebase reconnaissance; broad searches, pattern discovery
 - **librarian** — Knowledge retrieval; library docs (context7), web search, Linear, Gorgias internal docs/Notion (via Cortex), GitHub code search
@@ -308,21 +308,24 @@ No code needed—YAML drives everything.
 
 The orchestrator always evaluates and visibly reports
 `T-shirt size: XS | S | M | L | XL` with a short rationale first. The size
-determines whether work is direct, uses a merged plan, or follows full SDD.
+determines whether work is immediate, uses a merged plan, or follows full SDD.
 
 ### T-shirt sizing policy
 
-- **XS** — obvious isolated reversible edit. Execute immediately; no approval,
-  artifact, or SDD.
+- **XS** — obvious isolated reversible edit. Immediately dispatch implementation
+  to `@fixer` for code or `@designer` for UI/UX as appropriate; no approval,
+  planning artifact, SDD, or reviewer.
 - **S** — small local work following an established pattern.
 - **M** — cohesive bounded work across related files without
   architecture/security/migration/data-integrity/external-integration
   uncertainty.
 - **S/M** — use one concise merged SDD + implementation plan in
-  `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, show it once, and obtain one approval before direct
-  execution with proportionate validation. Do not create a separate spec, load
-  `executing-plans`, create a ledger, run a per-task review, or prompt for a
-  final review.
+  `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, show it once,
+  and obtain one approval before dispatching implementation to `@fixer` for
+  code or `@designer` for UI/UX as appropriate. Then dispatch exactly one
+  automatic post-implementation `@reviewer` and run proportionate validation.
+  Do not create a separate spec, load `executing-plans`, create a ledger, run a
+  per-task review, or prompt for a review choice.
 - **L** — multi-area/cross-system work or material uncertainty.
 - **XL** — architecture, migration, security/data-integrity, production-impact,
   or major external-dependency work.
@@ -341,7 +344,7 @@ flowchart TD
 
     subgraph XS["XS path"]
         direction TB
-        XS1["Obvious isolated reversible edit"] --> Direct["Execute immediately\n(no approval, artifact, or SDD)"]
+        XS1["Obvious isolated reversible edit"] --> Direct["Immediate implementation\n@fixer (code) / @designer (UI/UX)\n(no approval, planning artifact, SDD, or reviewer)"]
         Direct --> Done([Complete])
     end
 
@@ -351,8 +354,9 @@ flowchart TD
         SM2["Write one concise merged SDD + implementation plan\n~/developer/planning-docs/{{repository-name}}/.planning/plans/"]
         SM3["Show plan once"]
         SM4{"Approve plan once?"}
-        SM5["Execute directly"]
-        SM6["Proportionate validation\n(no separate spec, executing-plans, ledger,\nper-task review, or final-review prompt)"]
+        SM5["Dispatch implementation\n@fixer (code) / @designer (UI/UX)"]
+        SM6["Dispatch exactly one automatic @reviewer\npost-implementation gate"]
+        SM8["Proportionate validation\n(no separate spec, executing-plans, ledger,\nor per-task review or review-choice prompt)"]
         SM7["Revise, clarify, or defer"]
 
         SM1 --> SM2
@@ -360,7 +364,8 @@ flowchart TD
         SM3 --> SM4
         SM4 -->|yes| SM5
         SM5 --> SM6
-        SM6 --> Done
+        SM6 --> SM8
+        SM8 --> Done
         SM4 -->|no| SM7
     end
 
@@ -376,9 +381,7 @@ flowchart TD
         B2 --> B3[Ask clarifying questions\none at a time]
         B3 --> B4[Propose 2-3 approaches\nwith trade-offs]
         B4 --> B5[Show separate design/spec]
-        B5 --> B6{"Approve design/spec?"}
-        B6 -->|revise| B5
-        B6 -->|yes| B7[Save design/spec\n~/developer/planning-docs/{{repository-name}}/.planning/specs/]
+        B5 --> B7[Save design/spec\n~/developer/planning-docs/{{repository-name}}/.planning/specs/]
         B7 --> B8[Spec self-review]
         B8 --> B9{"User approves spec?"}
         B9 -->|changes requested| B8
@@ -429,11 +432,15 @@ flowchart TD
 
 - Always report `T-shirt size: XS | S | M | L | XL` and a short rationale
   before taking action.
-- XS work is immediate and has no approval, artifact, or SDD.
+- XS work immediately dispatches implementation to `@fixer` for code or
+  `@designer` for UI/UX as appropriate, with no approval, planning artifact,
+  SDD, or reviewer.
 - S/M work gets one concise merged plan in `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, shown once
-  and approved once before direct execution with proportionate validation. It
-  skips a separate spec, `executing-plans`, a ledger, per-task review, and the
-  final-review prompt.
+  and approved once before dispatching implementation to `@fixer` for code or
+  `@designer` for UI/UX as appropriate. It then dispatches exactly one
+  automatic post-implementation `@reviewer` and runs proportionate validation.
+  It skips a separate spec, `executing-plans`, a ledger, per-task review, and
+  the review-choice prompt.
 - L/XL work is full SDD: show and approve the separate design/spec in
   `~/developer/planning-docs/{{repository-name}}/.planning/specs/` before writing the implementation plan in
   `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, then retain plan approval and the existing

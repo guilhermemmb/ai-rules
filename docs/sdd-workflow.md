@@ -5,7 +5,7 @@ flowchart TD
     START([Task received])
     SIZE["Always report first:\nT-shirt size: XS | S | M | L | XL\n+ short rationale"]
     TRIAGE{"T-shirt size?"}
-    DIRECT["Execute immediately\n(no approval, artifact, or SDD)"]
+    DIRECT["Immediate implementation\n@fixer (code) / @designer (UI/UX)\n(no approval, planning artifact, SDD, or reviewer)"]
     DONE([Complete])
 
     START --> SIZE
@@ -26,8 +26,9 @@ flowchart TD
         SM2["Write one concise merged SDD + implementation plan\n~/developer/planning-docs/{{repository-name}}/.planning/plans/"]
         SM3["Show plan once"]
         SM4{"Approve plan once?"}
-        SM5["Execute directly"]
-        SM6["Proportionate validation\n(no separate spec, executing-plans, ledger,\nper-task review, or final-review prompt)"]
+        SM5["Dispatch implementation\n@fixer (code) / @designer (UI/UX)"]
+        SM6["Automatically dispatch exactly one @reviewer\npost-implementation gate"]
+        SM8["Proportionate validation\n(no separate spec, executing-plans, ledger,\nor per-task review loop or review-choice prompt)"]
         SM7["Revise, clarify, or defer"]
 
         SM1 --> SM2
@@ -35,7 +36,8 @@ flowchart TD
         SM3 --> SM4
         SM4 -->|yes| SM5
         SM5 --> SM6
-        SM6 --> DONE
+        SM6 --> SM8
+        SM8 --> DONE
         SM4 -->|no| SM7
     end
 
@@ -54,7 +56,6 @@ flowchart TD
         B5["Propose 2-3 approaches\nwith trade-offs"]
         B6["@oracle — architecture assessment"]
         B7["Show separate design/spec\n@designer for UI-heavy sections"]
-        B8{"Approve design/spec?"}
         B9["Save design/spec:\n~/developer/planning-docs/{{repository-name}}/.planning/specs/"]
         B10["Spec self-review\n(placeholders, consistency, scope)"]
         B11{"User approves spec?"}
@@ -66,9 +67,7 @@ flowchart TD
         B5 -->|architecture decisions| B6
         B6 --> B7
         B5 --> B7
-        B7 --> B8
-        B8 -->|no, revise| B7
-        B8 -->|yes| B9
+        B7 --> B9
         B9 --> B10
         B10 --> B11
         B11 -->|changes requested| B9
@@ -167,7 +166,6 @@ flowchart TD
     style SIZE fill:#fff9c4,stroke:#f57f17
     style TRIAGE fill:#fff9c4,stroke:#f57f17
     style SM4 fill:#fff9c4,stroke:#f57f17
-    style B8 fill:#fff9c4,stroke:#f57f17
     style B11 fill:#fff9c4,stroke:#f57f17
     style P7 fill:#fff9c4,stroke:#f57f17
     style E6 fill:#fff9c4,stroke:#f57f17
@@ -183,17 +181,19 @@ flowchart TD
 Always evaluate and visibly report `T-shirt size: XS | S | M | L | XL` with a
 short rationale first, before exploration or implementation:
 
-- **XS** — obvious isolated reversible edit. Execute immediately; no approval,
-  artifact, or SDD.
+- **XS** — obvious isolated reversible edit. Immediately dispatch implementation
+  to `@fixer` for code or `@designer` for UI/UX as appropriate; no approval,
+  planning artifact, SDD, or reviewer.
 - **S** — small local work following an established pattern.
 - **M** — cohesive bounded work across related files without
   architecture/security/migration/data-integrity/external-integration
   uncertainty.
 - **S/M** — use one concise merged SDD + implementation plan in
-  `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, show it once, and obtain one approval before direct
-  execution with proportionate validation. Do not create a separate spec, load
-  `executing-plans`, create a ledger, run a per-task review, or prompt for a
-  final review.
+  `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, show it once, and obtain one approval before dispatching implementation to
+  `@fixer` for code or `@designer` for UI/UX as appropriate. Automatically
+  dispatch exactly one post-implementation `@reviewer`, then run proportionate
+  validation. Do not create a separate spec, load `executing-plans`, create a
+  ledger, run a per-task review, or prompt for a review choice.
 - **L** — multi-area/cross-system work or material uncertainty.
 - **XL** — architecture, migration, security/data-integrity, production-impact,
   or major external-dependency work.
@@ -206,8 +206,8 @@ short rationale first, before exploration or implementation:
 
 | T-shirt path / phase           | @explorer         | @librarian           | @oracle               | @designer         | @fixer                      | @reviewer                         |
 | ------------------------------ | ----------------- | -------------------- | --------------------- | ----------------- | --------------------------- | --------------------------------- |
-| XS/direct                      | —                 | —                    | —                     | as needed         | ✅ immediate implementation | —                                 |
-| S/M merged plan                | optional context  | optional research    | optional architecture | optional UI input | ✅ direct execution         | —                                 |
+| XS/immediate                   | —                 | —                    | —                     | ✅ UI/UX implementation | ✅ code implementation     | —                                 |
+| S/M merged plan                | optional context  | optional research    | optional architecture | ✅ UI/UX implementation | ✅ code implementation     | ✅ one automatic post-implementation gate |
 | L/XL — 1. Brainstorming        | ✅ codebase recon | ✅ external research | ✅ architecture       | ✅ UI sections    | —                           | —                                 |
 | L/XL — 2. Writing Plans        | ✅ context        | ✅ research          | ✅ architecture       | ✅ UI planning    | —                           | —                                 |
 | L/XL — 3. Executing            | —                 | —                    | ✅ escalation         | ✅ UI tasks       | ✅ code tasks               | ✅ per-task review                |
