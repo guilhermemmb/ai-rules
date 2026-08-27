@@ -98,7 +98,7 @@ nodes:
       Library docs, web research, Linear issues, Gorgias internal docs/Notion
       via Cortex, GitHub code search
     constraints: "Read-only. Linear/Cortex: never create, update, or delete."
-    responsibilities: "• Fetch current library/API documentation (context7)
+    responsibilities: "• Fetch current library/API documentation via Context7 (Librarian-only; follow the exact resolve-library-id → query-docs sequence)
 
       • Web search for external knowledge
 

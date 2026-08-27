@@ -23,6 +23,10 @@ except ImportError:  # pragma: no cover - reported as a validation error
 
 
 CANONICAL_MCP = "cortex"
+CONTEXT7_MCP = "context7"
+CONTEXT7_ENDPOINT = "https://mcp.context7.com/mcp"
+CONTEXT7_TOKEN_REFERENCE = "{env:CONTEXT7_API_TOKEN}"
+CONTEXT7_AGENT = "librarian"
 # These are built into the OMO runtime rather than declared in mcp.jsonc.
 BUILTIN_MCP_REFERENCES = frozenset({"gh_grep", "websearch"})
 # Supplied by the user's OpenCode installation, not vendored into this repo.
@@ -50,6 +54,14 @@ class Artifact:
     path: Path
     text: str
     data: Any
+
+
+class DuplicateJSONKeyError(ValueError):
+    """Raised when a JSON object contains the same key more than once."""
+
+    def __init__(self, key: str) -> None:
+        super().__init__(f"duplicate JSON key {key!r}")
+        self.key = key
 
 
 def _line_for_key(text: str, key: str) -> int | None:
@@ -207,8 +219,20 @@ class Validator:
             except ValueError as error:
                 self.add_error(path, str(error))
                 return None
+
+        def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+            data: dict[str, Any] = {}
+            for key, value in pairs:
+                if key in data:
+                    raise DuplicateJSONKeyError(key)
+                data[key] = value
+            return data
+
         try:
-            data = json.loads(source)
+            data = json.loads(source, object_pairs_hook=reject_duplicate_keys)
+        except DuplicateJSONKeyError as error:
+            self.add_error(path, str(error))
+            return None
         except json.JSONDecodeError as error:
             self.add_error(path, error.msg, line=error.lineno)
             return None
@@ -309,6 +333,159 @@ class Validator:
             )
         return names - disabled_names, disabled_names
 
+    def validate_context7_mcp(self, artifact: Artifact | None) -> None:
+        """Validate the source Context7 server's transport and credentials."""
+
+        if artifact is None:
+            return
+        mcp = self.require_mapping(artifact, "mcp.jsonc")
+        if mcp is None:
+            return
+        servers = mcp.get("mcpServers")
+        if not isinstance(servers, dict):
+            return
+        specification = servers.get(CONTEXT7_MCP)
+        if specification is None:
+            self.add_error(
+                artifact.path,
+                "Context7 MCP server context7 is missing",
+                key="mcpServers",
+                text=artifact.text,
+            )
+            return
+        if not isinstance(specification, dict):
+            self.add_error(
+                artifact.path,
+                "mcpServers.context7 must be a mapping",
+                key=CONTEXT7_MCP,
+                text=artifact.text,
+            )
+            return
+
+        if specification.get("enabled") is not True:
+            self.add_error(
+                artifact.path,
+                "Context7 MCP server context7 must be enabled",
+                key=CONTEXT7_MCP,
+                text=artifact.text,
+            )
+
+        if specification.get("type") != "http":
+            self.add_error(
+                artifact.path,
+                "Context7 MCP server must use the HTTP (Streamable HTTP) transport",
+                key="type",
+                text=artifact.text,
+            )
+
+        if specification.get("url") != CONTEXT7_ENDPOINT:
+            self.add_error(
+                artifact.path,
+                f"Context7 MCP server must use endpoint {CONTEXT7_ENDPOINT!r}",
+                key="url",
+                text=artifact.text,
+            )
+
+        headers = specification.get("headers")
+        if not isinstance(headers, dict):
+            self.add_error(
+                artifact.path,
+                "Context7 MCP server headers must be a mapping containing environment-only authentication",
+                key="headers",
+                text=artifact.text,
+            )
+            return
+
+        expected_authorization = f"Bearer {CONTEXT7_TOKEN_REFERENCE}"
+
+        def uses_context7_token(value: Any) -> bool:
+            return value in (
+                CONTEXT7_TOKEN_REFERENCE,
+                expected_authorization,
+            )
+
+        if headers != {"Authorization": expected_authorization}:
+            self.add_error(
+                artifact.path,
+                "Context7 MCP server headers must contain exactly Authorization: Bearer {env:CONTEXT7_API_TOKEN}",
+                key="headers",
+                text=artifact.text,
+            )
+
+        for name, value in headers.items():
+            normalized_name = (
+                name.lower().replace("_", "-") if isinstance(name, str) else ""
+            )
+            if (
+                normalized_name == "authorization"
+                or "api-key" in normalized_name
+                or "api-token" in normalized_name
+                or normalized_name == "token"
+            ) and (
+                not uses_context7_token(value)
+            ):
+                self.add_error(
+                    artifact.path,
+                    f"Context7 MCP credential header {name!r} must use environment-only authentication",
+                    key=name,
+                    text=artifact.text,
+                )
+
+    def validate_context7_rule(self) -> None:
+        """Validate the canonical Context7 workflow guidance."""
+
+        path = self.root / ".rulesync" / "rules" / "context7.md"
+        text = self.read_text(path)
+        if text is None:
+            return
+
+        resolve_position = text.find("resolve-library-id")
+        query_position = text.find("query-docs")
+        if resolve_position == -1 or query_position == -1:
+            self.add_error(
+                path,
+                "canonical Context7 rule must describe resolve-library-id followed by query-docs",
+                key="Context7",
+                text=text,
+            )
+        elif resolve_position > query_position:
+            self.add_error(
+                path,
+                "canonical Context7 rule must describe resolve-library-id before query-docs",
+                key="query-docs",
+                text=text,
+            )
+
+        requirements = (
+            (
+                re.compile(r"single[- ]concept|one concept", re.IGNORECASE),
+                "canonical Context7 rule must scope query-docs requests to a single concept",
+                "single concept",
+            ),
+            (
+                re.compile(r"/org/project/version"),
+                "canonical Context7 rule must document the versioned library ID format /org/project/version",
+                "/org/project/version",
+            ),
+            (
+                re.compile(r"fallback|unavailable", re.IGNORECASE),
+                "canonical Context7 rule must describe fallback behavior when the service is unavailable",
+                "fallback",
+            ),
+            (
+                re.compile(
+                    r"disclos|say\s+so\s+explicitly|could not be fetched|"
+                    r"unable to fetch|not available|do not claim.*fetched",
+                    re.IGNORECASE,
+                ),
+                "canonical Context7 rule must disclose when current documentation could not be fetched",
+                "disclose",
+            ),
+        )
+        for pattern, message, key in requirements:
+            if pattern.search(text) is None:
+                self.add_error(path, message, key=key, text=text)
+
     def validate_mcp_references(
         self,
         references: Iterable[tuple[Path, str, list[Any], str]],
@@ -384,24 +561,33 @@ class Validator:
                 text=artifact.text,
             )
         else:
-            bifrost = presets.get("bifrost")
-            if not isinstance(bifrost, dict):
+            active_preset = config.get("preset", "bifrost")
+            if not isinstance(active_preset, str) or not active_preset:
                 self.add_error(
                     artifact.path,
-                    "presets.bifrost must be a mapping",
-                    key="bifrost",
+                    "preset must be a non-empty string",
+                    key="preset",
                     text=artifact.text,
                 )
             else:
-                self._collect_agent_section(
-                    artifact,
-                    bifrost,
-                    "presets.bifrost",
-                    agents,
-                    disabled,
-                    mcp_references,
-                    skill_references,
-                )
+                active_preset_specification = presets.get(active_preset)
+                if not isinstance(active_preset_specification, dict):
+                    self.add_error(
+                        artifact.path,
+                        f"presets.{active_preset} must be a mapping",
+                        key=active_preset,
+                        text=artifact.text,
+                    )
+                else:
+                    self._collect_agent_section(
+                        artifact,
+                        active_preset_specification,
+                        f"presets.{active_preset}",
+                        agents,
+                        disabled,
+                        mcp_references,
+                        skill_references,
+                    )
 
         custom = config.get("agents")
         if not isinstance(custom, dict):
@@ -506,6 +692,15 @@ class Validator:
                 text=artifact.text,
             )
             return
+        if field == "mcps":
+            for index, value in enumerate(values):
+                if value == CONTEXT7_MCP and agent_id != CONTEXT7_AGENT:
+                    self.add_error(
+                        artifact.path,
+                        f"{location}[{index}] may grant context7 only to agent {CONTEXT7_AGENT!r}",
+                        key=field,
+                        text=artifact.text,
+                    )
         references.append((artifact.path, location, values, artifact.text))
 
     def validate_models(
@@ -1176,6 +1371,8 @@ class Validator:
     def run(self, profile_name: str | None) -> None:
         mcp_artifact = self.load_json(self.root / ".rulesync" / "mcp.jsonc", jsonc=True)
         server_names, disabled_server_names = self.validate_mcp_names(mcp_artifact)
+        self.validate_context7_mcp(mcp_artifact)
+        self.validate_context7_rule()
 
         omo_path = (
             self.payload / "oh-my-opencode-slim.json"

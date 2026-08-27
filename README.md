@@ -291,13 +291,20 @@ registration is expected runtime metadata, not a second worktree.
 
 ### Credentials and runtime ownership
 
-Context7 credentials are injected at runtime through the approved
-`CONTEXT7_API_KEY` environment variable; the tracked MCP configuration uses
-`{env:CONTEXT7_API_KEY}` and must not contain the credential itself. A
-historical Context7 credential previously exposed during configuration work
-still requires external revocation/rotation. Until that action is complete,
-real deployment is blocked; the credential value is deliberately not printed
-or stored here.
+Before deploying Context7 configuration, complete this secret-free checklist:
+
+1. Revoke the historical Context7 credential.
+2. Provision or update the `CONTEXT7_API_TOKEN` environment secret.
+3. Run `python3 scripts/validate-ai-rules.py` and `./deploy.sh --check`. The
+   latter is a dry-run and does not perform authentication.
+4. Perform an authorized Context7 MCP request using the provisioned environment
+   token; the request must return successfully.
+5. Consider deployment unblocked only after all four prerequisites—revocation,
+   environment provisioning, validation/dry-run, and a successful auth probe—are
+   complete.
+
+The tracked MCP configuration uses `{env:CONTEXT7_API_TOKEN}` and must never
+contain the credential itself.
 
 The validated OMO-inside-Orca probe observed `OpenCode` exit `0`, the
 sanitized identifier `OMO_HANDSHAKE=observed:oh-my-opencode-identifier`, and no

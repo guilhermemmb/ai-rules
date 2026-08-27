@@ -7,26 +7,11 @@
 
 ## Context7 — Library Documentation
 
-Use Context7 MCP to fetch current documentation whenever the user asks about a
-library, framework, SDK, API, CLI tool, or cloud service — even well-known ones.
-Prefer this over websearch for library docs. Use even when you think you know
-the answer — training data may not reflect recent changes.
-
-**Do not use for:** refactoring, writing scripts from scratch, debugging
-business logic, code review, general programming concepts.
-
-**Steps:**
-
-1. `resolve-library-id` — pass the library name and user's question. If results
-   don't look right, try alternate names (e.g., "next.js" not "nextjs").
-2. Pick the best match by: exact name match, description relevance, snippet
-   count, source reputation (High/Medium preferred), benchmark score. Use
-   version-specific IDs when user mentions a version.
-3. `query-docs` — pass the selected library ID and user's full question, scoped
-   to a **single concept**. If the question spans multiple distinct concepts
-   (routing + auth + caching), make a **separate call per concept** — combined
-   queries dilute ranking.
-4. Answer using the fetched docs.
+For library, API, and public documentation questions, follow the canonical
+`.rulesync/rules/context7.md` rule. Context7 is Librarian-only and trigger-loaded;
+route other external research to websearch and internal Gorgias knowledge to
+Cortex. Report Context7 failures or fallbacks rather than claiming current docs
+were fetched.
 
 ## Linear & Cortex — Internal Knowledge
 
