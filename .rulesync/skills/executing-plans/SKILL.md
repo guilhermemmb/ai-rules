@@ -1,6 +1,6 @@
 ---
 name: executing-plans
-description: Use only for approved L/XL SDD implementation plans — dispatches fresh agent per task with review after each
+description: Use only for approved L/XL SDD implementation plans — dispatches fresh agent per task with dependency-aware batching and review after each
 ---
 
 # Executing Plans
@@ -10,12 +10,12 @@ Use this only after the orchestrator has shown the scale
 received the required plan approval.
 
 Execute an approved L/XL SDD implementation plan by dispatching a fresh agent
-per task, reviewing after each, and continuing through all tasks without
-stopping.
+per task, batching only proven-independent tasks, reviewing every completed
+task, and continuing through all tasks without stopping.
 
 **Why subagents:** You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused. Never let them inherit your session's history — construct exactly what they need.
 
-**Core principle:** Fresh agent per task + review after each = high quality, fast iteration
+**Core principle:** Fresh agent per task + review for every completed task = high quality, fast iteration
 
 **Continuous execution:** Do not pause to check in between tasks. Execute all tasks from the plan without stopping. Only stop when: BLOCKED (cannot resolve), ambiguity that genuinely prevents progress, or all tasks complete.
 
@@ -23,7 +23,8 @@ stopping.
 
 - The work is classified as L or XL and has an approved SDD implementation plan
   from `writing-plans`
-- Tasks are mostly independent
+- Tasks have enough declared metadata for conservative dependency classification;
+  independent tasks may batch, while dependent or ambiguous tasks serialize
 - You are staying in the current session
 
 Do not use this skill for XS, S, or M work. S/M combined plans follow their own
@@ -58,7 +59,63 @@ Assign the right agent per task type:
 3. Create a todo per task from the plan.
 4. Scan for pre-flight conflicts: tasks that contradict each other or the plan's Global Constraints. Batched to the user before execution.
 
+### Dependency Classification and Batch Lifecycle
+
+Before dispatching any task, classify pending tasks from the plan's declared
+`Files` and `Interfaces/Constraints`. Be conservative: do not infer
+independence from names, presumed implementation details, or conversational
+context.
+
+1. **Write-set check:** Treat every path a task may create, modify, delete, or
+   generate as its write set. If two tasks have overlapping write sets, they
+   serialize. A missing, incomplete, or unclear `Files` declaration is
+   ambiguous and stays serial.
+2. **Interface check:** Treat named artifacts, symbols, files, APIs, schemas,
+   migrations, and other outputs in `Interfaces/Constraints` as produced or
+   consumed interfaces. If one task consumes an interface produced or changed
+   by another, the producer runs first and the consumer waits. If the
+   producer/consumer relationship or output identity is ambiguous, serialize
+   rather than guess.
+3. **Shared-state and ordering check:** Explicit task ordering, migrations,
+   shared resources, data-integrity work, or any plan-declared sequencing is a
+   dependency even when file sets are disjoint. These tasks serialize.
+4. **Batch eligibility:** Only tasks with disjoint, complete write sets and no
+   declared or inferred interface, shared-state, or ordering dependency may be
+   placed in the same batch. A task with missing or ambiguous metadata is not
+   eligible for batching.
+
+Run the following lifecycle for each batch:
+
+1. Select only ready tasks whose required predecessor tasks have completed
+   implementation and passed review. Dispatch one fresh specialist per ready
+   task in the batch, with explicit non-overlapping ownership.
+2. Wait for an implementer report from every dispatched task in the batch
+   before advancing that batch. Track each task/session ID; do not release a
+   dependent task based on a partial report.
+3. Send every `DONE` task to review, respecting the available reviewer cap.
+   Queue excess reviews until a reviewer slot is available. Parallel reviewer
+   dispatch is limited to this bounded batch review and is not permission for
+   arbitrary conversational tool-call parallelism.
+4. Reconcile all implementer reports and reviews. A task is releasable only
+   after a passing review, or an explicit @oracle adjudication that resolves
+   the review under the existing escalation rules. Append each completed task
+   to the ledger.
+5. Start a dependent batch only after every required predecessor is releasable.
+   Unrelated ready tasks may continue through their own batches while a
+   predecessor is blocked or being fixed; dependent tasks remain queued.
+
+If an overlap or dependency is discovered after dispatch, stop the affected
+lanes from making further conflicting writes, preserve completed unrelated
+work, and escalate the ownership conflict for re-sequencing. Never guess which
+lane owns a shared file or output. A `NEEDS_CONTEXT` or `BLOCKED` task holds
+its dependents; unrelated tasks may finish. Apply the existing re-dispatch,
+fix-round, and @oracle escalation rules before releasing dependents.
+
 ### Per-Task Loop
+
+The loop below runs for each task within the dependency-aware batch lifecycle;
+it does not authorize dispatching tasks that have not been classified as
+independent and ready.
 
 **1. Dispatch the implementer**
 
@@ -124,11 +181,14 @@ Max 3 fix rounds per task:
 
 **5. Complete the task**
 
-After clean review — or @oracle adjudication — append to ledger:
+After clean review — or an explicit @oracle adjudication that resolves the
+review — append to ledger:
 ```
 Task <N>: complete (commits <base>..<head>, review clean)
 ```
-Check the todo and continue.
+Check the todo and continue only with the current batch's remaining tasks or a
+newly eligible batch. Do not start a dependent batch until its required
+predecessors are complete and releasable.
 
 ### Handoff to Review
 

@@ -5,10 +5,10 @@ Source of truth for OpenCode agent rules, custom agents, skills, and commands. U
 ## Quick Start
 
 ```bash
-# Deploy configuration; deploy.sh installs or refreshes oh-my-opencode-slim@latest when needed
+# Deploy configuration; deploy.sh installs or refreshes oh-my-opencode-slim@2.2.17 when needed
 ./deploy.sh
 
-# Force-install or refresh oh-my-opencode-slim@latest and deploy (not all dependencies)
+# Force-install or refresh oh-my-opencode-slim@2.2.17 and deploy (not all dependencies)
 ./deploy.sh --force
 
 # Deploy cost-efficient profile (DeepSeek V4 + Gemini Flash)
@@ -25,8 +25,8 @@ When selected/applicable—when the normalized diff contains a non-empty
 executable/source/config diff and the aspect filter permits it—the
 reviewer-simplifier runs exactly once after Phase A with the Phase A findings.
 Set `REVIEWER_MAX_PARALLEL` in the runtime environment to control the batch size:
-values from `1` to `10` are accepted; unset, empty, non-integer, zero, and
-negative values fall back to `10`, and values above `10` are clamped to `10`.
+values from `1` to `3` are accepted; unset, empty, non-integer, zero, and
+negative values fall back to `3`, and values above `3` are clamped to `3`.
 Failed, timed-out, unavailable, malformed, or incomplete lane results populate
 `errors` and make Review Health Degraded/inconclusive. This is a runtime setting
 documented in the reviewer prompt/skill, not an OpenCode top-level configuration
@@ -36,45 +36,52 @@ key.
 
 | Profile            | Strategy                     | Key Models                                                     | Location                             |
 | :----------------- | :--------------------------- | :------------------------------------------------------------- | :----------------------------------- |
-| **default**        | Performance-first            | GPT-5.6 Luna, Claude Sonnet 5, DeepSeek V4 Pro, Gemini 3 Flash | `profiles/models/default.yml`        |
+| **default**        | Performance-first            | GPT-5.6 Luna, DeepSeek V4 Flash, Gemini 3 Flash                | `profiles/models/default.yml`        |
 | **cost-efficient** | Cost-optimized (90% savings) | Gemini 3 Flash, DeepSeek V4 Flash/Pro                          | `profiles/models/cost-efficient.yml` |
+
+**OMO reasoning variants:** The model profiles contain model IDs only; reasoning
+variants are defined by OMO agent configuration and are not stored in the YAML
+profiles. In the **default profile**, all reviewer agents—the aggregate Reviewer
+and every `reviewer-*` lane—use GPT-5.6 Luna (medium). The `cost-efficient`
+profile intentionally routes Fixer to DeepSeek V4 Flash and reviewer lanes to
+its existing DeepSeek V4 Flash/Pro mix.
 
 ## Agent Pantheon
 
 ### Built-in (7 — OMO Slim)
 
-| Agent            | Model (Default)   | Model (Cost-Efficient) | Role                            |
+| Agent            | Model (Default profile)   | Model (Cost-efficient profile) | Role                            |
 | :--------------- | :---------------- | :--------------------- | :------------------------------ |
 | **Orchestrator** | GPT-5.6 Luna      | Gemini 3 Flash         | Master delegator & coordinator  |
-| **Oracle**       | Claude Sonnet 5   | DeepSeek V4 Pro        | Strategic advisor, architecture |
+| **Oracle**       | GPT-5.6 Luna      | DeepSeek V4 Pro        | Strategic advisor, architecture |
 | **Explorer**     | DeepSeek V4 Flash | DeepSeek V4 Flash      | Codebase reconnaissance         |
 | **Librarian**    | DeepSeek V4 Flash | DeepSeek V4 Flash      | Knowledge retrieval             |
-| **Designer**     | Claude Sonnet 5   | Gemini 3 Flash         | UI/UX excellence                |
-| **Fixer**        | Claude Sonnet 5   | DeepSeek V4 Flash      | Implementation specialist       |
+| **Designer**     | GPT-5.6 Luna      | Gemini 3 Flash         | UI/UX excellence                |
+| **Fixer**        | GPT-5.6 Luna (high) | DeepSeek V4 Flash      | Implementation specialist       |
 | **Observer**     | Gemini 3 Flash    | Gemini 3 Flash         | Visual analysis                 |
 
 ### Custom (14)
 
-| Agent                       | Model (Default)   | Model (Cost-Efficient) | Dispatch when                                              |
+| Agent                       | Model (Default profile)   | Model (Cost-efficient profile) | Dispatch when                                              |
 | :-------------------------- | :---------------- | :--------------------- | :--------------------------------------------------------- |
 | **Navigator**               | Gemini 3 Flash    | Gemini 3 Flash         | agent-browser CLI, snapshots/refs, screenshots, extraction |
 | **Detective**               | DeepSeek V4 Flash | DeepSeek V4 Flash      | Production errors, logs, metrics                           |
 | **Sage**                    | DeepSeek V4 Flash | DeepSeek V4 Flash      | Gorgias metrics, schemas, rules                            |
-| **Reviewer**                | GPT-5.6 Luna      | DeepSeek V4 Flash      | PR/branch/diff review coordinator                          |
-| **reviewer-code**           | GPT-5.6 Luna      | DeepSeek V4 Pro        | CLAUDE.md compliance, bugs                                 |
-| **reviewer-test**           | GPT-5.6 Luna      | DeepSeek V4 Flash      | Behavioral test coverage                                   |
-| **reviewer-errors**         | GPT-5.6 Luna      | DeepSeek V4 Pro        | Silent failures, error handling                            |
-| **reviewer-types**          | GPT-5.6 Luna      | DeepSeek V4 Pro        | Type encapsulation, invariants                             |
-| **reviewer-security**       | GPT-5.6 Luna      | DeepSeek V4 Pro        | Security boundaries, secrets, input safety                 |
-| **reviewer-performance**    | GPT-5.6 Luna      | DeepSeek V4 Pro        | Algorithms, I/O, queries, hot paths                        |
-| **reviewer-data-integrity** | GPT-5.6 Luna      | DeepSeek V4 Pro        | Persistence, transactions, state integrity                 |
-| **reviewer-accessibility**  | GPT-5.6 Luna      | DeepSeek V4 Flash      | WCAG and UI accessibility                                  |
-| **reviewer-comments**       | DeepSeek V4 Flash | DeepSeek V4 Flash      | Comment and documentation accuracy                         |
-| **reviewer-simplifier**     | GPT-5.6 Luna      | DeepSeek V4 Flash      | Post-Phase-A clarity and maintainability pass              |
+| **Reviewer**                | GPT-5.6 Luna (medium) | DeepSeek V4 Flash      | PR/branch/diff review coordinator                          |
+| **reviewer-code**           | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | CLAUDE.md compliance, bugs                                 |
+| **reviewer-test**           | GPT-5.6 Luna (medium) | DeepSeek V4 Flash      | Behavioral test coverage                                   |
+| **reviewer-errors**         | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Silent failures, error handling                            |
+| **reviewer-types**          | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Type encapsulation, invariants                             |
+| **reviewer-security**       | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Security boundaries, secrets, input safety                 |
+| **reviewer-performance**    | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Algorithms, I/O, queries, hot paths                        |
+| **reviewer-data-integrity** | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Persistence, transactions, state integrity                 |
+| **reviewer-accessibility**  | GPT-5.6 Luna (medium) | DeepSeek V4 Flash      | WCAG and UI accessibility                                  |
+| **reviewer-comments**       | GPT-5.6 Luna (medium) | DeepSeek V4 Flash      | Comment and documentation accuracy                         |
+| **reviewer-simplifier**     | GPT-5.6 Luna (medium) | DeepSeek V4 Flash      | Post-Phase-A clarity and maintainability pass              |
 
 **Council** disabled. Observer auto-routes images from Orchestrator.
 
-**Model Profiles Rationale:** The system defaults to a specialized mix of DeepSeek V4 Pro, Claude Sonnet 5, GPT-5.6 Luna, and Gemini 3 Flash for complex reasoning. The `cost-efficient` profile swaps these for DeepSeek V4 (Flash/Pro) and Gemini 3 Flash, providing ~90-95% cost reduction with competitive performance for most routine development tasks.
+**Model Profiles Rationale:** The **default profile** uses GPT-5.6 Luna for orchestration, implementation, design, and all reviewer agents (medium variants); DeepSeek V4 Flash for exploration, retrieval, and domain/diagnostic work; and Gemini 3 Flash for observation and navigation. The `cost-efficient` profile intentionally retains its alternate Fixer and reviewer model routing, providing ~90-95% cost reduction with competitive performance for most routine development tasks.
 
 ## Directory Map
 
@@ -154,17 +161,25 @@ See `docs/sdd-workflow.md` for the full flowchart and agent usage matrix.
 
 RTK is installed as an OpenCode plugin that transparently rewrites ordinary development commands before execution — `git status` automatically becomes `rtk git status` with no manual prefixing.
 
+`./deploy.sh` is the source of truth for RTK setup. It installs `rtk-ai/tap/rtk` only when RTK is missing, verifies the executable with `rtk gain`, and initializes the global OpenCode plugin with:
+
+```bash
+rtk init -g --opencode --auto-patch
+```
+
+Restart OpenCode after the plugin is installed.
+
 For **code discovery**, use explicit RTK subcommands: `rtk grep`, `rtk read`, `rtk find`. See the `code-exploration` rule for the full routing protocol between RTK CLI and Graph MCP.
 
 ```bash
-# Install (already done — plugin at ~/.config/opencode/plugins/rtk.ts)
-rtk init -g --opencode
+# Check for missing RTK/plugin or deployment drift without installing or mutating
+./deploy.sh --check
 
-# Verify
-rtk --version
+# Manual prerequisite when RTK is absent (deploy.sh uses this automatically)
+brew install rtk-ai/tap/rtk
 ```
 
-> **Note:** After installing the plugin, restart OpenCode. Test with `git status` — RTK rewrites it transparently.
+Homebrew is required only when RTK is absent. Test with `git status` — RTK rewrites it transparently.
 
 ## Worktrunk → Orca → OpenCode workflow
 
@@ -325,14 +340,14 @@ Repository MCP definitions live in `.rulesync/mcp.jsonc`; agent assignments live
 
 | MCP                 | Enabled     | Assigned to                                            |
 | ------------------- | ----------- | ------------------------------------------------------ |
-| codebase-memory-mcp | ✓           | Orchestrator, Oracle, Explorer, Fixer, Detective, Sage |
+| codebase-memory-mcp | ✓           | Orchestrator, Oracle, Explorer, Fixer, Sage            |
 | context7            | ✓           | Librarian                                              |
 | github              | ✓           | Orchestrator                                           |
-| sentry              | ✓           | Detective                                              |
+| sentry              | ❌ disabled | —                                                      |
 | linear              | ✓           | Librarian                                              |
 | gcp-logging         | ❌ disabled | Detective uses `gcloud` CLI via Bash instead           |
 | cortex              | ✓           | Sage, Librarian (Internal docs/Notion via Cortex MCP)  |
-| rootly              | ✓           | Detective                                              |
+| rootly              | ❌ disabled | —                                                      |
 | agent-browser CLI   | ✓           | Navigator via Bash and the `agent-browser` skill       |
 | gorgias-mcp         | disabled    | —                                                      |
 | figma               | ✓           | —                                                      |

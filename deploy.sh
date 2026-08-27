@@ -7,9 +7,9 @@
 # deployment input or output.
 #
 # Usage:
-#   ./deploy.sh          — deploy (refresh latest OMO and deploy)
+#   ./deploy.sh          — deploy (refresh OMO 2.2.17 and deploy)
 #   ./deploy.sh --check  — dry-run: show what would change
-#   ./deploy.sh --force  — reinstall the latest OMO package + deploy
+#   ./deploy.sh --force  — reinstall the OMO 2.2.17 package + deploy
 set -euo pipefail
 MV_BIN="${MV_BIN:-mv}"
 
@@ -37,11 +37,14 @@ CODEBASE_MEMORY_MCP_INSTALLER_URL="https://raw.githubusercontent.com/DeusData/co
 CODEBASE_MEMORY_MCP_RELEASE_URL="https://github.com/DeusData/codebase-memory-mcp/releases/download/v${CODEBASE_MEMORY_MCP_VERSION}"
 # Recorded from the versioned installer used by the current 0.9.0 release.
 CODEBASE_MEMORY_MCP_INSTALLER_SHA256="90ef82a3da3336ddc2c3851ad56822067b161856f24cd88cbd405fe423af6a66"
+RTK_BIN="${RTK_BIN:-}"
+RTK_HOMEBREW_FORMULA="rtk-ai/tap/rtk"
+RTK_PLUGIN_PATH="${OPENDIR}/plugins/rtk.ts"
 
 # Rulesync and codebase-memory-mcp are repository-recorded convergence inputs.
-# OMO intentionally follows the latest published package instead.
+# OMO is pinned to the repository-recorded 2.2.17 release.
 RULESYNC_VERSION="16.2.0"
-OH_MY_OPENCODE_SLIM_PACKAGE="oh-my-opencode-slim@latest"
+OH_MY_OPENCODE_SLIM_PACKAGE="oh-my-opencode-slim@2.2.17"
 RULESYNC_PACKAGE="rulesync@${RULESYNC_VERSION}"
 OPENCODE_PACKAGE_CACHE_DIR="${OPENCODE_PACKAGE_CACHE_DIR:-${HOME}/.cache/opencode/packages}"
 OH_MY_OPENCODE_SLIM_PACKAGE_JSON="${OH_MY_OPENCODE_SLIM_PACKAGE_JSON:-$OPENCODE_PACKAGE_CACHE_DIR/oh-my-opencode-slim/node_modules/oh-my-opencode-slim/package.json}"
@@ -236,6 +239,65 @@ install_codebase_memory_mcp() {
   green "  ✅ codebase-memory-mcp installed at the pinned release"
 }
 
+verify_rtk() {
+  if ! "$RTK_BIN" gain >/dev/null 2>&1; then
+    fail "RTK_BIN is not the RTK Token Killer executable: rtk gain failed for $RTK_BIN"
+    return 1
+  fi
+}
+
+resolve_rtk_binary() {
+  local configured="${RTK_BIN:-}"
+
+  if [[ -n "$configured" ]]; then
+    resolve_command RTK_BIN "RTK Token Killer" rtk || return 1
+  elif resolve_command RTK_BIN "RTK Token Killer" rtk; then
+    :
+  else
+    resolve_command BREW_BIN "Homebrew" brew || {
+      fail "RTK Token Killer is missing; install Homebrew or set RTK_BIN to a valid executable"
+      return 1
+    }
+    cyan "  ⚡ RTK Token Killer not found — installing $RTK_HOMEBREW_FORMULA..."
+    if ! "$BREW_BIN" install "$RTK_HOMEBREW_FORMULA"; then
+      fail "could not install RTK Token Killer with Homebrew formula $RTK_HOMEBREW_FORMULA"
+      return 1
+    fi
+    resolve_command RTK_BIN "RTK Token Killer" rtk || {
+      fail "Homebrew installed $RTK_HOMEBREW_FORMULA, but the rtk executable could not be resolved"
+      return 1
+    }
+  fi
+
+  verify_rtk || return 1
+  green "  ✅ verified RTK Token Killer at $RTK_BIN"
+}
+
+preflight_rtk() {
+  local check_only="$1"
+
+  if [[ "$check_only" = true ]]; then
+    resolve_command RTK_BIN "RTK Token Killer" rtk || return 1
+    verify_rtk || return 1
+    return 0
+  fi
+
+  resolve_rtk_binary
+}
+
+initialize_rtk_plugin() {
+  cyan "  ⚡ initializing the RTK OpenCode plugin..."
+  if ! "$RTK_BIN" init -g --opencode --auto-patch; then
+    fail "could not initialize the RTK OpenCode plugin"
+    return 1
+  fi
+  if [[ -L "$RTK_PLUGIN_PATH" || ! -f "$RTK_PLUGIN_PATH" ]]; then
+    fail "RTK initialization did not create a regular plugin file at $RTK_PLUGIN_PATH"
+    return 1
+  fi
+  green "  ✅ initialized the RTK OpenCode plugin at $RTK_PLUGIN_PATH"
+}
+
 preflight_dependencies() {
   local check_only="$1"
   local failed=0
@@ -246,6 +308,7 @@ preflight_dependencies() {
   resolve_command BUNX_BIN "bunx" bunx || failed=1
   resolve_command PNPM_BIN "pnpm" pnpm || failed=1
   resolve_command PYTHON_BIN "Python 3" python3 || failed=1
+  preflight_rtk "$check_only" || failed=1
   if [[ -n "${PYTHON_BIN:-}" && -x "${PYTHON_BIN:-}" ]]; then
     preflight_pyyaml || failed=1
   fi
@@ -540,12 +603,12 @@ omo_installed() {
 install_omo() {
   local installed_version
   if [[ "$FORCE" = true ]]; then
-    cyan "  ⚡ reinstalling latest oh-my-opencode-slim..."
+    cyan "  ⚡ reinstalling oh-my-opencode-slim@2.2.17..."
   else
-    cyan "  ⚡ refreshing latest oh-my-opencode-slim..."
+    cyan "  ⚡ refreshing oh-my-opencode-slim@2.2.17..."
   fi
   if ! "$BUNX_BIN" "$OH_MY_OPENCODE_SLIM_PACKAGE" install; then
-    fail "could not install oh-my-opencode-slim@latest"
+    fail "could not install oh-my-opencode-slim@2.2.17"
     return 1
   fi
   installed_version="$(omo_installed_version 2>/dev/null || true)"
@@ -553,7 +616,7 @@ install_omo() {
     fail "could not identify a valid installed oh-my-opencode-slim package"
     return 1
   fi
-  green "  ✅ oh-my-opencode-slim ${installed_version} installed from latest"
+  green "  ✅ oh-my-opencode-slim ${installed_version} installed (pinned package: 2.2.17)"
 }
 
 snapshot_file() {
@@ -983,6 +1046,10 @@ run_check() {
     red "  ⚠️  pending OpenCode deployment transaction requires recovery"
   fi
   preflight_dependencies true || DRIFT=1
+  if [[ -L "$RTK_PLUGIN_PATH" || ! -f "$RTK_PLUGIN_PATH" ]]; then
+    DRIFT=1
+    red "  ⚠️  RTK OpenCode plugin is missing or not a regular file: $RTK_PLUGIN_PATH"
+  fi
   if [[ -z "${PYTHON_BIN:-}" ]] || ! omo_installed; then
     DRIFT=1
     red "  ⚠️  oh-my-opencode-slim package metadata is missing or invalid"
@@ -1034,6 +1101,7 @@ run_deploy() {
   preflight_dependencies false || fail "dependency preflight failed"
   build_staged_payload
   snapshot_live_configuration
+  initialize_rtk_plugin
 
   # Dependency installation is intentionally separate from convergence.  The
   # staged payload has already been validated before this installer can touch

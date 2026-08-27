@@ -55,9 +55,18 @@ when selected/applicable—when the normalized diff contains a non-empty
 executable/source/config diff and the aspect filter permits it—and receives the
 consolidated Phase A findings. The runtime setting
 `REVIEWER_MAX_PARALLEL` controls each concern batch; unset or invalid values
-default to `10`, values from `1` through `10` are used, and values above `10`
-are clamped to `10`. Any non-empty lane `errors` array makes Review Health
+default to `3`, values from `1` through `3` are used, and values above `3`
+are clamped to `3`. Any non-empty lane `errors` array makes Review Health
 Degraded/inconclusive.
+
+## Model Routing and Reasoning Variants
+
+The model values shown in this overview describe the **default profile**. YAML
+profiles contain model IDs only; reasoning variants are defined by OMO agent
+configuration and are not stored in the YAML profiles. In the default profile,
+all reviewer agents—the aggregate Reviewer and every `reviewer-*` lane—use
+GPT-5.6 Luna (medium). The `cost-efficient` profile intentionally retains its
+alternate Fixer and reviewer model routing.
 
 ## Using the Visualization
 
@@ -217,7 +226,7 @@ No code needed—YAML drives everything.
 **Custom:**
 
 - **navigator** — Browser automation via the agent-browser CLI; snapshots/refs, navigation, screenshots, forms, extraction
-- **detective** — Production diagnostics; Sentry, Datadog (pup CLI), GCP logs, Rootly, root cause analysis
+- **detective** — Production diagnostics; Datadog (pup CLI), GCP logs (gcloud), root cause analysis
 - **sage** — Domain knowledge; Gorgias metrics, table schemas, business rules (cortex)
 - **reviewer** — PR review orchestrator; bounded parallel batches of applicable specialist lanes
 - **reviewer-code** — Always-on general correctness and project-guideline review
@@ -235,7 +244,7 @@ No code needed—YAML drives everything.
 
 **orchestrator:**
 
-- **codebase-memory-mcp** — Code search, graph-based exploration (shared by oracle, explorer, fixer, designer, detective, sage)
+- **codebase-memory-mcp** — Code search, graph-based exploration (shared by oracle, explorer, fixer, designer, sage)
 - **github** — GitHub CLI integration (PRs, issues, checks)
 
 **librarian:**
@@ -252,10 +261,8 @@ No code needed—YAML drives everything.
 
 **detective:**
 
-- **sentry** — Error monitoring (read-only)
 - **pup CLI** — Datadog CLI (--agent --ro): logs, metrics, APM, monitors
 - **gcloud CLI** — GCP Cloud Logging (Bash, no enabled MCP)
-- **rootly** — Incident management data
 
 **sage:**
 
@@ -456,7 +463,7 @@ flowchart TD
 **Orchestrator hard-enforced dispatch rules (no direct access):**
 
 - agent-browser CLI or chrome-devtools-mcp → dispatch to navigator; Navigator runs agent-browser through Bash
-- sentry, rootly → dispatch to detective (gcp-logging disabled)
+- sentry, rootly → dispatch to detective, which reports those sources unavailable (gcp-logging disabled)
 - cortex → dispatch to sage
 - linear, cortex → dispatch to librarian (internal docs/Notion)
 

@@ -1,3 +1,5 @@
+# Agent model labels describe the default profile for display. YAML profile values
+# contain model IDs only; OMO agent configuration defines reasoning variants.
 nodes:
   - id: orchestrator
     label: Orchestrator
@@ -49,7 +51,7 @@ nodes:
     role: Strategic Advisor
     color: "#a78bfa"
     parent: orchestrator
-    model: Claude Sonnet 5
+    model: GPT-5.6 Luna
     skills: simplify
     mcp_access: codebase-memory-mcp
     trigger: Architecture review, hard debugging, trade-offs, code review
@@ -117,7 +119,7 @@ nodes:
     role: UI/UX Excellence
     color: "#f59e0b"
     parent: orchestrator
-    model: Claude Sonnet 5 (medium)
+    model: GPT-5.6 Luna (medium)
     mcp_access: codebase-memory-mcp, figma-mcp
     trigger: UI/UX implementation, visual components, frontend polish
     constraints: UI/UX focused. No backend/production tooling.
@@ -140,7 +142,7 @@ nodes:
     role: Implementation Specialist
     color: "#34d399"
     parent: orchestrator
-    model: DeepSeek V4 Pro (xhigh)
+    model: GPT-5.6 Luna (high)
     skills: fixer
     mcp_access: codebase-memory-mcp
     trigger: Scoped implementation tasks, bug fixes, code changes
@@ -229,7 +231,7 @@ nodes:
     color: "#f87171"
     parent: orchestrator
     model: DeepSeek V4 Flash
-    mcp_access: codebase-memory-mcp
+    tools: pup CLI, gcloud CLI via Bash
     trigger: Production errors, logs, metrics, traces, incidents, root cause analysis
     constraints:
       "All tools read-only. NEVER resolve/assign/mutate issues or logs.
@@ -250,7 +252,7 @@ nodes:
 
       • Report Sentry and Rootly as unavailable
 
-      • Correlate telemetry to source code via codebase-memory-mcp
+      • Correlate telemetry with available source-code context
 
       • Root cause analysis & incident investigation
 
@@ -293,7 +295,7 @@ nodes:
     role: PR Review Coordinator
     color: "#f59e0b"
     parent: orchestrator
-    model: GPT-5.6 Luna (high)
+    model: GPT-5.6 Luna (medium)
     mcp_access: codebase-memory-mcp
     skills: reviewer
     trigger: review a PR, review a branch's changes, pre-commit check, code scope review
@@ -310,8 +312,8 @@ nodes:
       - reviewer-simplifier
     constraints:
       "Orchestrator-only dispatch. Spawns reviewer-* sub-agents in background
-      batches capped by REVIEWER_MAX_PARALLEL (default and maximum 10; invalid values
-      fall back to 10; values above 10 are clamped).
+      batches capped by REVIEWER_MAX_PARALLEL (default and maximum 3; invalid values
+      fall back to 3; values above 3 are clamped).
 
       All lanes are independent. Failed or invalid lane output is recorded in Review
       Health and does not abort later batches. Returns structured report: Review Health /
@@ -337,7 +339,7 @@ nodes:
     role: CLAUDE.md Compliance & Bugs
     color: "#f87171"
     parent: reviewer
-    model: GPT-5.6 Luna
+    model: GPT-5.6 Luna (medium)
     mcp_access: codebase-memory-mcp
     trigger: Always dispatched by reviewer
   - id: reviewer-comments
@@ -346,7 +348,7 @@ nodes:
     role: Comment Accuracy & Rot
     color: "#94a3b8"
     parent: reviewer
-    model: DeepSeek V4 Flash (low)
+    model: GPT-5.6 Luna (medium)
     mcp_access: codebase-memory-mcp
     trigger: Comments/docs changes in diff
   - id: reviewer-test
@@ -355,7 +357,7 @@ nodes:
     role: Test Coverage Analysis
     color: "#34d399"
     parent: reviewer
-    model: GPT-5.6 Luna (high)
+    model: GPT-5.6 Luna (medium)
     mcp_access: codebase-memory-mcp
     trigger: Test file changes in diff or production behavior changed without matching behavioral coverage
   - id: reviewer-errors
@@ -364,7 +366,7 @@ nodes:
     role: Silent Failure Hunting
     color: "#f87171"
     parent: reviewer
-    model: GPT-5.6 Luna
+    model: GPT-5.6 Luna (medium)
     mcp_access: codebase-memory-mcp
     trigger: Error handling changes in diff
   - id: reviewer-types
@@ -373,7 +375,7 @@ nodes:
     role: Type Design Analysis
     color: "#a78bfa"
     parent: reviewer
-    model: GPT-5.6 Luna
+    model: GPT-5.6 Luna (medium)
     mcp_access: codebase-memory-mcp
     trigger: New types/interfaces in diff
   - id: reviewer-security
@@ -382,7 +384,7 @@ nodes:
     role: Security Boundary Audit
     color: "#f87171"
     parent: reviewer
-    model: GPT-5.6 Luna
+    model: GPT-5.6 Luna (medium)
     mcp_access: codebase-memory-mcp
     trigger:
       Auth, secrets, validation, injection, permissions, crypto, network, dependency,
@@ -393,7 +395,7 @@ nodes:
     role: Performance & Scalability Audit
     color: "#38bdf8"
     parent: reviewer
-    model: GPT-5.6 Luna
+    model: GPT-5.6 Luna (medium)
     mcp_access: codebase-memory-mcp
     trigger:
       Algorithm, loop, query, cache, concurrency, I/O, rendering, allocation,
@@ -404,7 +406,7 @@ nodes:
     role: Persistence & State Integrity Audit
     color: "#f59e0b"
     parent: reviewer
-    model: GPT-5.6 Luna
+    model: GPT-5.6 Luna (medium)
     mcp_access: codebase-memory-mcp
     trigger:
       Persistence, migration, transaction, serialization, idempotency, event,
@@ -415,7 +417,7 @@ nodes:
     role: Code Clarity & Simplification
     color: "#38bdf8"
     parent: reviewer
-    model: GPT-5.6 Luna (high)
+    model: GPT-5.6 Luna (medium)
     mcp_access: codebase-memory-mcp
     trigger: Non-empty executable/source/config diff; clarity pass after Phase A
   - id: reviewer-accessibility
@@ -424,7 +426,7 @@ nodes:
     role: WCAG 2.2 AA Audit
     color: "#f59e0b"
     parent: reviewer
-    model: GPT-5.6 Luna (high)
+    model: GPT-5.6 Luna (medium)
     mcp_access: codebase-memory-mcp
     trigger: UI files changed in diff (html, jsx, tsx, js, ts, css, scss, vue, svelte) or rendering behavior changed
   - id: codebase-memory
@@ -485,9 +487,9 @@ nodes:
   - id: gcp-logging-mcp
     label: gcp-logging
     type: mcp
-    role: GCP Logs
+    role: GCP Logs (disabled; use gcloud CLI)
     color: "#a78bfa"
-    parent: detective
+    parent: null
   - id: rootly-mcp
     label: rootly
     type: mcp
@@ -733,7 +735,11 @@ nodes:
 
       • Discovery subcommands: rtk grep, rtk read, rtk find
 
-      • Install: rtk init -g --opencode
+      • ./deploy.sh owns RTK installation and plugin initialization
+
+      • Initialization command used by deploy.sh: rtk init -g --opencode --auto-patch
+
+      • Homebrew formula when RTK is absent: rtk-ai/tap/rtk
 
       • /opt/homebrew/bin/rtk
 
@@ -747,8 +753,12 @@ nodes:
     config:
       "• Profiles: default, cost-efficient • Location: profiles/models/*.yml •
       Deploy: ./deploy.sh --model-profile=cost-efficient • default: GPT-5.6 Luna, DeepSeek
-      V4 Pro, Claude Sonnet 5, Gemini 3 Flash • cost-efficient: DeepSeek V4 Flash/Pro,
-      Gemini 3 Flash • Implementation: scripts/apply-model-profile.py patches oh-my-opencode-slim.json "
+      V4 Flash, Gemini 3 Flash • cost-efficient: DeepSeek V4 Flash/Pro,
+      Gemini 3 Flash • OMO variants are defined by agent configuration, not YAML:
+      default Fixer uses Luna/high and all reviewer agents use Luna/medium •
+      cost-efficient routes Fixer to DeepSeek V4 Flash and reviewer lanes to their
+      existing DeepSeek V4 Flash/Pro mix •
+      Implementation: scripts/apply-model-profile.py patches oh-my-opencode-slim.json "
   - id: bifrost
     label: Bifrost
     type: infra
@@ -830,9 +840,6 @@ links:
   - source: detective
     target: pup-cli
     label: uses (Bash)
-  - source: detective
-    target: codebase-memory
-    label: uses
   - source: reviewer
     target: reviewer-code
     label: dispatches
@@ -1016,7 +1023,7 @@ profiles:
     detective: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     reviewer: bf-o/gpt-5.6-luna
     reviewer-code: bf-o/gpt-5.6-luna
-    reviewer-comments: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+    reviewer-comments: bf-o/gpt-5.6-luna
     reviewer-test: bf-o/gpt-5.6-luna
     reviewer-errors: bf-o/gpt-5.6-luna
     reviewer-types: bf-o/gpt-5.6-luna

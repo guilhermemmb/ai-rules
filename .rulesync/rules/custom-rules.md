@@ -48,9 +48,10 @@ or artifact requirements.
 
 Before implementing any non-trivial work, the Orchestrator must inspect the
 plan for independent concepts, files, packages, or phases that can be executed
-concurrently. When meaningful independent boundaries exist, split the work into
-the smallest complete pieces and dispatch multiple fresh specialist lanes in
-the same turn:
+concurrently. This section governs bounded plan-task dispatch only; it does not
+authorize arbitrary conversational tool-call parallelism. When meaningful
+independent boundaries exist, split the work into the smallest complete pieces
+and dispatch multiple fresh specialist lanes in the same turn:
 
 - Use `@fixer` for independent code or mechanical implementation lanes.
 - Use `@designer` for independent visual, responsive, motion, hierarchy, or
@@ -59,17 +60,38 @@ the same turn:
   acceptance criteria, validation commands, and stop conditions.
 - Include the complete handoff contract for every lane: `Goal`, `Files`,
   `Steps`, `Interfaces/Constraints`, `Validation`, and `Stop Conditions`.
-- Serialize lanes that share files, depend on one another's output, require a
-  migration or integration sequence, or would create conflicting writers.
+- Classify dependencies conservatively from the plan's declared `Files` and
+  `Interfaces/Constraints` before dispatch:
+  - Treat every path a lane may create, modify, delete, or generate as its
+    write set. Overlapping write sets serialize; missing or unclear `Files`
+    metadata stays serial.
+  - If a lane consumes an artifact, symbol, file, API, schema, migration, or
+    other interface produced or changed by another lane, the producer runs
+    first. Ambiguous producer/consumer relationships or output identities stay
+    serial rather than being guessed.
+  - Explicit ordering, migrations, shared resources, data-integrity work, and
+    other plan-declared sequencing serialize even when files are disjoint.
+  - Only tasks with complete disjoint write sets and no interface, shared-state,
+    or ordering dependency may share a batch.
 - Do not create artificial micro-tasks when the work is tiny, tightly coupled,
   or coordination would cost more than the parallelism saves.
 - Preserve designer intent across later lanes. Use `@fixer` for follow-up UI
   work only when it is mechanical and does not change visual or interaction
   decisions; route design changes back to `@designer`.
 
-Track every dispatched task/session ID and wait for hook-driven completion of
-all relevant writers before advancing. After the lanes finish, reconcile their
-terminal reports against the complete plan and combined diff:
+For each batch, dispatch only ready tasks whose required predecessors passed
+review. Track every dispatched task/session ID and wait for hook-driven
+completion of all implementer reports in that batch before advancing. Review
+each `DONE` lane within the available reviewer cap, queueing excess reviews;
+this cap applies only to reviewer scheduling. Arbitrary conversational
+tool-call parallelism remains disallowed. Dependency-aware independent
+plan-task lanes may run concurrently under the documented ownership and
+dependency rules. Do not start a dependent batch until its required
+predecessor reviews pass (or an explicit @oracle adjudication resolves the
+review under the existing rules).
+Unrelated ready work may finish while a failed predecessor is fixed or
+escalated, but dependent work waits. After the batch's lanes finish, reconcile
+their terminal reports against the complete plan and combined diff:
 
 1. Map every planned item to a completed specialist result or an explicit
    escalation; do not silently treat partial work as complete.
@@ -79,6 +101,11 @@ terminal reports against the complete plan and combined diff:
    designer-to-fixer handoff constraints.
 4. Inspect the combined result for missing work, unaddressed concerns, and
    regressions before running final validation.
+
+If an ownership overlap or dependency conflict is discovered after dispatch,
+stop the affected lanes before conflicting writes continue and escalate for
+re-sequencing. Preserve unrelated completed work; never guess which lane owns
+the shared file or output.
 
 Do not declare completion while any relevant lane is missing a report, has
 status `NEEDS_CONTEXT` or `BLOCKED`, or has an unverified acceptance criterion.
