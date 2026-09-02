@@ -4,8 +4,214 @@
     "agent-browser": {
       "source": "vercel-labs/agent-browser",
       "sourceType": "github",
-      "skillPath": "skills/agent-browser/SKILL.md",
-      "computedHash": "a674b7d81066e3cc471a7512ddb4ae724418cbfefa75cbb050b0dc430e4d57a0"
+      "skillPath": ".rulesync/skills/agent-browser/SKILL.md",
+      "computedHash": "243eeaa5e9a42bb12d94d6af29a51b2c956546a16b1862282db1e5bd27315f8a"
+    },
+    "brainstorming": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/brainstorming/SKILL.md",
+      "computedHash": "ec5bd25b92c01a55f11af29917fd9ba35380bd849172eb8c799891907a6517cb"
+    },
+    "clonedeps": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/clonedeps/SKILL.md",
+      "computedHash": "fc4e9d99f3d30a28c59d30733103d32123b1362e4707a65ca032ee59aeb02c90"
+    },
+    "codemap": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/codemap/SKILL.md",
+      "computedHash": "3befad8d7c35ec7d33de663588b5b1a394179d79ca3bd8ec8c029597f5853e0c"
+    },
+    "cortex": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/cortex/SKILL.md",
+      "computedHash": "6ea671094a474262de8f42af4773f8936086b73c390fe8a437bd565faea7713c"
+    },
+    "dd-apm": {
+      "source": "datadog-labs/agent-skills",
+      "sourceType": "github",
+      "version": "1.0.0",
+      "skillPath": ".rulesync/skills/dd-apm/SKILL.md",
+      "computedHash": "f24b2650616460cff78e5d144426a84ca91cf6ab347001edda691f1aaa58e4ae"
+    },
+    "dd-debugger": {
+      "source": "datadog-labs/agent-skills",
+      "sourceType": "github",
+      "version": "1.1.0",
+      "skillPath": ".rulesync/skills/dd-debugger/SKILL.md",
+      "computedHash": "01faa89ec2fae6a8864f0b227d864da73ab4dd094a4fa56c483667aa2f9fe6a6"
+    },
+    "dd-logs": {
+      "source": "datadog-labs/agent-skills",
+      "sourceType": "github",
+      "version": "1.0.0",
+      "skillPath": ".rulesync/skills/dd-logs/SKILL.md",
+      "computedHash": "71c68531ed2a88b2f78932f4352fe93eaa4a3ac892f985a57bd40d424ac34fa1"
+    },
+    "dd-monitors": {
+      "source": "datadog-labs/agent-skills",
+      "sourceType": "github",
+      "version": "1.0.0",
+      "skillPath": ".rulesync/skills/dd-monitors/SKILL.md",
+      "computedHash": "8ea24701864e4af4bb14737ed98cdd62878dfbed4e2dbc99e1af8ffe6f3324c0"
+    },
+    "dd-pup": {
+      "source": "datadog-labs/agent-skills",
+      "sourceType": "github",
+      "version": "1.0.0",
+      "skillPath": ".rulesync/skills/dd-pup/SKILL.md",
+      "computedHash": "0e48d6e2228fe0285535255e207596ab5c37323eada3ba65337d89ace895bf07"
+    },
+    "dd-symdb": {
+      "source": "datadog-labs/agent-skills",
+      "sourceType": "github",
+      "version": "1.0.0",
+      "skillPath": ".rulesync/skills/dd-symdb/SKILL.md",
+      "computedHash": "e2027fd3fec8c86a2ce2c1c90af8e06702a5bd1e50679f86a473617d52a813cc"
+    },
+    "dd-triage-flaky-test": {
+      "source": "datadog-labs/agent-skills",
+      "sourceType": "github",
+      "version": "1.0.0",
+      "skillPath": ".rulesync/skills/dd-triage-flaky-test/SKILL.md",
+      "computedHash": "5ba831664c7cff16281de92b8df2d94c95ef0b0973edf80d889b7a3492144c26"
+    },
+    "dd-unblock-pr": {
+      "source": "datadog-labs/agent-skills",
+      "sourceType": "github",
+      "version": "1.1.0",
+      "skillPath": ".rulesync/skills/dd-unblock-pr/SKILL.md",
+      "computedHash": "d50d1dc2b7be869164dfb4f3444fd0cc6cf416ae4236938df12f7299ff66f71f"
+    },
+    "deepwork": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/deepwork/SKILL.md",
+      "computedHash": "8d1e25c7314a6b8fc2f4e9bd07c158af05526a55a9456494bc9756ecf32e142e"
+    },
+    "executing-plans": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/executing-plans/SKILL.md",
+      "computedHash": "04251dcbb97adf6c8225310544f7d8d883791d1364f7abd5acb7b3fc931226ff"
+    },
+    "figma-code-connect": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/figma-code-connect/SKILL.md",
+      "computedHash": "3f667b907595015d1d364cbb76fa38f9ba4ce7944a1201447a7298bc0656e5a3"
+    },
+    "figma-design-to-code": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/figma-design-to-code/SKILL.md",
+      "computedHash": "816581c773b6bf422e7f37ae1368fc3615622b91472060d9e83419e2fd8b815c"
+    },
+    "figma-generate-library": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/figma-generate-library/SKILL.md",
+      "computedHash": "82ee4dbf0370ee65932ac7eb572f3b10617717a23d7b2ee2eac8dc5db1f5daa2"
+    },
+    "figma-implement-motion": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/figma-implement-motion/SKILL.md",
+      "computedHash": "67b5bbae2727d76847097631987c9e9d6e3204cbe2ab4dd6bd8b69b2bb24ff77"
+    },
+    "figma-use": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/figma-use/SKILL.md",
+      "computedHash": "78498976fd7be64c2e2e5ed8971954b733c2fe55761203e9650c14403b83e0c5"
+    },
+    "fixer": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/fixer/SKILL.md",
+      "computedHash": "853be8ff8547dfbc45aa8e2662bc38b7d965f4e3f45e9c995fb36fb38ea6ad2b"
+    },
+    "incident-response": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/incident-response/SKILL.md",
+      "computedHash": "f53db2b9413bc910352768f18e66d3ecf3405da88b69a7acb19eb4df036e87c1"
+    },
+    "logs": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/logs/SKILL.md",
+      "computedHash": "86173a2f2b692a77dbed761af494a0fc3f86a110b9c76e332422ee4f5be118f4"
+    },
+    "oh-my-opencode-slim": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/oh-my-opencode-slim/SKILL.md",
+      "computedHash": "d6c83f7bec18efbbd3fee43e18e0ec563d127afb1350f0a070a3e942969fafcf"
+    },
+    "orca-orchestration": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/orca-orchestration/SKILL.md",
+      "computedHash": "2886b20710631ebe66d98e93f780e01f1a9215d758462131871f168f905aaf86"
+    },
+    "project-context": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/project-context/SKILL.md",
+      "computedHash": "a9cabb8e6c858550c8d6f8ba9f78480ef4e6aa0fe839809614cecb341050254f"
+    },
+    "reflect": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/reflect/SKILL.md",
+      "computedHash": "2ac9432f2f2757a6af536ece80506969f54c19166a2abb7a6f39c2c9e1bcb1c6"
+    },
+    "reviewer": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/reviewer/SKILL.md",
+      "computedHash": "fd7fe8079ee9d5642625d0954ac0a6bc6b4d9dc1eed80e7671832d774feea8d3"
+    },
+    "reviewing-plans": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/reviewing-plans/SKILL.md",
+      "computedHash": "bc0da73b0aa7aaed02640514929999965462129254ba3dec125d066c340c1d47"
+    },
+    "screenshot": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/screenshot/SKILL.md",
+      "computedHash": "f477d70cf20bfaf299f781ec50206e49d766cab0b7403bfed394cab0a38babb7"
+    },
+    "simplify": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/simplify/SKILL.md",
+      "computedHash": "2a1dc9428b004c27729a7354fe0a0305d4025d35031d7ac7d4f955f626aac58a"
+    },
+    "traces": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/traces/SKILL.md",
+      "computedHash": "bd94f4777f5c5a149f152bb7d21e4c9c654aa22e25f8532d93dc2f60a65f0dcc"
+    },
+    "verification-planning": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/verification-planning/SKILL.md",
+      "computedHash": "cb51d85d6fc4be791769caf6c10f1e2c24a4449092165facb981be080724f9b5"
+    },
+    "writing-plans": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/writing-plans/SKILL.md",
+      "computedHash": "77a86fd1491aed797e50c33eed7090844bac961066081d0b4f2402e67ff4b7f0"
     }
   }
 }

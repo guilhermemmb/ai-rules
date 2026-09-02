@@ -89,7 +89,9 @@ are directly relevant to the active task.
 
 The orchestrator owns final approval. Before cloning:
 
-1. Verify refs manually where possible with `git ls-remote`.
+1. Verify refs manually where possible with `git ls-remote` (a read-only git
+   command that still requires confirmation, per the repository confirmation
+   rule).
 2. Prefer pinned tags or commit SHAs. If no exact tag exists, ask librarian to
    find the correct module-specific tag/commit or explain the fallback.
 3. Only use HTTPS GitHub/GitLab-style repository URLs by default. Reject
@@ -97,8 +99,9 @@ The orchestrator owns final approval. Before cloning:
    or auth-required repositories unless the user explicitly approves that case.
 4. Present the plan to the user with dependency, repo URL, ref, reason, and
    caveats.
-5. Ask for confirmation before network cloning unless the user explicitly asked
-   to clone immediately.
+5. Ask for confirmation before running any git command — including
+   `git ls-remote`, `git fetch`, and `git clone` — unless the user explicitly
+   asked to clone immediately.
 
 ### Step 4: Update Ignore Files
 
@@ -150,9 +153,12 @@ per-version folders. If two different source repositories normalize to the same
 safe name, disambiguate manually and record the chosen path in
 `.slim/clonedeps.json`.
 
-Clone/fetch with normal git commands. For an existing clone, first verify that
-`git remote get-url origin` matches the approved repo URL. If it does not match,
-stop and ask whether to clean/reclone.
+Clone/fetch with normal git commands. Every git command used here — `git
+ls-remote`, `git clone`, `git fetch`, and `git remote get-url origin` — follows
+the repository confirmation rule: never run any git command on your own; confirm
+first. For an existing clone, first verify that `git remote get-url origin`
+matches the approved repo URL. If it does not match, stop and ask whether to
+clean/reclone.
 
 Safe manual git pattern:
 

@@ -5,11 +5,11 @@ description: "Use when reviewing a PR, branch, or diff — dispatches applicable
 
 # Reviewer Skill
 
-You are **Reviewer**, the PR and code review orchestrator. When this skill is active, execute the review workflow below. Do NOT enter plan mode — run the review directly.
+You are the PR and code review workflow. When this skill is active, execute the review workflow below. Do NOT enter plan mode — run the review directly.
 
 ## Role
 
-You orchestrate read-only `reviewer-*` specialist lanes. Concern lanes review the same target independently from one quality perspective each; reviewer-simplifier is a sequential post-Phase-A pass. You collect their reports and return one consolidated report to the orchestrator. Reviewer is an advisory coordinator, not an implementation agent: never edit files, apply patches, commit, or push.
+The active host coordinator owns this workflow. In OpenCode, the orchestrator is the sole review coordinator: it preloads this skill, selects the applicable read-only `reviewer-*` specialist lanes, dispatches them directly, and aggregates their reports. It must never call `functions.skill` for this path, dispatch a nested `reviewer` coordinator, or silently fall back to a partial direct-lane review. In Claude Code, the existing `@reviewer` agent remains the compatibility coordinator and executes the same workflow. In both targets, concern lanes review the same target independently from one quality perspective each; reviewer-simplifier is a sequential post-Phase-A pass. Specialist lanes do not load this skill or dispatch further tasks. The active coordinator is advisory only: never edit files, apply patches, commit, or push.
 
 ## Trust Boundary
 
@@ -58,11 +58,11 @@ Apply the optional aspect filter from the caller first. With `all` (the default)
 | `reviewer-comments`       | Comments, documentation, examples, or user-facing explanatory text added or modified.                                                                                                            |
 | `reviewer-simplifier`     | Any non-empty executable/source/config diff. This is a post-Phase-A clarity pass that runs sequentially after the concern lanes and receives their findings.                                     |
 
-When uncertain, prefer dispatching a lane; a lane may return an empty result when its concern is not applicable. `reviewer-code` always runs unless explicitly excluded by an aspect filter.
+When uncertain, prefer dispatching a lane; a lane may return an empty result when its concern is not applicable. `reviewer-code` always runs unless explicitly excluded by an aspect filter. If the active coordinator cannot dispatch the required workflow, record the coordination failure as degraded/inconclusive; never substitute an implicit partial direct-lane review or create another coordinator.
 
 ### 3. Dispatch Phase A Specialist Batches
 
-Dispatch all applicable concern lanes in the canonical order above, excluding `reviewer-simplifier`. Partition the lane list into batches of at most the resolved `REVIEWER_MAX_PARALLEL` limit. For each Phase A batch:
+Dispatch all applicable concern lanes in the canonical order above, excluding `reviewer-simplifier`. Partition the lane list into batches of at most the resolved `REVIEWER_MAX_PARALLEL` limit (which is always between 1 and 3 after resolution). For each Phase A batch:
 
 1. Launch every lane in the batch with the Task tool using `background=true`.
 2. Pass each lane the full diff and context, plus its narrow review focus and the output contract below.
@@ -107,7 +107,7 @@ The `critical`, `important`, and `suggestions` arrays use the same finding shape
 
 ### 5. Aggregate into a Structured Report
 
-For each completed lane, accept only a valid JSON object with the expected arrays. Tolerate and record invalid JSON, missing fields, failed tasks, and timeouts in Review Health; do not turn malformed output into a finding and do not abort aggregation.
+For each completed lane, accept only a valid JSON object with the expected arrays. Tolerate and record invalid JSON, missing fields, failed, timed-out, unavailable, or incomplete tasks as lane errors in Review Health; do not turn malformed output into a finding or invented citation, do not discard valid findings from other lanes, and do not abort aggregation.
 
 Normalize findings into the common shape, treating omitted optional arrays as empty. Legacy lane fields such as `gap`, `types`, `removals`, and `simplifications` may be retained as context, but promote them to report findings only when a changed-file citation can be established. Discard malformed findings without a changed-file citation when a citation is applicable, and deduplicate equivalent findings. Use the normalized changed `file`, `line`, severity, and whitespace/case-normalized issue text as the deduplication key. Keep the highest-confidence instance and list all contributing lane names when duplicates are merged.
 
@@ -125,13 +125,24 @@ Return one markdown report:
 ## Review Health
 
 - **Status**: Healthy | Degraded/inconclusive
+- **Coordinator**: identify the active coordinator explicitly; for OpenCode this must be the orchestrator, and for Claude Code this is the compatibility reviewer coordinator.
 - **Defined lanes**: 10 specialist lanes
 - **Concurrency**: `REVIEWER_MAX_PARALLEL=<raw|unset>` → <resolved>/batch (maximum 3)
 - **Applicable lanes**: <list>
-- **Completed**: <list>
-- **Failed or invalid**: <list or none>
+- **Completed**: <list of completed lane IDs>
+- **Failed or invalid**: <list or none, including execution, timeout, unavailable, malformed, or incomplete lanes>
 - **Lane errors**: <none or non-empty errors; any non-empty lane errors means Degraded/inconclusive>
+- **Runtime smoke evidence**: <Available and passed | Unavailable | Failed>; static validation alone is never runtime smoke evidence and never permits a Healthy runtime claim.
+- **Effective permission evidence**: <read-only verified | unavailable | mismatch>; a failed smoke test or effective permission mismatch requires Degraded/inconclusive health.
+- **Repository immutability**: do not claim filesystem immutability from report text, parentage, or incomplete tool records; only state that authoritative recorded tool activity was inspected.
 - **Findings**: <raw count> received, <unique count> after deduplication
+
+Healthy means the coordinator identity, resolved concurrency, completed/failed lane
+coverage, and effective read-only runtime smoke evidence are all reported. If the
+smoke test is unavailable, fails, cannot prove parent identity/tool execution, or
+finds an effective permission mismatch, report Degraded/inconclusive even when all
+static source and deployment checks pass. Runtime smoke evidence is not a
+filesystem immutability proof.
 
 ## Critical Issues ❌ (must fix before merge)
 
@@ -156,7 +167,7 @@ Return one markdown report:
 1. Fix all Critical Issues.
 2. Address Important Issues.
 3. Consider Suggestions.
-4. Re-run `reviewer` after fixes to verify.
+4. Re-run the review workflow after fixes to verify.
 ```
 
 Every reported finding must retain its source lane and changed `file:line` citation where applicable. If all valid lanes find no issues, say so explicitly. Any non-empty lane `errors` array requires a `Degraded`/inconclusive Review Health status, which describes review coverage and does not itself imply a code defect.
@@ -173,3 +184,5 @@ Return the full markdown report as your final output. The orchestrator will pres
 - **Failure tolerance**: Failed or invalid lane output reduces Review Health but must not suppress other lanes or the final report.
 - **Quality over quantity**: Surface issues that genuinely matter; avoid false positives.
 - **Citations**: Require changed `file:line` citations for applicable findings.
+- **OpenCode ownership**: The OpenCode orchestrator is the only coordinator. The OpenCode review command uses this preloaded workflow directly; it never dynamically invokes `functions.skill`, dispatches `@reviewer`, or silently launches only a subset of lanes as a fallback.
+- **Claude compatibility**: Claude Code retains `@reviewer` as the coordinator for the same ten-lane workflow; this compatibility path does not change OpenCode ownership.

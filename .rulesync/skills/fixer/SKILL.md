@@ -24,6 +24,18 @@ Every fixer task dispatch carries these required fields. If any are missing, ret
 | Validation | Yes | Commands and expected results |
 | Stop Conditions | If omitted | When to escalate instead of continuing |
 
+`Files` is a hard write allowlist, not a suggestion. The fixer may create,
+modify, or delete only the exact paths listed there. Do not write generated
+outputs, lockfiles, reports, planning artifacts, or temporary files unless the
+handoff explicitly lists them. If a needed path is absent, overlaps another
+active task, or ownership is ambiguous, stop and return `NEEDS_CONTEXT` or
+`BLOCKED`.
+
+The allowlist is enforced cooperatively by this prompt and verified by the
+orchestrator's changed-path reconciliation; OpenCode does not expose a dynamic
+per-task filesystem ACL. Never claim runtime ACL enforcement that was not
+observed.
+
 **Status report format** — return only:
 ```
 <status>DONE</status>
@@ -58,6 +70,11 @@ Execute tasks in this order — do not deviate:
 5. **Run focused validation.** Execute only the validation commands from the handoff. Do not run the full test suite unless specified.
 6. **Run lint validation.** Always run lint (check-only, no autofix) before reporting completion. If the handoff explicitly includes a `Lint Autofix` directive listing permitted files, you may run lint with autofix limited to those files only. When tests fail, show only the errors — filter console output, don't dump raw.
 7. **Report status and concerns.** Use the status report format above.
+
+When dispatched as part of a concurrent batch, the orchestrator will wait for
+all batch children and reconcile your result by the exact returned session ID.
+Do not assume another fixer has completed, and do not modify a dependent task's
+files. Return `DONE` only for your own allowlisted changes and validation.
 
 **Prohibited without explicit plan instruction:**
 - Broad repository exploration or file-tree scanning

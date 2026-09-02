@@ -9,7 +9,8 @@
 # Usage:
 #   ./deploy.sh          — deploy (refresh OMO 2.2.17 and deploy)
 #   ./deploy.sh --check  — dry-run: show what would change
-#   ./deploy.sh --force  — reinstall the OMO 2.2.17 package + deploy
+#   ./deploy.sh --force  — reinstall the OMO 2.2.17 package, override hash
+#                           drift in opencode.json / opencode.jsonc, + deploy
 set -euo pipefail
 MV_BIN="${MV_BIN:-mv}"
 
@@ -22,6 +23,8 @@ DOTFILES_DIR="$(cd -P "$SRCDIR/.." && pwd -P)"
 
 OPENDIR="${OPENCODE_CONFIG_DIR:-${HOME}/.config/opencode}"
 OPENCODE_TRANSACTION_MARKER="${OPENDIR}.transaction"
+OPENCODE_MANIFEST_NAME=".ai-rules.manifest.json"
+OPENCODE_MANIFEST_PATH="$OPENDIR/$OPENCODE_MANIFEST_NAME"
 WORKTRUNK_CONFIG_SOURCE="${WORKTRUNK_CONFIG_SOURCE:-$DOTFILES_DIR/worktrunk/config.toml}"
 WORKTRUNK_INSTALLER="${WORKTRUNK_INSTALLER:-$DOTFILES_DIR/worktrunk-install.sh}"
 WORKTRUNK_CONFIG_DESTINATION="${WORKTRUNK_CONFIG_DESTINATION:-${HOME}/.config/worktrunk/config.toml}"
@@ -47,9 +50,15 @@ RULESYNC_VERSION="16.2.0"
 OH_MY_OPENCODE_SLIM_PACKAGE="oh-my-opencode-slim@2.2.17"
 RULESYNC_PACKAGE="rulesync@${RULESYNC_VERSION}"
 OPENCODE_PACKAGE_CACHE_DIR="${OPENCODE_PACKAGE_CACHE_DIR:-${HOME}/.cache/opencode/packages}"
-OH_MY_OPENCODE_SLIM_PACKAGE_JSON="${OH_MY_OPENCODE_SLIM_PACKAGE_JSON:-$OPENCODE_PACKAGE_CACHE_DIR/oh-my-opencode-slim/node_modules/oh-my-opencode-slim/package.json}"
+OH_MY_OPENCODE_SLIM_PACKAGE_JSON="${OH_MY_OPENCODE_SLIM_PACKAGE_JSON:-$OPENCODE_PACKAGE_CACHE_DIR/oh-my-opencode-slim@latest/node_modules/oh-my-opencode-slim/package.json}"
+OH_MY_OPENCODE_SLIM_NODE_MODULES_DIR="$(dirname "$OH_MY_OPENCODE_SLIM_PACKAGE_JSON")/.."
+OPENCODE_SDK_PACKAGE_JSON="${OPENCODE_SDK_PACKAGE_JSON:-$OH_MY_OPENCODE_SLIM_NODE_MODULES_DIR/@opencode-ai/sdk/package.json}"
+OPENCODE_PLUGIN_PACKAGE_JSON="${OPENCODE_PLUGIN_PACKAGE_JSON:-$OH_MY_OPENCODE_SLIM_NODE_MODULES_DIR/@opencode-ai/plugin/package.json}"
+OPENCODE_COMPATIBILITY_EVIDENCE="${OPENCODE_COMPATIBILITY_EVIDENCE:-}"
+COMPATIBILITY_STATUS="unverified"
 
 STAGE_ROOT=""
+PRIOR_MANIFEST=""
 LIVE_SNAPSHOT=""
 LIVE_WAS_PRESENT=false
 WT_ORCA_SNAPSHOT=""
@@ -59,12 +68,17 @@ WORKTREE_STATE_WAS_PRESENT=false
 WORKTRUNK_SNAPSHOT=""
 WORKTRUNK_WAS_PRESENT=false
 DEPLOY_SUCCEEDED=false
+SNAPSHOT_COMPLETE=false
 
 # ── parse args ──
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --check)
       MODE="check"
+      shift
+      ;;
+    --compatibility-check)
+      MODE="compatibility"
       shift
       ;;
     --force)
@@ -77,7 +91,12 @@ while [[ $# -gt 0 ]]; do
       ;;
     --help|-h)
       cat <<'EOF'
-Usage: ./deploy.sh [--check | --force | --model-profile=<name>]
+Usage: ./deploy.sh [--check | --compatibility-check | --force | --model-profile=<name>]
+
+  --force  Reinstall the pinned OMO package, override ownership-manifest hash
+           drift in only opencode.json and opencode.jsonc, then deploy. It does
+           not bypass any other structural, path-safety, ownership, transaction,
+           or collision check.
 EOF
       exit 0
       ;;
@@ -88,9 +107,15 @@ EOF
   esac
 done
 
+if [[ "$MODE" = "check" && "$FORCE" = true ]]; then
+  printf '\033[31m%s\033[0m\n' "  ❌ --check --force is ambiguous; force is a deploy-only operation" >&2
+  exit 1
+fi
+
 red()   { printf '\033[31m%s\033[0m\n' "$1"; }
 green() { printf '\033[32m%s\033[0m\n' "$1"; }
 cyan()  { printf '\033[36m%s\033[0m\n' "$1"; }
+yellow() { printf '\033[33m%s\033[0m\n' "$1"; }
 
 fail() {
   red "  ❌ $1" >&2
@@ -103,31 +128,14 @@ source "$DEPLOYMENT_LOCK_HELPER"
 
 cleanup_stage() {
   local exit_code=$?
-  local cleanup_failed=false
-  if [[ "$DEPLOY_SUCCEEDED" != true && -n "$LIVE_SNAPSHOT" ]]; then
-    if [[ -e "$OPENCODE_TRANSACTION_MARKER" ]]; then
-      red "  ❌ OpenCode transaction rollback failed; preserving marker and recoverable paths"
-      cleanup_failed=true
-    elif ! restore_live_configuration; then
-      red "  ❌ rollback of the previous OpenCode configuration failed; preserving recovery artifacts"
-      cleanup_failed=true
-    fi
-    if [[ "$cleanup_failed" != true ]] && ! restore_managed_file "$WT_ORCA_DESTINATION" "$WT_ORCA_SNAPSHOT" "$WT_ORCA_WAS_PRESENT"; then
-      red "  ❌ rollback of wt-orca failed; preserving recovery artifacts"
-      cleanup_failed=true
-    fi
-    if [[ "$cleanup_failed" != true ]] && ! restore_managed_file "$WORKTREE_STATE_DESTINATION" "$WORKTREE_STATE_SNAPSHOT" "$WORKTREE_STATE_WAS_PRESENT"; then
-      red "  ❌ rollback of worktree-state.sh failed; preserving recovery artifacts"
-      cleanup_failed=true
-    fi
-    if [[ "$cleanup_failed" != true ]] && ! restore_managed_file "$WORKTRUNK_CONFIG_DESTINATION" "$WORKTRUNK_SNAPSHOT" "$WORKTRUNK_WAS_PRESENT"; then
-      red "  ❌ rollback of the Worktrunk config failed; preserving recovery artifacts"
-      cleanup_failed=true
+  if [[ "$DEPLOY_SUCCEEDED" != true ]] && [[ "$SNAPSHOT_COMPLETE" = true ]]; then
+    rollback_deployment
+    local rollback_rc=$?
+    if [[ $rollback_rc -ne 0 ]]; then
+      exit_code=1
     fi
   fi
-  if [[ "$cleanup_failed" = true ]]; then
-    exit_code=1
-  elif [[ -n "$STAGE_ROOT" && -d "$STAGE_ROOT" ]]; then
+  if [[ $exit_code -eq 0 && -n "$STAGE_ROOT" && -d "$STAGE_ROOT" ]]; then
     rm -rf "$STAGE_ROOT"
   fi
   if [[ "${DEPLOYMENT_LOCK_HELD:-false}" = true && "${DEPLOYMENT_LOCK_REENTRANT:-false}" != true ]] &&
@@ -137,6 +145,43 @@ cleanup_stage() {
   exit "$exit_code"
 }
 trap cleanup_stage EXIT
+
+# Attempt every managed restore in reverse deployment/dependency order,
+# even if an earlier restore fails.  Aggregate failures and preserve
+# rollback artifacts/markers when restoration is incomplete.
+rollback_deployment() {
+  local rollback_failed=false
+  local pending_marker=false
+
+  # Restore in reverse deployment order: last installed first.
+  if ! restore_managed_file "$WORKTRUNK_CONFIG_DESTINATION" "$WORKTRUNK_SNAPSHOT" "$WORKTRUNK_WAS_PRESENT"; then
+    red "  ❌ rollback of the Worktrunk config failed; preserving recovery artifacts"
+    rollback_failed=true
+  fi
+  if ! restore_managed_file "$WORKTREE_STATE_DESTINATION" "$WORKTREE_STATE_SNAPSHOT" "$WORKTREE_STATE_WAS_PRESENT"; then
+    red "  ❌ rollback of worktree-state.sh failed; preserving recovery artifacts"
+    rollback_failed=true
+  fi
+  if ! restore_managed_file "$WT_ORCA_DESTINATION" "$WT_ORCA_SNAPSHOT" "$WT_ORCA_WAS_PRESENT"; then
+    red "  ❌ rollback of wt-orca failed; preserving recovery artifacts"
+    rollback_failed=true
+  fi
+  if [[ -e "$OPENCODE_TRANSACTION_MARKER" ]]; then
+    red "  ❌ OpenCode transaction rollback failed; preserving marker and recoverable paths"
+    rollback_failed=true
+    pending_marker=true
+  elif ! restore_live_configuration; then
+    red "  ❌ rollback of the previous OpenCode configuration failed; preserving recovery artifacts"
+    rollback_failed=true
+  fi
+
+  if [[ "$rollback_failed" = true ]]; then
+    if [[ "$pending_marker" != true ]]; then
+      red "  ❌ one or more rollback operations failed; recovery artifacts are preserved"
+    fi
+    return 1
+  fi
+}
 
 resolve_command() {
   local variable_name="$1"
@@ -480,6 +525,666 @@ for path in sorted(candidates):
 PY
 }
 
+# Centralized manifest/ownership safety helper.
+# Only validation and diagnostic paths (validate, compare) are read-only;
+# build, adopt, remove, and install are mutating operations managed by the
+# deployment script's ordered stages.
+manifest_tool() {
+  local operation="$1"
+  shift
+  "$PYTHON_BIN" - "$operation" "$@" <<'PY'
+import datetime
+import difflib
+import hashlib
+import json
+import os
+import re
+import shutil
+import sys
+from pathlib import Path
+
+
+OPERATION = sys.argv[1]
+MANIFEST_NAME = ".ai-rules.manifest.json"
+
+
+def fail(message):
+    raise SystemExit(message)
+
+
+def read_manifest(path):
+    path = Path(path)
+    if path.is_symlink() or not path.is_file():
+        fail(f"manifest is not a regular file: {path}")
+    try:
+        with path.open(encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, json.JSONDecodeError) as error:
+        fail(f"malformed manifest {path}: {error}")
+    if not isinstance(data, dict):
+        fail(f"malformed manifest {path}: top level must be an object")
+    return data
+
+
+def safe_path(root, relative):
+    if not isinstance(relative, str) or not relative:
+        fail("manifest paths must be non-empty strings")
+    if "\x00" in relative or "\\" in relative:
+        fail(f"manifest path is not a portable relative path: {relative!r}")
+    path = Path(relative)
+    if path.is_absolute() or relative.startswith("/"):
+        fail(f"manifest path must be relative: {relative!r}")
+    parts = relative.split("/")
+    if any(part in ("", ".", "..") for part in parts):
+        fail(f"manifest path contains an unsafe component: {relative!r}")
+    root = Path(root)
+    if root.is_symlink() or (root.exists() and not root.is_dir()):
+        fail(f"OpenCode config path is not a regular directory: {root}")
+    root_resolved = root.resolve()
+    candidate = root.joinpath(*parts)
+    resolved = candidate.resolve(strict=False)
+    try:
+        resolved.relative_to(root_resolved)
+    except ValueError:
+        fail(f"manifest path escapes the OpenCode config directory: {relative!r}")
+
+    current = root
+    for part in parts:
+        current /= part
+        if current.is_symlink():
+            fail(f"manifest path traverses a symlink: {relative!r}")
+    return candidate
+
+
+def hash_file(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def manifest_parts(data, *, require_hashes=True):
+    if data.get("managed_by") != "ai-rules/deploy.sh":
+        fail("manifest managed_by must be ai-rules/deploy.sh")
+    if data.get("version") != 1:
+        fail("manifest version must be 1")
+    if not isinstance(data.get("timestamp"), str) or not data["timestamp"]:
+        fail("manifest timestamp must be a non-empty string")
+
+    files = data.get("managed_files")
+    directories = data.get("managed_directories")
+    hashes = data.get("managed_file_hashes")
+    if not isinstance(files, list) or not all(isinstance(value, str) for value in files):
+        fail("manifest managed_files must be a list of strings")
+    if not isinstance(directories, list) or not all(
+        isinstance(value, str) for value in directories
+    ):
+        fail("manifest managed_directories must be a list of strings")
+    if not isinstance(hashes, dict) or not all(
+        isinstance(key, str) and isinstance(value, str) for key, value in hashes.items()
+    ):
+        fail("manifest managed_file_hashes must be an object of strings")
+    if len(set(files)) != len(files) or len(set(directories)) != len(directories):
+        fail("manifest contains duplicate managed paths")
+    if set(files) & set(directories):
+        fail("manifest path cannot be both a file and a directory")
+    if set(hashes) != set(files):
+        fail("manifest file hashes must exactly match managed_files")
+    if require_hashes:
+        for value in hashes.values():
+            if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+                fail("manifest file hashes must be lowercase SHA-256 values")
+    return files, directories, hashes
+
+
+def validate_manifest(manifest_path, root, *, require_present=True):
+    data = read_manifest(manifest_path)
+    files, directories, hashes = manifest_parts(data)
+    root = Path(root)
+    for relative in [*files, *directories]:
+        candidate = safe_path(root, relative)
+        if require_present and not candidate.exists():
+            fail(f"manifest managed path is missing: {relative}")
+        if candidate.is_symlink():
+            fail(f"manifest managed path is a symlink: {relative}")
+    if require_present:
+        for relative in directories:
+            candidate = root.joinpath(*relative.split("/"))
+            if not candidate.is_dir():
+                fail(f"manifest managed directory is not a directory: {relative}")
+        for relative in files:
+            candidate = root.joinpath(*relative.split("/"))
+            if not candidate.is_file():
+                fail(f"manifest managed file is not a regular file: {relative}")
+            if hash_file(candidate) != hashes[relative]:
+                fail(f"manifest managed file was changed: {relative}")
+    return data, files, directories, hashes
+
+
+def write_manifest(path, files, directories, hashes):
+    payload = {
+        "managed_by": "ai-rules/deploy.sh",
+        "version": 1,
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "managed_files": sorted(files),
+        "managed_directories": sorted(directories),
+        "managed_file_hashes": {key: hashes[key] for key in sorted(hashes)},
+    }
+    path = Path(path)
+    with path.open("w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2, sort_keys=False)
+        handle.write("\n")
+
+
+def payload_paths(payload):
+    payload = Path(payload)
+    if payload.is_symlink() or not payload.is_dir():
+        fail(f"staged payload is not a regular directory: {payload}")
+    files = []
+    directories = []
+    for path in sorted(payload.rglob("*")):
+        relative = path.relative_to(payload).as_posix()
+        if relative == MANIFEST_NAME:
+            continue
+        if path.is_symlink():
+            fail(f"staged payload contains a symlink: {relative}")
+        if path.is_dir():
+            directories.append(relative)
+        elif path.is_file():
+            files.append(relative)
+        else:
+            fail(f"staged payload contains an unsupported path: {relative}")
+    hashes = {
+        relative: hash_file(payload.joinpath(*relative.split("/"))) for relative in files
+    }
+    return files, directories, hashes
+
+
+def operation_build(payload, manifest):
+    files, directories, hashes = payload_paths(payload)
+    write_manifest(manifest, files, directories, hashes)
+
+
+def operation_adopt(payload, live, output):
+    files, directories, hashes = payload_paths(payload)
+    live = Path(live)
+    adopted_files = []
+    adopted_directories = []
+    adopted_hashes = {}
+    if live.is_symlink() or (live.exists() and not live.is_dir()):
+        fail(f"OpenCode config path is not a regular directory: {live}")
+    if live.exists():
+        for relative in directories:
+            candidate = safe_path(live, relative)
+            if candidate.is_dir():
+                adopted_directories.append(relative)
+        for relative in files:
+            candidate = safe_path(live, relative)
+            if candidate.is_file() and hash_file(candidate) == hashes[relative]:
+                adopted_files.append(relative)
+                adopted_hashes[relative] = hashes[relative]
+    write_manifest(output, adopted_files, adopted_directories, adopted_hashes)
+
+
+def operation_remove(root, manifest):
+    _, files, directories, _ = validate_manifest(manifest, root, require_present=False)
+    root = Path(root)
+    for relative in sorted(files, key=lambda value: (value.count("/"), value), reverse=True):
+        candidate = safe_path(root, relative)
+        if not os.path.lexists(candidate):
+            continue
+        if candidate.is_symlink() or not candidate.is_file():
+            fail(f"refusing to remove non-regular managed file: {relative}")
+        candidate.unlink()
+    for relative in sorted(
+        directories, key=lambda value: (value.count("/"), value), reverse=True
+    ):
+        candidate = safe_path(root, relative)
+        if not os.path.lexists(candidate):
+            continue
+        if candidate.is_symlink() or not candidate.is_dir():
+            fail(f"refusing to remove non-directory managed path: {relative}")
+        try:
+            candidate.rmdir()
+        except OSError:
+            # Unknown files in a managed directory are intentionally retained.
+            pass
+
+
+def ensure_directory(root, relative):
+    candidate = safe_path(root, relative)
+    if candidate.exists():
+        if candidate.is_symlink() or not candidate.is_dir():
+            fail(f"managed destination is not a regular directory: {relative}")
+        return
+    candidate.mkdir()
+
+
+def operation_install(payload, root):
+    payload = Path(payload)
+    manifest = payload / MANIFEST_NAME
+    _, files, directories, _ = validate_manifest(manifest, payload)
+    root = Path(root)
+    if root.is_symlink() or not root.is_dir():
+        fail(f"incoming OpenCode config is not a regular directory: {root}")
+    for relative in sorted(directories, key=lambda value: (value.count("/"), value)):
+        ensure_directory(root, relative)
+    for relative in files:
+        source = payload.joinpath(*relative.split("/"))
+        destination = safe_path(root, relative)
+        if destination.exists() or destination.is_symlink():
+            if destination.is_symlink() or not destination.is_file():
+                fail(f"managed destination is not a regular file: {relative}")
+        else:
+            destination.parent.mkdir(parents=False, exist_ok=True)
+        shutil.copy2(source, destination)
+    shutil.copy2(manifest, root / MANIFEST_NAME)
+
+
+def operation_compare(payload, live):
+    expected = read_manifest(Path(payload) / MANIFEST_NAME)
+    actual, files, directories, hashes = validate_manifest(
+        Path(live) / MANIFEST_NAME, live
+    )
+    differences = []
+    for key in ("managed_by", "version", "managed_files", "managed_directories", "managed_file_hashes"):
+        if actual.get(key) != expected.get(key):
+            differences.append(f"manifest {key} differs")
+    payload = Path(payload)
+    live = Path(live)
+    for relative in directories:
+        if not safe_path(live, relative).is_dir():
+            differences.append(f"missing managed directory: {relative}")
+    for relative in files:
+        destination = safe_path(live, relative)
+        source = payload.joinpath(*relative.split("/"))
+        if not destination.is_file() or hash_file(destination) != hash_file(source):
+            differences.append(f"managed file differs: {relative}")
+    if differences:
+        for difference in differences:
+            print(difference, file=sys.stderr)
+        raise SystemExit(1)
+
+
+# Mutable-drift paths: exactly these two live config artifacts are treated as
+# a policy/reporting concern (reported by the read-only ``drift-report``
+# operation and eligible for force override). Every other managed path remains
+# strictly validated.
+FORCE_EXEMPT_PATHS = ("opencode.json", "opencode.jsonc")
+
+
+def operation_force(payload_manifest, live_manifest, live_root, plan_output):
+    """Force-aware ownership validation.
+
+    Structural manifest checks and path-safety checks remain strict. Only an
+    existing regular managed ``opencode.json`` or ``opencode.jsonc`` whose
+    content hash differs from the prior manifest may be overridden; any other
+    drift, a missing/symlink/non-regular path, or a malformed manifest fails
+    closed. Emits a machine-readable override plan and never prints contents.
+    """
+    expected = read_manifest(payload_manifest)
+    expected_files, _, expected_hashes = manifest_parts(expected)
+    files, directories, hashes = manifest_parts(read_manifest(live_manifest))
+    root = Path(live_root)
+    if root.is_symlink() or (root.exists() and not root.is_dir()):
+        fail(f"OpenCode config path is not a regular directory: {root}")
+
+    for relative in [*files, *directories]:
+        safe_path(root, relative)
+
+    for relative in directories:
+        candidate = root.joinpath(*relative.split("/"))
+        if not candidate.exists():
+            fail(f"manifest managed path is missing: {relative}")
+        if candidate.is_symlink() or not candidate.is_dir():
+            fail(f"manifest managed directory is not a directory: {relative}")
+
+    overrides = []
+    for relative in files:
+        candidate = root.joinpath(*relative.split("/"))
+        if not candidate.exists():
+            fail(f"manifest managed file is missing: {relative}")
+        if candidate.is_symlink():
+            fail(f"manifest managed file is a symlink: {relative}")
+        if not candidate.is_file():
+            fail(f"manifest managed file is not a regular file: {relative}")
+        actual_hash = hash_file(candidate)
+        if actual_hash != hashes[relative]:
+            if relative in FORCE_EXEMPT_PATHS:
+                overrides.append(
+                    {
+                        "path": relative,
+                        "expected_sha256": hashes[relative],
+                        "actual_sha256": actual_hash,
+                        "staged_sha256": expected_hashes.get(relative, ""),
+                    }
+                )
+            else:
+                fail(f"manifest managed file was changed: {relative}")
+
+    plan = {
+        "managed_by": "ai-rules/deploy.sh",
+        "version": 1,
+        "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "force": True,
+        "overrides": overrides,
+    }
+    if plan_output:
+        path = Path(plan_output)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as handle:
+            json.dump(plan, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+    for override in overrides:
+        print(
+            f"force override: {override['path']} "
+            f"expected_sha256={override['expected_sha256']} "
+            f"actual_sha256={override['actual_sha256']} "
+            f"staged_sha256={override['staged_sha256']}"
+        )
+
+
+def operation_collisions(payload, previous_manifest, root):
+    """Reject payload files that would overwrite unowned (non-managed) files.
+
+    A payload managed file that is not present in the prior manifest but already
+    exists in the destination must be refused rather than silently clobbered, so
+    unknown user files always survive a replacement.
+    """
+    expected = read_manifest(Path(payload) / MANIFEST_NAME)
+    expected_files, _, _ = manifest_parts(expected)
+    prev_files, _, _ = manifest_parts(read_manifest(previous_manifest))
+    prev_set = set(prev_files)
+    root = Path(root)
+    for relative in expected_files:
+        if relative in prev_set:
+            continue
+        candidate = safe_path(root, relative)
+        if os.path.lexists(candidate):
+            fail(f"refusing to overwrite unowned file: {relative}")
+
+
+# Mutable-drift diff bounds. A mutable file larger than DRIFT_DIFF_MAX_BYTES or
+# with more than DRIFT_DIFF_MAX_LINES newline-separated lines is reported as
+# ``oversized``: it is still hashed, but never decoded, split, or diffed. This
+# keeps the drift report bounded and deterministic regardless of file size.
+DRIFT_DIFF_MAX_BYTES = 1_048_576  # 1 MiB
+DRIFT_DIFF_MAX_LINES = 10_000
+
+# Matches a genuine difflib unified-diff hunk header: ``@@ -l,c +l,c @@ ...``.
+# Only exact hunk headers are preserved; every content line is redacted.
+HUNK_HEADER = re.compile(r"^@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@")
+
+
+def file_info(path):
+    """Classify one candidate file for the drift report.
+
+    Returns a dict with ``kind`` and, for readable regular files, ``sha256``.
+    Only files within DRIFT_DIFF_MAX_BYTES / DRIFT_DIFF_MAX_LINES are decoded
+    to UTF-8 ``text``; oversized files are hashed but reported as
+    ``oversized``, and undecodable files as ``binary``. The raw text is only
+    used internally to build a redacted diff and is never printed.
+    """
+    path = Path(path)
+    if os.path.islink(path):
+        return {"kind": "symlink"}
+    if not os.path.lexists(path):
+        return {"kind": "missing"}
+    if not path.is_file():
+        return {"kind": "not-regular"}
+    try:
+        size = path.stat().st_size
+    except OSError:
+        return {"kind": "unreadable"}
+    if size > DRIFT_DIFF_MAX_BYTES:
+        try:
+            digest = hash_file(path)
+        except OSError:
+            return {"kind": "unreadable"}
+        return {"kind": "oversized", "sha256": digest}
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return {"kind": "unreadable"}
+    digest = hashlib.sha256(data).hexdigest()
+    # The line bound is checked against the raw bytes (newline count) so
+    # oversized-by-lines files are never decoded.
+    if data.count(b"\n") + 1 > DRIFT_DIFF_MAX_LINES:
+        return {"kind": "oversized", "sha256": digest}
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return {"kind": "binary", "sha256": digest}
+    return {"kind": "text", "sha256": digest, "text": text}
+
+
+def redacted_unified_diff(relative, live_text, staged_text):
+    """Return a unified diff whose content lines are redacted.
+
+    Only the two generated file headers (lines 0 and 1) and exact hunk headers
+    (``@@ -l,c +l,c @@``) remain visible; every actual content line — including
+    content that begins with ``---``, ``+++``, or ``@@`` — is reduced to its
+    ``+``/``-``/space marker plus ``<redacted>``. No line content (and
+    therefore no secret) is ever emitted.
+    """
+    live_lines = live_text.splitlines()
+    staged_lines = staged_text.splitlines()
+    lines = difflib.unified_diff(
+        live_lines,
+        staged_lines,
+        fromfile=f"{relative} (live)",
+        tofile=f"{relative} (staged)",
+        lineterm="\n",
+    )
+    redacted = []
+    for index, line in enumerate(lines):
+        if index < 2:
+            # The two generated file headers carry only the relative path and
+            # side label, never file content.
+            redacted.append(line.rstrip("\n"))
+        elif HUNK_HEADER.match(line):
+            # A genuine hunk header; preserve its line/count structure only.
+            redacted.append(line.rstrip("\n"))
+        elif line.startswith(("+", "-", " ")):
+            redacted.append(line[0] + "<redacted>")
+        else:
+            # e.g. "\ No newline at end of file" or any unexpected line.
+            redacted.append("<redacted>")
+    return "\n".join(redacted)
+
+
+def drift_entry(relative, live, staged):
+    entry = {
+        "path": relative,
+        "live_sha256": live.get("sha256"),
+        "staged_sha256": staged.get("sha256"),
+    }
+    if live.get("kind") == "text" and staged.get("kind") == "text":
+        if live["sha256"] == staged["sha256"]:
+            entry["status"] = "identical"
+            entry["diff"] = None
+        else:
+            entry["status"] = "changed"
+            entry["diff"] = redacted_unified_diff(relative, live["text"], staged["text"])
+        return entry
+
+    kinds = {live.get("kind"), staged.get("kind")}
+    if "unreadable" in kinds:
+        entry["status"] = "unreadable"
+    elif "oversized" in kinds:
+        entry["status"] = "oversized"
+    elif "binary" in kinds:
+        entry["status"] = "binary"
+    elif live.get("kind") == "missing":
+        entry["status"] = (
+            "both-missing" if staged.get("kind") == "missing" else "missing-live"
+        )
+    elif staged.get("kind") == "missing":
+        entry["status"] = "missing-staged"
+    elif "symlink" in kinds:
+        entry["status"] = "symlink"
+    elif "not-regular" in kinds:
+        entry["status"] = "not-regular"
+    else:
+        entry["status"] = "unknown"
+    entry["diff"] = None
+    return entry
+
+
+def operation_drift_report(staged_root, live_root):
+    """Deterministic, read-only drift report for the mutable live config files.
+
+    For each mutable-drift path the report emits the path, live and staged
+    SHA-256, a status, and — only when both sides are safely readable UTF-8
+    text within the diff bounds — a redacted unified diff. Binary, oversized,
+    unreadable, missing, symlink, and non-regular paths report status and
+    hashes only. No file contents or secrets are ever emitted.
+    """
+    staged_root = Path(staged_root)
+    live_root = Path(live_root)
+    for root, label in ((staged_root, "staged"), (live_root, "live")):
+        if root.is_symlink() or not root.is_dir():
+            fail(f"{label} root is not a regular directory: {root}")
+
+    entries = []
+    for relative in FORCE_EXEMPT_PATHS:
+        staged = file_info(staged_root / relative)
+        live = file_info(live_root / relative)
+        entries.append(drift_entry(relative, live, staged))
+
+    report = {
+        "managed_by": "ai-rules/deploy.sh",
+        "operation": "drift-report",
+        "mutable_drift_paths": list(FORCE_EXEMPT_PATHS),
+        "entries": entries,
+    }
+    print(json.dumps(report, indent=2, sort_keys=True))
+
+
+try:
+    if OPERATION == "build":
+        operation_build(sys.argv[2], sys.argv[3])
+    elif OPERATION == "adopt":
+        operation_adopt(sys.argv[2], sys.argv[3], sys.argv[4])
+    elif OPERATION == "validate":
+        validate_manifest(sys.argv[2], sys.argv[3])
+    elif OPERATION == "remove":
+        operation_remove(sys.argv[2], sys.argv[3])
+    elif OPERATION == "install":
+        operation_install(sys.argv[2], sys.argv[3])
+    elif OPERATION == "compare":
+        operation_compare(sys.argv[2], sys.argv[3])
+    elif OPERATION == "force":
+        operation_force(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
+    elif OPERATION == "collisions":
+        operation_collisions(sys.argv[2], sys.argv[3], sys.argv[4])
+    elif OPERATION == "drift-report":
+        operation_drift_report(sys.argv[2], sys.argv[3])
+    else:
+        fail(f"unknown manifest operation: {OPERATION}")
+except (OSError, ValueError) as error:
+    fail(str(error))
+PY
+}
+
+# ── force-deployment helpers ─────────────────────────────────────────
+# Force mode lives entirely in deploy.sh and only relaxes hash drift for the
+# two mutable usage/config artifacts opencode.json and opencode.jsonc. Every
+# other structural, path-safety, ownership, transaction, and collision check
+# remains strict and fail-closed.
+
+manifest_override_plan() {
+  # Run the force-aware manifest validation. Reads the staged payload manifest,
+  # the prior live manifest, and the prior live root; writes a JSON override
+  # plan (or fails closed on any structural/non-exempt problem).
+  local payload="$1"
+  local previous_manifest="$2"
+  local previous_root="$3"
+  local plan_output="$4"
+  manifest_tool force "$payload/$OPENCODE_MANIFEST_NAME" "$previous_manifest" "$previous_root" "$plan_output"
+}
+
+preflight_force_summary() {
+  # Print a read-only drift summary for the two mutable files via the
+  # manifest_tool drift-report operation. Hash/status only, plus a redacted
+  # unified diff (structure only, no content) when both sides are safely
+  # readable UTF-8 text within the diff bounds. Never prints file contents or
+  # secrets.
+  local payload="$1"
+  local previous_root="$2"
+  local report_file=""
+
+  echo ""
+  echo "🔍 Force override preflight — mutable usage/config artifacts"
+  report_file="$(mktemp "${TMPDIR:-/tmp}/force-drift.XXXXXX")" || {
+    yellow "  ⚠️  mutable-drift summary is unavailable"
+    echo ""
+    return 0
+  }
+  if ! manifest_tool drift-report "$payload" "$previous_root" > "$report_file" 2>/dev/null; then
+    yellow "  ⚠️  mutable-drift summary is unavailable"
+    rm -f "$report_file"
+    echo ""
+    return 0
+  fi
+  "$PYTHON_BIN" - "$report_file" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    report = json.load(handle)
+for entry in report.get("entries", []):
+    path = entry.get("path")
+    live_sha = entry.get("live_sha256") or "<none>"
+    staged_sha = entry.get("staged_sha256") or "<none>"
+    status = entry.get("status", "unknown")
+    print(f"     {path}: live={live_sha} staged={staged_sha} status={status}")
+    diff = entry.get("diff")
+    if diff:
+        print(diff)
+PY
+  rm -f "$report_file"
+  echo ""
+}
+
+capture_prior_manifest() {
+  # Capture the prior ownership manifest so force override runs against a
+  # stable prior state before any snapshot mutation. The manifest must be a
+  # regular file: a symlink is refused (never dereferenced) so force mode fails
+  # closed exactly like strict validation. On a manifestless migration there is
+  # nothing to override, so nothing is captured; commit_opencode_configuration
+  # adopts instead.
+  local prior="$STAGE_ROOT/prior-manifest.json"
+  PRIOR_MANIFEST=""
+  [[ ! -L "$OPENCODE_MANIFEST_PATH" && -f "$OPENCODE_MANIFEST_PATH" ]] || {
+    fail "ownership manifest is not a regular file: $OPENCODE_MANIFEST_PATH"
+    return 1
+  }
+  cp "$OPENCODE_MANIFEST_PATH" "$prior" || return 1
+  PRIOR_MANIFEST="$prior"
+}
+
+detect_reviewer_shadow() {
+  local canonical="$1"
+  local shadow
+  [[ -f "$canonical" ]] || return 0
+  for shadow in \
+    "$HOME/.agents/skills/reviewer/SKILL.md" \
+    "$HOME/.agents/skills/reviewer.md" \
+    "$HOME/.agents/skills/reviewer/SKILL.mdx"; do
+    if [[ -L "$shadow" || -e "$shadow" && ! -f "$shadow" ]]; then
+      red "  ❌ reviewer shadow entry is not a regular file: $shadow"
+      return 1
+    fi
+    if [[ -f "$shadow" ]] && ! cmp -s "$canonical" "$shadow"; then
+      red "  ❌ reviewer shadow skill differs from canonical OpenCode skill: $shadow"
+      red "     Reconcile or remove it manually; deploy.sh will not delete it."
+      return 1
+    fi
+  done
+}
+
 copy_tree() {
   local source="$1"
   local destination="$2"
@@ -545,6 +1250,7 @@ build_staged_payload() {
   copy_tree "$rulesync_output/.opencode/skills" "$payload/skills"
   copy_tree "$SRCDIR/.rulesync/oh-my-opencode-slim" "$payload/oh-my-opencode-slim"
   copy_tree "$SRCDIR/.rulesync/commands" "$payload/commands"
+  manifest_tool build "$payload" "$payload/$OPENCODE_MANIFEST_NAME"
 
   validate_json_file "$payload/opencode.json" || return 1
   validate_json_file "$payload/oh-my-opencode-slim.json" || return 1
@@ -587,6 +1293,163 @@ if not isinstance(version, str) or not version.strip():
     raise SystemExit(1)
 print(version)
 PY
+}
+
+read_package_metadata() {
+  local package_json="$1"
+  local expected_name="$2"
+  "$PYTHON_BIN" - "$package_json" "$expected_name" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+expected_name = sys.argv[2]
+expected_names = {
+    "oh-my-opencode-slim",
+    "@opencode-ai/sdk",
+    "@opencode-ai/plugin",
+}
+if expected_name not in expected_names:
+    raise SystemExit(1)
+if path.is_symlink() or not path.is_file():
+    raise SystemExit(1)
+with path.open(encoding="utf-8") as handle:
+    package = json.load(handle)
+if not isinstance(package, dict):
+    raise SystemExit(1)
+name = package.get("name")
+version = package.get("version")
+if name != expected_name or not isinstance(version, str) or not version.strip():
+    raise SystemExit(1)
+print(f"name={name}")
+print(f"version={version}")
+if expected_name == "oh-my-opencode-slim":
+    dependencies = package.get("dependencies")
+    sdk_range = dependencies.get("@opencode-ai/sdk") if isinstance(dependencies, dict) else None
+    if isinstance(sdk_range, str):
+        print(f"sdk_dependency={sdk_range}")
+PY
+}
+
+read_compatibility_evidence() {
+  local evidence_path="$1"
+  "$PYTHON_BIN" - "$evidence_path" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+if path.is_symlink() or not path.is_file():
+    raise SystemExit(1)
+with path.open(encoding="utf-8") as handle:
+    evidence = json.load(handle)
+if not isinstance(evidence, dict):
+    raise SystemExit(1)
+for key in ("opencode_version", "omo_version", "plugin_version", "sdk_version"):
+    value = evidence.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise SystemExit(1)
+    print(f"{key}={value.strip()}")
+PY
+}
+
+preflight_compatibility() {
+  local host_version=""
+  local installed_omo_version=""
+  local installed_sdk_version=""
+  local installed_plugin_version=""
+  local version_skew=false
+  local omo_metadata=""
+  local sdk_metadata=""
+  local plugin_metadata=""
+  local evidence=""
+  local evidence_host=""
+  local evidence_omo=""
+  local evidence_plugin=""
+  local evidence_sdk=""
+  local key=""
+  local value=""
+
+  COMPATIBILITY_STATUS="unverified"
+  cyan "  🔎 OpenCode/OMO compatibility diagnostics (read-only)..."
+  if host_version="$("$OPENCODE_BIN" --version 2>/dev/null)"; then
+    host_version="${host_version//$'\n'/ }"
+    printf '     OpenCode host version: %s\n' "$host_version"
+  else
+    yellow "  ⚠️  could not read installed OpenCode --version"
+  fi
+
+  printf '     OMO package requested by source: %s\n' "$OH_MY_OPENCODE_SLIM_PACKAGE"
+  if omo_metadata="$(read_package_metadata "$OH_MY_OPENCODE_SLIM_PACKAGE_JSON" "oh-my-opencode-slim" 2>/dev/null)"; then
+    while IFS= read -r value; do
+      printf '     OMO package metadata: %s\n' "$value"
+      case "$value" in
+        version=*) installed_omo_version="${value#version=}" ;;
+      esac
+    done <<< "$omo_metadata"
+  else
+    yellow "  ⚠️  installed OMO package metadata is unavailable: $OH_MY_OPENCODE_SLIM_PACKAGE_JSON"
+  fi
+
+  if sdk_metadata="$(read_package_metadata "$OPENCODE_SDK_PACKAGE_JSON" "@opencode-ai/sdk" 2>/dev/null)"; then
+    while IFS= read -r value; do
+      printf '     SDK package metadata: %s\n' "$value"
+      case "$value" in
+        version=*) installed_sdk_version="${value#version=}" ;;
+      esac
+    done <<< "$sdk_metadata"
+  else
+    yellow "  ⚠️  installed @opencode-ai/sdk metadata is unavailable: $OPENCODE_SDK_PACKAGE_JSON"
+  fi
+
+  if plugin_metadata="$(read_package_metadata "$OPENCODE_PLUGIN_PACKAGE_JSON" "@opencode-ai/plugin" 2>/dev/null)"; then
+    while IFS= read -r value; do
+      printf '     OpenCode plugin metadata: %s\n' "$value"
+      case "$value" in
+        version=*) installed_plugin_version="${value#version=}" ;;
+      esac
+    done <<< "$plugin_metadata"
+  else
+    yellow "  ⚠️  installed @opencode-ai/plugin metadata is unavailable: $OPENCODE_PLUGIN_PACKAGE_JSON"
+  fi
+
+  if [[ -n "$installed_omo_version" && "$installed_omo_version" != "${OH_MY_OPENCODE_SLIM_PACKAGE##*@}" ]]; then
+    version_skew=true
+    yellow "  ⚠️  version skew: source requests OMO ${OH_MY_OPENCODE_SLIM_PACKAGE##*@}, installed OMO $installed_omo_version"
+  fi
+  if [[ -n "$installed_plugin_version" && -n "$installed_sdk_version" && "$installed_plugin_version" != "$installed_sdk_version" ]]; then
+    version_skew=true
+    yellow "  ⚠️  plugin/SDK versions differ: plugin $installed_plugin_version, SDK $installed_sdk_version"
+  fi
+
+  if [[ -n "$OPENCODE_COMPATIBILITY_EVIDENCE" ]]; then
+    if evidence="$(read_compatibility_evidence "$OPENCODE_COMPATIBILITY_EVIDENCE" 2>/dev/null)"; then
+      while IFS='=' read -r key value; do
+        case "$key" in
+          opencode_version) evidence_host="$value" ;;
+          omo_version) evidence_omo="$value" ;;
+          plugin_version) evidence_plugin="$value" ;;
+          sdk_version) evidence_sdk="$value" ;;
+        esac
+      done <<< "$evidence"
+      if [[ "$version_skew" = false && "$host_version" = "$evidence_host" && "$installed_omo_version" = "$evidence_omo" && "$installed_plugin_version" = "$evidence_plugin" && "$installed_sdk_version" = "$evidence_sdk" ]]; then
+        COMPATIBILITY_STATUS="matched"
+        green "  ✅ installed host/OMO/plugin/SDK versions match supplied compatibility evidence"
+      else
+        COMPATIBILITY_STATUS="skew"
+        yellow "  ⚠️  installed OpenCode/OMO/plugin/SDK versions differ from supplied compatibility evidence"
+        yellow "     Evidence: OpenCode=$evidence_host OMO=$evidence_omo plugin=$evidence_plugin SDK=$evidence_sdk"
+      fi
+    else
+      yellow "  ⚠️  compatibility evidence is missing, malformed, or not a regular file: $OPENCODE_COMPATIBILITY_EVIDENCE"
+    fi
+  else
+    yellow "  ⚠️  no verified compatibility evidence supplied; static checks cannot claim runtime Healthy"
+  fi
+  printf '     Agent output paths: OpenCode-supported ~/ glob syntax with dedicated allowlists; broad filesystem writes remain denied.\n'
+  cyan "     Runtime smoke evidence is still required after a fresh OpenCode restart."
+  printf 'COMPATIBILITY_STATUS=%s\n' "$COMPATIBILITY_STATUS"
 }
 
 omo_installed() {
@@ -717,6 +1580,7 @@ snapshot_live_configuration() {
   WORKTREE_STATE_WAS_PRESENT="$worktree_state_was_present"
   WORKTRUNK_SNAPSHOT="$worktrunk_snapshot"
   WORKTRUNK_WAS_PRESENT="$worktrunk_was_present"
+  SNAPSHOT_COMPLETE=true
 }
 
 restore_managed_file() {
@@ -753,8 +1617,16 @@ restore_live_configuration() {
   local restore_path="$parent/.opencode.rollback.$$"
   rm -rf "$restore_path"
   if [[ "$LIVE_WAS_PRESENT" = true ]]; then
+    if [[ ! -d "$LIVE_SNAPSHOT" ]]; then
+      red "  ❌ OpenCode live snapshot is missing; leaving live configuration intact"
+      return 1
+    fi
     mkdir -p "$restore_path"
-    cp -R "$LIVE_SNAPSHOT/." "$restore_path/"
+    if ! cp -R "$LIVE_SNAPSHOT/." "$restore_path/"; then
+      rm -rf "$restore_path"
+      red "  ❌ OpenCode restore preparation failed; leaving live configuration intact"
+      return 1
+    fi
     local displaced=false
     if [[ -e "$OPENDIR" || -L "$OPENDIR" ]]; then
       "$MV_BIN" "$OPENDIR" "$parent/.opencode.failed.$$" || return 1
@@ -842,9 +1714,18 @@ PY
 }
 
 recover_pending_opencode_transaction() {
-  [[ -e "$OPENCODE_TRANSACTION_MARKER" ]] || return 0
-  [[ ! -L "$OPENCODE_TRANSACTION_MARKER" && -f "$OPENCODE_TRANSACTION_MARKER" ]] ||
-    fail "OpenCode transaction marker is not a regular file"
+  # A dangling symlink at the marker path is invisible to `-e`; treat any
+  # presence (regular file or symlink) as a pending marker and fail closed
+  # before mutation, preserving it for manual inspection.
+  [[ -e "$OPENCODE_TRANSACTION_MARKER" || -L "$OPENCODE_TRANSACTION_MARKER" ]] || return 0
+  if [[ -L "$OPENCODE_TRANSACTION_MARKER" ]]; then
+    red "  ❌ OpenCode transaction marker is a symlink; refusing recovery and preserving it for manual inspection"
+    return 1
+  fi
+  if [[ ! -f "$OPENCODE_TRANSACTION_MARKER" ]]; then
+    red "  ❌ OpenCode transaction marker is not a regular file; preserving it for manual inspection"
+    return 1
+  fi
   "$PYTHON_BIN" - "$OPENCODE_TRANSACTION_MARKER" <<'PY'
 import json
 import os
@@ -852,8 +1733,11 @@ import shutil
 import sys
 
 marker = os.path.abspath(sys.argv[1])
-with open(marker, encoding="utf-8") as handle:
-    payload = json.load(handle)
+try:
+    with open(marker, encoding="utf-8") as handle:
+        payload = json.load(handle)
+except (OSError, ValueError) as error:
+    raise SystemExit(f"unreadable OpenCode transaction marker: {error}")
 
 required = ("live", "incoming", "rollback")
 if any(not isinstance(payload.get(key), str) for key in required):
@@ -866,6 +1750,19 @@ if phase not in ("prepared", "old_moved", "committed"):
     raise SystemExit("invalid OpenCode transaction phase")
 if any(os.path.dirname(value) != marker_parent for value in paths.values()):
     raise SystemExit("OpenCode transaction marker path escaped its config directory")
+
+# Reject colliding or aliased recovery layouts before any mutation so a
+# corrupt marker is preserved untouched for manual inspection.
+if len(set(paths.values())) != len(paths):
+    raise SystemExit("OpenCode transaction marker paths are not pairwise distinct")
+if marker in paths.values():
+    raise SystemExit("OpenCode transaction marker path collides with a managed path")
+real_marker = os.path.realpath(marker)
+real_paths = [os.path.realpath(value) for value in paths.values()]
+if len(set(real_paths)) != len(real_paths):
+    raise SystemExit("OpenCode transaction marker paths alias each other")
+if real_marker in set(real_paths):
+    raise SystemExit("OpenCode transaction marker path aliases a managed path")
 
 live = paths["live"]
 incoming = paths["incoming"]
@@ -922,30 +1819,47 @@ commit_opencode_configuration() {
   local parent="$(dirname "$OPENDIR")"
   local incoming="$parent/.opencode.deploy.$$"
   local rollback_path="$parent/.opencode.previous.$$"
+  local previous_manifest="$STAGE_ROOT/previous-manifest.json"
 
   rm -rf "$incoming" "$rollback_path"
+  if [[ -e "$OPENCODE_MANIFEST_PATH" || -L "$OPENCODE_MANIFEST_PATH" ]]; then
+    if [[ "$FORCE" = true ]]; then
+      manifest_override_plan "$payload" "$PRIOR_MANIFEST" "$OPENDIR" "$STAGE_ROOT/force-plan.json" ||
+        fail "force override preflight failed; refusing deployment"
+      preflight_force_summary "$payload" "$OPENDIR"
+    else
+      manifest_tool validate "$OPENCODE_MANIFEST_PATH" "$OPENDIR" ||
+        fail "existing OpenCode ownership manifest is invalid; refusing deployment"
+    fi
+    cp "$PRIOR_MANIFEST" "$previous_manifest"
+  else
+    # A migration without a manifest can only adopt payload files whose bytes
+    # already match. Unknown files and directories are never adopted or removed.
+    manifest_tool adopt "$payload" "$OPENDIR" "$previous_manifest"
+  fi
+
+  # Reject payload managed files that would overwrite unowned (non-managed)
+  # live files before any mutation, so unknown files always survive.
+  if [[ -f "$previous_manifest" ]]; then
+    manifest_tool collisions "$payload" "$previous_manifest" "$OPENDIR" ||
+      fail "unowned payload collision detected; refusing deployment"
+  fi
+
   mkdir -p "$incoming"
-  if [[ -e "$OPENDIR" ]]; then
+  # Seed the incoming tree from the pre-validated live snapshot (not a re-read
+  # of the live directory) so unknown files present at snapshot time survive
+  # the replacement exactly as captured.
+  if [[ "$LIVE_WAS_PRESENT" = true && -d "$LIVE_SNAPSHOT" ]]; then
+    cp -R "$LIVE_SNAPSHOT/." "$incoming/"
+  elif [[ -e "$OPENDIR" ]]; then
     [[ ! -L "$OPENDIR" && -d "$OPENDIR" ]] || fail "OpenCode config path changed to a non-regular directory"
     cp -R "$OPENDIR/." "$incoming/"
   fi
 
-  # Remove only the paths owned by this deployment.  Other OpenCode files are
-  # retained in the replacement directory.
-  rm -rf "$incoming/oh-my-opencode-slim" "$incoming/commands" \
-    "$incoming/agents" "$incoming/skills" "$incoming/.opencode"
-  rm -f "$incoming/opencode.json" "$incoming/opencode.jsonc" \
-    "$incoming/oh-my-opencode-slim.json" "$incoming/rulesync.jsonc" "$incoming/AGENTS.md"
-
-  cp "$payload/opencode.json" "$incoming/opencode.json"
-  cp "$payload/opencode.jsonc" "$incoming/opencode.jsonc"
-  cp "$payload/oh-my-opencode-slim.json" "$incoming/oh-my-opencode-slim.json"
-  cp "$payload/rulesync.jsonc" "$incoming/rulesync.jsonc"
-  cp "$payload/AGENTS.md" "$incoming/AGENTS.md"
-  copy_tree "$payload/oh-my-opencode-slim" "$incoming/oh-my-opencode-slim"
-  copy_tree "$payload/commands" "$incoming/commands"
-  copy_tree "$payload/agents" "$incoming/agents"
-  copy_tree "$payload/skills" "$incoming/skills"
+  # Remove only exact paths from the previous manifest. Managed directories are
+  # removed only when empty, so unknown user entries survive the replacement.
+  manifest_tool remove "$incoming" "$previous_manifest"
+  manifest_tool install "$payload" "$incoming"
 
   validate_json_file "$incoming/opencode.json"
   validate_json_file "$incoming/oh-my-opencode-slim.json"
@@ -974,11 +1888,14 @@ commit_opencode_configuration() {
   fi
   write_opencode_transaction_marker "$incoming" "$rollback_path" committed
   deployment_failpoint opencode-after-install
-  rm -rf "$rollback_path"
+  # Clear the committed marker before discarding the rollback backup so a
+  # marker-removal failure leaves the rollback in place as durable recovery
+  # state for the next startup's recovery pass.
   if ! remove_opencode_transaction_marker; then
-    red "  ❌ OpenCode transaction marker cleanup failed; preserving marker for startup recovery"
+    red "  ❌ OpenCode transaction marker cleanup failed; preserving marker and rollback for startup recovery"
     return 1
   fi
+  rm -rf "$rollback_path"
 }
 
 install_wt_orca() {
@@ -1037,6 +1954,22 @@ compare_path() {
   fi
 }
 
+run_compatibility_check() {
+  echo "🔎 Read-only OpenCode/OMO compatibility preflight"
+  echo ""
+  # Compatibility-check is static diagnostics that gates a separate external
+  # runtime smoke follow-up. It never creates or alters deployment state.
+  if ! preflight_dependencies true; then
+    fail "dependency preflight failed"
+    return 1
+  fi
+  preflight_compatibility
+  if [[ "$COMPATIBILITY_STATUS" != "matched" ]]; then
+    yellow "  ⚠️  compatibility status is $COMPATIBILITY_STATUS; runtime smoke is blocked"
+    return 1
+  fi
+}
+
 run_check() {
   echo "🔍 Building temporary global deployment to check for drift..."
   echo ""
@@ -1046,6 +1979,9 @@ run_check() {
     red "  ⚠️  pending OpenCode deployment transaction requires recovery"
   fi
   preflight_dependencies true || DRIFT=1
+  if [[ -n "${OPENCODE_BIN:-}" && -n "${PYTHON_BIN:-}" ]]; then
+    preflight_compatibility
+  fi
   if [[ -L "$RTK_PLUGIN_PATH" || ! -f "$RTK_PLUGIN_PATH" ]]; then
     DRIFT=1
     red "  ⚠️  RTK OpenCode plugin is missing or not a regular file: $RTK_PLUGIN_PATH"
@@ -1059,19 +1995,17 @@ run_check() {
     DRIFT=1
   else
     local payload="$STAGE_ROOT/payload"
-    compare_path "$payload/AGENTS.md" "$OPENDIR/AGENTS.md" ".config/opencode/AGENTS.md"
-    compare_path "$payload/opencode.jsonc" "$OPENDIR/opencode.jsonc" ".config/opencode/opencode.jsonc"
-    compare_path "$payload/agents" "$OPENDIR/agents" ".config/opencode/agents"
-    compare_path "$payload/skills" "$OPENDIR/skills" ".config/opencode/skills"
-    compare_path "$payload/opencode.json" "$OPENDIR/opencode.json" ".config/opencode/opencode.json"
-    compare_path "$payload/oh-my-opencode-slim.json" "$OPENDIR/oh-my-opencode-slim.json" ".config/opencode/oh-my-opencode-slim.json"
-    compare_path "$payload/rulesync.jsonc" "$OPENDIR/rulesync.jsonc" ".config/opencode/rulesync.jsonc"
-    compare_path "$payload/oh-my-opencode-slim" "$OPENDIR/oh-my-opencode-slim" ".config/opencode/oh-my-opencode-slim"
-    compare_path "$payload/commands" "$OPENDIR/commands" ".config/opencode/commands"
-    [[ ! -d "$OPENDIR/.opencode" ]] || {
+    if [[ -e "$OPENCODE_MANIFEST_PATH" || -L "$OPENCODE_MANIFEST_PATH" ]]; then
+      if ! manifest_tool compare "$payload" "$OPENDIR"; then
+        DRIFT=1
+      fi
+    else
       DRIFT=1
-      red "  ⚠️  STALE local-mode directory found: $OPENDIR/.opencode"
-    }
+      red "  ⚠️  OpenCode ownership manifest is missing: $OPENCODE_MANIFEST_PATH"
+    fi
+    if ! detect_reviewer_shadow "$payload/skills/reviewer/SKILL.md"; then
+      DRIFT=1
+    fi
   fi
 
   compare_path "$WT_ORCA_SOURCE" "$WT_ORCA_DESTINATION" ".local/bin/wt-orca"
@@ -1099,7 +2033,29 @@ run_deploy() {
 
   # All executable checks happen before any generated configuration mutation.
   preflight_dependencies false || fail "dependency preflight failed"
+  # Host/package compatibility probing is intentionally not part of normal
+  # deployment: probing unrelated package metadata on every deploy is wasteful.
+  # The explicit, fail-closed gate remains `./deploy.sh --compatibility-check`.
   build_staged_payload
+  # Normal deploy keeps strict ownership-manifest validation. Force mode defers
+  # it to the force override preflight, which relaxes only the content-hash drift
+  # of the two mutable config files (opencode.json / opencode.jsonc); every other
+  # structural, path-safety, ownership, transaction, and collision check stays
+  # strict and fail-closed.
+  if [[ "$FORCE" != true ]]; then
+    if [[ -e "$OPENCODE_MANIFEST_PATH" || -L "$OPENCODE_MANIFEST_PATH" ]]; then
+      manifest_tool validate "$OPENCODE_MANIFEST_PATH" "$OPENDIR" ||
+        fail "existing OpenCode ownership manifest is invalid; refusing deployment"
+    fi
+  fi
+  detect_reviewer_shadow "$STAGE_ROOT/payload/skills/reviewer/SKILL.md" ||
+    fail "reviewer shadow configuration requires manual reconciliation"
+  # Capture the prior ownership manifest before snapshot mutation so force
+  # override validation runs against a stable, structurally-valid prior state.
+  if [[ -e "$OPENCODE_MANIFEST_PATH" || -L "$OPENCODE_MANIFEST_PATH" ]]; then
+    capture_prior_manifest ||
+      fail "could not capture prior ownership manifest"
+  fi
   snapshot_live_configuration
   initialize_rtk_plugin
 
@@ -1121,6 +2077,9 @@ run_deploy() {
 case "$MODE" in
   check)
     run_check
+    ;;
+  compatibility)
+    run_compatibility_check
     ;;
   deploy)
     run_deploy

@@ -2,13 +2,27 @@
 
 Source of truth for OpenCode agent rules, custom agents, skills, and commands. Used by [Oh My OpenCode Slim](https://ohmyopencodeslim.com/) with [Bifrost](https://bifrost.ops.gorgias.io) model routing. Supports multiple model profiles (default vs cost-efficient).
 
+## Documentation atlas
+
+Concise navigation into the `ai-rules` system documentation:
+
+| Area | Document | Description |
+| :--- | :--- | :--- |
+| **Architecture** | [`docs/architecture.md`](docs/architecture.md) | Source/generated/installed layers, authority boundaries, and agent categories |
+| **Workflows** | [`docs/workflows.md`](docs/workflows.md) | Task sizing, SDD flow, discovery, fixer/reviewer pipelines, and deployment lifecycle |
+| **Reference** | [`docs/reference.md`](docs/reference.md) | Compact registries of rules, skills, subagents, scripts, profiles, and MCPs |
+| **Review & proposals** | [`docs/review-and-improvements.md`](docs/review-and-improvements.md) | Independently reviewed improvement proposals, severities, and roadmap |
+| **Mermaid graphs** | [`architecture`](docs/graphs/architecture.mmd) · [`dispatch-and-review`](docs/graphs/dispatch-and-review.mmd) · [`workspace-lifecycle`](docs/graphs/workspace-lifecycle.mmd) | Flow and layer diagrams (`.mmd` source) |
+| **Interactive agents** | [`agents-overview/README.md`](agents-overview/README.md) | Interactive agent visualization (data + HTML) |
+
 ## Quick Start
 
 ```bash
-# Deploy configuration; deploy.sh installs or refreshes oh-my-opencode-slim@2.2.17 when needed
+# Deploy configuration; deploy.sh refreshes the repository-recorded OMO package when needed
 ./deploy.sh
 
-# Force-install or refresh oh-my-opencode-slim@2.2.17 and deploy (not all dependencies)
+# Reinstall the pinned OMO package and deploy, overriding ownership-manifest hash
+# drift in only opencode.json / opencode.jsonc (does not bypass other safety checks)
 ./deploy.sh --force
 
 # Deploy cost-efficient profile (DeepSeek V4 + Gemini Flash)
@@ -31,20 +45,120 @@ Failed, timed-out, unavailable, malformed, or incomplete lane results populate
 `errors` and make Review Health Degraded/inconclusive. This is a runtime setting
 documented in the reviewer prompt/skill, not an OpenCode top-level configuration
 key.
+For OpenCode, review commands and review requests run the preloaded `reviewer`
+workflow through the orchestrator, which is the sole coordinator of the
+applicable reviewer-lane lifecycle. OpenCode never dynamically calls
+`functions.skill`, dispatches a nested `@reviewer`, or silently falls back to a
+partial direct-lane review. Specialist lanes are read-only leaves: they do not
+load the reviewer skill or dispatch additional tasks.
+
+### OpenCode multi-fixer scheduler
+
+For approved L/XL plans, the OpenCode orchestrator may dispatch at most **3**
+independent `@fixer` children concurrently. Each child is a fresh
+`background=true` task with an exact declared `Files` write allowlist and
+complete dependency metadata. Overlapping, ambiguous, shared, generated,
+lockfile, or ordered work serializes.
+
+The orchestrator waits for every child in the same batch, reconciles each
+result with `task_result` using the exact returned session ID (never an alias),
+then runs a separate reviewer gate for every `DONE` child before releasing its
+dependents. `NEEDS_CONTEXT`, `BLOCKED`, timeout, failure, missing, or malformed
+results hold dependents and are surfaced. OpenCode has no dynamic per-task path
+ACL, so the fixer allowlist is cooperative prompt enforcement backed by
+changed-path smoke verification; unowned changes fail closed. Reviewer
+concurrency remains a separate reviewer-workflow setting.
+
+### OpenCode deployment ownership
+
+`deploy.sh` writes `~/.config/opencode/.ai-rules.manifest.json` with the
+deployment owner, manifest version, timestamp, exact managed files/directories,
+and SHA-256 values for managed files. The manifest is installed atomically with
+the generated OpenCode configuration and is included in transaction snapshots
+and rollback.
+
+On a first deployment without a manifest, only existing files whose paths and
+contents exactly match the staged Rulesync payload are adopted. Unknown agents,
+skills, commands, directories, and other OpenCode configuration are preserved.
+Later deployments remove only paths recorded in the previous manifest; managed
+directories are removed only when empty, then the current payload and manifest
+are installed. Malformed manifests, path traversal, absolute paths, symlinks,
+missing managed paths, and changed managed files fail safely before replacement.
+
+`./deploy.sh --check` validates ownership without changing live configuration.
+It also reports a differing higher-priority reviewer shadow skill at
+`~/.agents/skills/reviewer/SKILL.md` (or an equivalent reviewer entry). Shadow
+entries are never deleted automatically; reconcile or remove them manually.
+Rulesync sources in this repository remain the source of truth.
+
+`./deploy.sh --force` re-installs the pinned OMO package and additionally
+overrides an ownership-manifest hash mismatch in **only** the two mutable
+usage/config artifacts `opencode.json` and `opencode.jsonc`. Every other check
+— malformed or missing manifests, unsafe/absolute/escaping paths, symlinks,
+missing or non-regular managed files, changed non-exempt managed files,
+unknown-file collisions, pending/ambiguous transactions, reviewer shadows, and
+payload validation — remains strict and fail-closed. Force is a deploy-only
+operation: `--check --force` is rejected as ambiguous, and force does not bypass
+any structural, path-safety, ownership, transaction, or collision check.
+
+### OpenCode compatibility and runtime evidence
+
+The deployment preflight reads and prints the installed `opencode --version`,
+the repository-recorded OMO package reference, and the installed OMO,
+`@opencode-ai/plugin`, and `@opencode-ai/sdk` package metadata. This is
+read-only diagnostics: deployment does not infer or assert a compatible host /
+plugin pair from version numbers, and this task does not install, downgrade, or
+upgrade packages. The OMO package's SDK dependency is reported as a range when
+it is not itself pinned.
+
+An optional, operator-supplied compatibility evidence file can be selected with
+`OPENCODE_COMPATIBILITY_EVIDENCE`. It must be a regular JSON file containing
+`opencode_version`, `omo_version`, `plugin_version`, and `sdk_version`. A
+mismatch is reported as version skew; missing evidence remains unverified.
+Neither static validation nor a version match is a runtime Healthy claim.
+The opt-in smoke command runs `./deploy.sh --compatibility-check` before
+starting OpenCode and blocks when this status is unknown or skewed, so no
+runtime report can claim Healthy from an unverified package pair.
+
+After deployment, start a fresh OpenCode process before relying on generated
+configuration. Runtime smoke evidence is the supported path for proving
+background-task parentage, reconciliation, effective permissions, and the
+absence of forbidden reviewer tool execution. Run the smoke command only after
+deploying and restarting; failed, unavailable, or inconclusive smoke evidence
+must remain Degraded/inconclusive rather than Healthy.
+
+The current OpenCode smoke inspection may expose only `partial/observed`
+effective permission state. When that occurs, the smoke result must report
+`Review Health: Degraded/inconclusive` and `Effective permission evidence:
+partial/observed`; it must never claim `Healthy` or `read-only verified`. The
+smoke check does not synthesize a complete permission map or broaden any agent
+permission to compensate.
 
 ## Model Profiles
 
-| Profile            | Strategy                     | Key Models                                                     | Location                             |
-| :----------------- | :--------------------------- | :------------------------------------------------------------- | :----------------------------------- |
-| **default**        | Performance-first            | GPT-5.6 Luna, DeepSeek V4 Flash, Gemini 3 Flash                | `profiles/models/default.yml`        |
-| **cost-efficient** | Cost-optimized (90% savings) | Gemini 3 Flash, DeepSeek V4 Flash/Pro                          | `profiles/models/cost-efficient.yml` |
+Model routing is **balanced across speed, quality, and cost** — neither profile
+makes a performance-first or percentage-savings claim. Each profile assigns a
+per-agent model and an optional `variant`; the same two profiles are applied to
+the OMO config (`oh-my-opencode-slim.json`) and to the versioned YAML files
+below.
 
-**OMO reasoning variants:** The model profiles contain model IDs only; reasoning
-variants are defined by OMO agent configuration and are not stored in the YAML
-profiles. In the **default profile**, all reviewer agents—the aggregate Reviewer
-and every `reviewer-*` lane—use GPT-5.6 Luna (medium). The `cost-efficient`
-profile intentionally routes Fixer to DeepSeek V4 Flash and reviewer lanes to
-its existing DeepSeek V4 Flash/Pro mix.
+| Profile            | Strategy                      | Key models                                                                  | Location                             |
+| :----------------- | :---------------------------- | :-------------------------------------------------------------------------- | :----------------------------------- |
+| **default**        | Balanced (speed/quality/cost) | GPT-5.6 Luna/Terra, Novita DeepSeek V4 Pro, DeepSeek V4 Flash, Gemini 3 Flash, GLM 5.2 | `profiles/models/default.yml`        |
+| **cost-efficient** | Cost-efficient (balanced)     | Novita DeepSeek V4 Pro, DeepSeek V4 Flash/Pro, Gemini 3 Flash, GPT-5.6 Terra, GLM 5.2 | `profiles/models/cost-efficient.yml` |
+
+**Profile schema:** version 1 — each agent entry carries a required `model` and
+an optional `variant`. A profile entry that omits `variant` leaves that agent's
+existing variant unchanged during application; variants are drawn from the OMO
+agent configuration, never invented here. Both profiles route Fixer to the
+Novita DeepSeek V4 Pro thinking model (`high`), preserved unchanged.
+
+**Neutral tiers.** Routing places each agent on one of three tiers — a `high`
+reasoning tier (Luna/Terra), a balanced `medium` tier (Luna/Terra/GLM 5.2/
+DeepSeek Pro), and a fast `low`/flash tier (DeepSeek V4 Flash/Gemini 3 Flash).
+These tiers trade speed, quality, and cost without claiming a measurable speedup
+or cost reduction; no unmeasured performance or savings percentage is reported
+anywhere in this configuration.
 
 ## Agent Pantheon
 
@@ -53,35 +167,64 @@ its existing DeepSeek V4 Flash/Pro mix.
 | Agent            | Model (Default profile)   | Model (Cost-efficient profile) | Role                            |
 | :--------------- | :---------------- | :--------------------- | :------------------------------ |
 | **Orchestrator** | GPT-5.6 Luna      | Gemini 3 Flash         | Master delegator & coordinator  |
-| **Oracle**       | GPT-5.6 Luna      | DeepSeek V4 Pro        | Strategic advisor, architecture |
+| **Oracle**       | GPT-5.6 Terra     | GPT-5.6 Terra          | Strategic advisor, architecture |
 | **Explorer**     | DeepSeek V4 Flash | DeepSeek V4 Flash      | Codebase reconnaissance         |
-| **Librarian**    | DeepSeek V4 Flash | DeepSeek V4 Flash      | Knowledge retrieval             |
-| **Designer**     | GPT-5.6 Luna      | Gemini 3 Flash         | UI/UX excellence                |
-| **Fixer**        | GPT-5.6 Luna (high) | DeepSeek V4 Flash      | Implementation specialist       |
+| **Librarian**    | GPT-5.6 Luna      | DeepSeek V4 Flash      | Knowledge retrieval             |
+| **Designer**     | GLM 5.2           | GLM 5.2                | UI/UX excellence                |
+| **Fixer**        | DeepSeek V4 Pro via Novita (high) | DeepSeek V4 Pro via Novita (high) | Implementation specialist |
 | **Observer**     | Gemini 3 Flash    | Gemini 3 Flash         | Visual analysis                 |
 
-### Custom (14)
+### Custom (13 + 1 compatibility alias)
 
 | Agent                       | Model (Default profile)   | Model (Cost-efficient profile) | Dispatch when                                              |
 | :-------------------------- | :---------------- | :--------------------- | :--------------------------------------------------------- |
 | **Navigator**               | Gemini 3 Flash    | Gemini 3 Flash         | agent-browser CLI, snapshots/refs, screenshots, extraction |
-| **Detective**               | DeepSeek V4 Flash | DeepSeek V4 Flash      | Production errors, logs, metrics                           |
-| **Sage**                    | DeepSeek V4 Flash | DeepSeek V4 Flash      | Gorgias metrics, schemas, rules                            |
-| **Reviewer**                | GPT-5.6 Luna (medium) | DeepSeek V4 Flash      | PR/branch/diff review coordinator                          |
+| **Detective**               | GPT-5.6 Luna      | DeepSeek V4 Flash      | Production errors, logs, metrics                           |
+| **Sage**                    | GPT-5.6 Terra     | GPT-5.6 Terra          | Gorgias metrics, schemas, rules                            |
+| **Reviewer lanes (10)**     | Mixed: Luna, Terra, DeepSeek V4 Flash, Gemini 3 Flash | Mixed: DeepSeek V4 Flash, DeepSeek V4 Pro, GPT-5.6 Terra | OpenCode orchestrator review workflow |
 | **reviewer-code**           | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | CLAUDE.md compliance, bugs                                 |
-| **reviewer-test**           | GPT-5.6 Luna (medium) | DeepSeek V4 Flash      | Behavioral test coverage                                   |
+| **reviewer-test**           | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Behavioral test coverage                                   |
 | **reviewer-errors**         | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Silent failures, error handling                            |
 | **reviewer-types**          | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Type encapsulation, invariants                             |
-| **reviewer-security**       | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Security boundaries, secrets, input safety                 |
+| **reviewer-security**       | GPT-5.6 Terra (medium) | GPT-5.6 Terra          | Security boundaries, secrets, input safety                 |
 | **reviewer-performance**    | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Algorithms, I/O, queries, hot paths                        |
-| **reviewer-data-integrity** | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Persistence, transactions, state integrity                 |
-| **reviewer-accessibility**  | GPT-5.6 Luna (medium) | DeepSeek V4 Flash      | WCAG and UI accessibility                                  |
-| **reviewer-comments**       | GPT-5.6 Luna (medium) | DeepSeek V4 Flash      | Comment and documentation accuracy                         |
-| **reviewer-simplifier**     | GPT-5.6 Luna (medium) | DeepSeek V4 Flash      | Post-Phase-A clarity and maintainability pass              |
+| **reviewer-data-integrity** | GPT-5.6 Terra (medium) | GPT-5.6 Terra          | Persistence, transactions, state integrity                 |
+| **reviewer-accessibility**  | Gemini 3 Flash    | DeepSeek V4 Flash      | WCAG and UI accessibility                                  |
+| **reviewer-comments**       | DeepSeek V4 Flash | DeepSeek V4 Flash      | Comment and documentation accuracy                         |
+| **reviewer-simplifier**     | DeepSeek V4 Flash | DeepSeek V4 Flash      | Post-Phase-A clarity and maintainability pass              |
 
-**Council** disabled. Observer auto-routes images from Orchestrator.
+**Council** disabled. Observer auto-routes images from Orchestrator. The
+`reviewer` agent is a retained compatibility-coordinator alias (excluded from
+the 13 custom agents above); OpenCode review ownership runs through the
+orchestrator's preloaded reviewer workflow.
 
-**Model Profiles Rationale:** The **default profile** uses GPT-5.6 Luna for orchestration, implementation, design, and all reviewer agents (medium variants); DeepSeek V4 Flash for exploration, retrieval, and domain/diagnostic work; and Gemini 3 Flash for observation and navigation. The `cost-efficient` profile intentionally retains its alternate Fixer and reviewer model routing, providing ~90-95% cost reduction with competitive performance for most routine development tasks.
+**Model Profiles Rationale:** routing is **neutral across speed, quality, and
+cost**. Both profiles use Novita DeepSeek V4 Pro for the Fixer with the preserved
+`high` variant and route reasoning through `reasoning_content`; sampling
+overrides (`temperature`, `top_p`, and `top_k`) are not configured because this
+thinking model does not support them. Both profiles route Oracle and Sage to
+GPT-5.6 Terra and Designer to GLM 5.2. The **default profile** routes Librarian
+and Detective to GPT-5.6 Luna and uses a balanced mix for the reviewer lanes.
+The `cost-efficient` profile routes the orchestrator to Gemini 3 Flash and uses
+a lower-cost Flash/Pro mix for the subagents and reviewer lanes. No unmeasured
+performance or percentage-savings claim is made for either profile.
+
+### Novita Fixer compatibility
+
+The source configuration uses the exact model ID
+`bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro` in both profiles and the
+OMO `bifrost.fixer` assignment. The matching Bifrost provider entry enables
+`interleaved.field = reasoning_content` and preserves its existing fallback
+chain and credential reference. The provider catalog confirms the model entry;
+the Bifrost grant, `high` variant acceptance, and multi-turn reasoning/tool-use
+round trip remain runtime compatibility checks rather than static guarantees.
+The regression assertion in `scripts/test_model_profile.py` ensures Fixer remains
+assigned to this model and the `high` variant across all configuration sources.
+
+After deployment, restart OpenCode in a fresh process, then run a multi-turn
+Fixer tool-use smoke test (at least two tool turns). Treat missing grant,
+unsupported variant/parameters, reasoning-content round-trip errors, or
+`finish_reason: length` as a compatibility failure—not a successful fallback.
 
 ## Directory Map
 
@@ -131,8 +274,9 @@ or reviewer.
 S/M work uses one concise merged SDD + implementation plan, one approval, and
 implementation dispatched to `@fixer` for code or `@designer` for UI/UX as
 appropriate. It then always runs exactly one automatic post-implementation
-`@reviewer` gate; it does not use `executing-plans`, a ledger, or per-task
-reviews, and does not ask the user to choose whether to review.
+review gate through the OpenCode orchestrator's preloaded reviewer workflow;
+it does not use `executing-plans`, a ledger, or per-task reviews, and does not
+ask the user to choose whether to review.
 
 L/XL work keeps the full SDD and `executing-plans` flow, including its required
 per-task reviews. Its final comprehensive `reviewing-plans` pass remains
@@ -143,17 +287,21 @@ S/M post-implementation reviewer gate.
 | ------------------------------------ | ----------------- | --------------------------------------------------------------------------------------- |
 | 1. Brainstorm                        | `brainstorming`   | @explorer, @librarian, @oracle, @designer                                               |
 | 2. Plan                              | `writing-plans`   | — (orchestrator writes the S/M combined plan or L/XL plan)                              |
-| 3. Execute                           | S/M combined-plan; `executing-plans` for L/XL | @fixer (code), @designer (UI/UX), @reviewer (S/M post-implementation or L/XL per-task), @oracle (escalation) |
-| 4. Review (optional; user-confirmed) | `reviewing-plans` | @reviewer (final gate — up to 10 applicable reviewer-\* specialists, only after opt-in) |
+| 3. Execute                           | S/M combined-plan; `executing-plans` for L/XL | @fixer (code), @designer (UI/UX), OpenCode orchestrator (S/M post-implementation or L/XL per-task), @oracle (escalation) |
+| 4. Review (optional; user-confirmed) | `reviewing-plans` | OpenCode orchestrator (final gate — up to 10 applicable reviewer-* specialists, only after opt-in) |
 
 See `docs/sdd-workflow.md` for the full flowchart and agent usage matrix.
 
-## Agent tmp paths
+## Agent output paths
 
-| Agent     | Output path       |
-| --------- | ----------------- |
-| Navigator | `/tmp/navigator/` |
-| Sage      | `/tmp/sage/`      |
+OpenCode permission patterns support `~/` paths and globs. Navigator and Sage
+may write only to their dedicated paths below; their broad edit/write and
+external-directory permissions remain denied.
+
+| Agent     | Output path                                      |
+| --------- | ------------------------------------------------ |
+| Navigator | `~/.cache/opencode/agent-output/navigator/`      |
+| Sage      | `~/.cache/opencode/agent-output/sage/`           |
 
 > PR description files use `/tmp/pr-<branch>.md` (ephemeral, not grouped here).
 
@@ -351,13 +499,14 @@ Repository MCP definitions live in `.rulesync/mcp.jsonc`; agent assignments live
 | context7            | ✓           | Librarian                                              |
 | github              | ✓           | Orchestrator                                           |
 | sentry              | ❌ disabled | —                                                      |
+| notion              | ❌ disabled | —                                                      |
 | linear              | ✓           | Librarian                                              |
 | gcp-logging         | ❌ disabled | Detective uses `gcloud` CLI via Bash instead           |
 | cortex              | ✓           | Sage, Librarian (Internal docs/Notion via Cortex MCP)  |
 | rootly              | ❌ disabled | —                                                      |
 | agent-browser CLI   | ✓           | Navigator via Bash and the `agent-browser` skill       |
 | gorgias-mcp         | disabled    | —                                                      |
-| figma               | ✓           | —                                                      |
+| figma-mcp           | ✓           | Designer                                                |
 
 **Datadog & GCP Logs:** via `pup` and `gcloud` CLIs (Bash), not MCP. Always call `pup` with `--agent --read-only` flags.
 
@@ -365,7 +514,7 @@ Repository MCP definitions live in `.rulesync/mcp.jsonc`; agent assignments live
 
 Models routed through `https://bifrost.ops.gorgias.io` with 3 provider types:
 
-- `bf` — OpenAI-compatible (DeepSeek V4, Gemini, GLM)
+- `bf` — OpenAI-compatible (DeepSeek V4 via Fireworks/Novita, Gemini, GLM)
 - `bf-a` — Anthropic (Claude Haiku 4.5, Sonnet 4.6/5, Opus 4.8)
 - `bf-o` — OpenAI (GPT-4o, GPT-5.x Terra/Luna/Sol)
 

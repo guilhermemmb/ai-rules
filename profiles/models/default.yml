@@ -1,22 +1,68 @@
-# .planning/model-profiles/default.yaml
-orchestrator: "bf-o/gpt-5.6-luna"
-oracle: "bf-o/gpt-5.6-luna"
-explorer: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
-librarian: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
-fixer: "bf-o/gpt-5.6-luna"
-designer: "bf-o/gpt-5.6-luna"
-observer: "bf/gemini/gemini-3-flash-preview"
-navigator: "bf/gemini/gemini-3-flash-preview"
-sage: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
-detective: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
-reviewer: "bf-o/gpt-5.6-luna"
-reviewer-code: "bf-o/gpt-5.6-luna"
-reviewer-comments: "bf-o/gpt-5.6-luna"
-reviewer-test: "bf-o/gpt-5.6-luna"
-reviewer-errors: "bf-o/gpt-5.6-luna"
-reviewer-types: "bf-o/gpt-5.6-luna"
-reviewer-security: "bf-o/gpt-5.6-luna"
-reviewer-performance: "bf-o/gpt-5.6-luna"
-reviewer-data-integrity: "bf-o/gpt-5.6-luna"
-reviewer-simplifier: "bf-o/gpt-5.6-luna"
-reviewer-accessibility: "bf-o/gpt-5.6-luna"
+# Model profile with per-agent model and optional variant.
+# Schema version 1: each agent entry is {model, optional variant}.
+# Variants are drawn from the OMO preset/custom-agent configuration;
+# no variants are invented here.
+# A profile entry that omits variant leaves the agent's existing
+# variant unchanged during application.
+version: 1
+agents:
+  orchestrator:
+    model: "bf-o/gpt-5.6-luna"
+    variant: "high"
+  oracle:
+    model: "bf-o/gpt-5.6-terra"
+    variant: "high"
+  explorer:
+    model: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
+    variant: "low"
+  librarian:
+    model: "bf-o/gpt-5.6-luna"
+    variant: "low"
+  fixer:
+    model: "bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro"
+    variant: "high"
+  designer:
+    model: "bf/huggingface/together/zai-org/GLM-5.2"
+    variant: "medium"
+  observer:
+    model: "bf/gemini/gemini-3-flash-preview"
+  navigator:
+    model: "bf/gemini/gemini-3-flash-preview"
+  sage:
+    model: "bf-o/gpt-5.6-terra"
+  detective:
+    model: "bf-o/gpt-5.6-luna"
+    variant: "medium"
+  reviewer:
+    model: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
+    variant: "medium"
+  reviewer-code:
+    model: "bf-o/gpt-5.6-luna"
+    variant: "medium"
+  reviewer-comments:
+    model: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
+    variant: "low"
+  reviewer-test:
+    model: "bf-o/gpt-5.6-luna"
+    variant: "medium"
+  reviewer-errors:
+    model: "bf-o/gpt-5.6-luna"
+    variant: "medium"
+  reviewer-types:
+    model: "bf-o/gpt-5.6-luna"
+    variant: "medium"
+  reviewer-security:
+    model: "bf-o/gpt-5.6-terra"
+    variant: "medium"
+  reviewer-performance:
+    model: "bf-o/gpt-5.6-luna"
+    variant: "medium"
+  reviewer-data-integrity:
+    model: "bf-o/gpt-5.6-terra"
+    variant: "medium"
+  reviewer-simplifier:
+    model: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
+    variant: "low"
+  reviewer-accessibility:
+    model: "bf/gemini/gemini-3-flash-preview"
+    variant: "medium"

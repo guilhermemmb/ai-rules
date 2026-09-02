@@ -275,6 +275,9 @@
           },
           "family": "deepseek-thinking",
           "release_date": "2026-04-24",
+          "interleaved": {
+            "field": "reasoning_content"
+          },
           "options": {
             "fallbacks": [
               "bf-a/claude-sonnet-5",

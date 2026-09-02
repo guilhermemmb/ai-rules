@@ -215,6 +215,18 @@ Every implementation task dispatched to @fixer must include these fields in the 
 
 Tasks without explicit file paths, acceptance criteria, or validation commands must be refined before dispatch. Unresolved cross-boundary or architecture decisions must be surfaced in `Interfaces/Constraints` — fixers do not make design calls.
 
+For implementation scheduling, each task must also declare its complete write
+set and dependency metadata in `Files` and `Interfaces/Constraints`: producers,
+consumers, shared resources, generated outputs, lockfiles, and explicit ordering.
+Every path the fixer may create, modify, delete, or generate belongs in the
+hard `Files` allowlist; reports and planning artifacts are not implicit outputs.
+Only ready tasks with pairwise disjoint, complete write sets and no interface,
+shared-state, or ordering dependency may share an OpenCode batch. The
+orchestrator may dispatch at most **3** independent `@fixer` children with
+`background=true`, waits for the same batch, reconciles exact returned session
+IDs with `task_result`, and requires a per-child review before releasing a
+dependent. Missing or ambiguous metadata stays serial.
+
 **Commit steps:** Plans may include `- [ ] Commit` steps with `git commit` commands. These steps MUST be excluded when dispatching to @fixer. Commits are orchestrator-owned: the fixer implements code and reports status, but does not stage or commit. If the plan's task text contains a commit step, the dispatch payload must explicitly exclude it or append `Commits are orchestrator-owned — do not commit.` to the `Steps` field.
 
 ### Task-Size Guidance by Model Tier

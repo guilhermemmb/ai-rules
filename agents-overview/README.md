@@ -36,37 +36,71 @@ flowchart TD
     ORCH --> NAVIGATOR[Navigator]
     ORCH --> DETECTIVE[Detective]
     ORCH --> SAGE[Sage]
-    ORCH --> REVIEWER[Reviewer]
-    REVIEWER --> REVIEWERCODE["Reviewer Code"]
-    REVIEWER --> REVIEWERCOMMENTS["Reviewer Comments (if docs)"]
-    REVIEWER --> REVIEWERTEST["Reviewer Test (if tests)"]
-    REVIEWER --> REVIEWERERRORS["Reviewer Errors (if errors)"]
-    REVIEWER --> REVIEWERTYPES["Reviewer Types (if types)"]
-    REVIEWER --> REVIEWERSECURITY["Reviewer Security (if security-sensitive)"]
-    REVIEWER --> REVIEWERPERFORMANCE["Reviewer Performance (if performance-sensitive)"]
-    REVIEWER --> REVIEWERDATA["Reviewer Data Integrity (if data-sensitive)"]
-    REVIEWER --> REVIEWERACCESSIBILITY["Reviewer Accessibility (if UI files)"]
-    REVIEWER --> REVIEWERSIMPLIFIER["Reviewer Simplifier (conditional, sequential after Phase A for source/config changes)"]
+    ORCH --> REVIEWERCODE["Reviewer Code (OpenCode direct)"]
+    ORCH --> REVIEWERCOMMENTS["Reviewer Comments (OpenCode direct, if docs)"]
+    ORCH --> REVIEWERTEST["Reviewer Test (OpenCode direct, if tests)"]
+    ORCH --> REVIEWERERRORS["Reviewer Errors (OpenCode direct, if errors)"]
+    ORCH --> REVIEWERTYPES["Reviewer Types (OpenCode direct, if types)"]
+    ORCH --> REVIEWERSECURITY["Reviewer Security (OpenCode direct, if security-sensitive)"]
+    ORCH --> REVIEWERPERFORMANCE["Reviewer Performance (OpenCode direct, if performance-sensitive)"]
+    ORCH --> REVIEWERDATA["Reviewer Data Integrity (OpenCode direct, if data-sensitive)"]
+    ORCH --> REVIEWERACCESSIBILITY["Reviewer Accessibility (OpenCode direct, if UI files)"]
+    ORCH --> REVIEWERSIMPLIFIER["Reviewer Simplifier (OpenCode direct, sequential Phase B)"]
+    ORCH --> REVIEWER["Reviewer (compatibility coordinator alias)"]
+    REVIEWER -.-> REVIEWERCODE
+    REVIEWER -.-> REVIEWERCOMMENTS
+    REVIEWER -.-> REVIEWERTEST
+    REVIEWER -.-> REVIEWERERRORS
+    REVIEWER -.-> REVIEWERTYPES
+    REVIEWER -.-> REVIEWERSECURITY
+    REVIEWER -.-> REVIEWERPERFORMANCE
+    REVIEWER -.-> REVIEWERDATA
+    REVIEWER -.-> REVIEWERACCESSIBILITY
+    REVIEWER -.-> REVIEWERSIMPLIFIER
 ```
 
-Reviewer dispatches applicable concern lanes in independent background batches.
-After Phase A completes, reviewer-simplifier runs exactly once sequentially only
-when selected/applicable—when the normalized diff contains a non-empty
-executable/source/config diff and the aspect filter permits it—and receives the
-consolidated Phase A findings. The runtime setting
+OpenCode implementation scheduling is bounded separately from reviewer
+scheduling: the orchestrator may dispatch at most **3** independent
+`@fixer` children with `background=true` in one batch. It waits for the same
+batch, reconciles exact returned child session IDs with `task_result`, and
+requires a passing review for every `DONE` child before releasing dependents.
+Overlapping, ambiguous, shared, generated, lockfile, and ordered work remains
+serial. Each fixer receives a hard `Files` write allowlist; because OpenCode
+does not expose dynamic per-task path ACLs, changed-path smoke evidence rejects
+unowned writes. Failed, timed-out, `NEEDS_CONTEXT`, `BLOCKED`, missing, or
+malformed results hold dependents and are surfaced.
+
+The OpenCode orchestrator dispatches applicable concern lanes in independent
+background batches. After Phase A completes, reviewer-simplifier runs exactly
+once sequentially only when selected/applicable—when the normalized diff
+contains a non-empty executable/source/config diff and the aspect filter permits
+it—and receives the consolidated Phase A findings. The runtime setting
 `REVIEWER_MAX_PARALLEL` controls each concern batch; unset or invalid values
 default to `3`, values from `1` through `3` are used, and values above `3`
 are clamped to `3`. Any non-empty lane `errors` array makes Review Health
 Degraded/inconclusive.
+OpenCode review commands run the preloaded reviewer workflow through the
+orchestrator, which alone owns lane selection and aggregation. The `reviewer`
+agent is a retained compatibility-coordinator alias, not an OpenCode
+coordinator. The ten `reviewer-*` agents are read-only leaf lanes; they do not
+load the reviewer skill or dispatch further tasks. Failed, timed-out,
+unavailable, malformed, or incomplete results remain lane errors, while valid
+findings from other lanes are retained without invented citations.
 
 ## Model Routing and Reasoning Variants
 
 The model values shown in this overview describe the **default profile**. YAML
-profiles contain model IDs only; reasoning variants are defined by OMO agent
-configuration and are not stored in the YAML profiles. In the default profile,
-all reviewer agents—the aggregate Reviewer and every `reviewer-*` lane—use
-GPT-5.6 Luna (medium). The `cost-efficient` profile intentionally retains its
-alternate Fixer and reviewer model routing.
+profiles use schema version 1 with a required per-agent `model` and an optional
+`variant`; a profile entry that omits `variant` leaves the agent's existing
+variant unchanged. The default profile uses a balanced speed/quality/cost mix:
+GPT-5.6 Luna for orchestration and most reviewer lanes, GPT-5.6 Terra for
+Oracle/Sage and security/data-integrity reviewers, DeepSeek V4 Flash for
+exploration and low-tier reviewer lanes, Gemini 3 Flash for
+observer/navigator/reviewer-accessibility, and GLM 5.2 for Designer. The
+`cost-efficient` profile routes the orchestrator to Gemini 3 Flash and uses a
+lower-cost Flash/Pro mix. Neither profile makes a performance-first or
+percentage-savings claim. Both profiles keep Fixer on Novita DeepSeek V4 Pro
+(high), unchanged.
 
 ## Using the Visualization
 
@@ -181,7 +215,7 @@ Update the visualization whenever you change:
 - Update infrastructure/config in `.rulesync/mcp.jsonc`
 - Modify skills in the global rules
 
-### Claude Instruction
+### OpenCode Instruction
 
 Add this reminder to `.rulesync/rules/custom-rules.md` or your memory:
 
@@ -220,15 +254,15 @@ No code needed—YAML drives everything.
 - **explorer** — Codebase reconnaissance; broad searches, pattern discovery
 - **librarian** — Knowledge retrieval; library docs (context7), web search, Linear, Gorgias internal docs/Notion (via Cortex), GitHub code search
 - **designer** — UI/UX implementation; visual components, frontend polish, Figma Desktop
-- **fixer** — Bounded implementation; scoped bug fixes, mechanical code changes
+- **fixer** — Bounded implementation; scoped bug fixes and mechanical code changes within a hard declared `Files` allowlist; up to three independent children may run per OpenCode batch
 - **observer** — Visual analysis; images, screenshots, PDFs (auto-routed from orchestrator)
 
 **Custom:**
 
 - **navigator** — Browser automation via the agent-browser CLI; snapshots/refs, navigation, screenshots, forms, extraction
-- **detective** — Production diagnostics; Datadog (pup CLI), GCP logs (gcloud), root cause analysis
+- **detective** — Production diagnostics; Datadog (pup CLI), GCP logs (gcloud), root cause analysis (Sentry/Rootly/Notion reported unavailable)
 - **sage** — Domain knowledge; Gorgias metrics, table schemas, business rules (cortex)
-- **reviewer** — PR review orchestrator; bounded parallel batches of applicable specialist lanes
+- **reviewer** — retained compatibility-coordinator alias; OpenCode uses the orchestrator directly
 - **reviewer-code** — Always-on general correctness and project-guideline review
 - **reviewer-test** — Behavioral test coverage (test files or uncovered production behavior)
 - **reviewer-errors** — Error, retry, fallback, and failure-propagation review
@@ -257,7 +291,7 @@ No code needed—YAML drives everything.
 
 **designer:**
 
-- **figma-desktop** — Design files (local Figma Desktop app, http://127.0.0.1:3845/mcp)
+- **figma-mcp** — Design files (local Figma Desktop app, http://127.0.0.1:3845/mcp)
 
 **detective:**
 
@@ -288,6 +322,7 @@ No code needed—YAML drives everything.
 - **oh-my-opencode-slim** — Plugin self-configuration
 - **project-context** — Project summaries
 - **brainstorming / writing-plans / executing-plans / reviewing-plans** — SDD workflow
+- **reviewer** — Ten-lane review workflow; OpenCode coordinator owns direct dispatch and aggregation
 
 **Oracle:**
 
@@ -298,15 +333,15 @@ No code needed—YAML drives everything.
 - **dd-pup** — Datadog CLI reference
 - **dd-apm** — APM traces & services
 - **dd-logs** — Log search & management
-- **dd-monitors** — Monitor alerting
-- **dd-debugger** — Live debugger probes
-- **incident-response** — Incident tracking & on-call
+- **dd-symdb** — Symbol database / probe-able methods
+- **traces** — APM traces and spans
+- **logs** — Datadog log search/analysis
 
 ### Infrastructure
 
 - **OpenCode** — Entry point, OMO Slim plugin host
 - **Oh My OpenCode Slim** — Agent orchestration (preset: bifrost)
-- **Model Profiles** — Switch between `default` (performance) and `cost-efficient` (90% savings) via `deploy.sh --model-profile=<name>`
+- **Model Profiles** — Switch between `default` and `cost-efficient` profiles via `deploy.sh --model-profile=<name>`. Routing is balanced across speed, quality, and cost; no performance-first or percentage-savings claim is made.
 - **Bifrost** — Model gateway (https://bifrost.ops.gorgias.io)
 - **RTK** — Token optimization plugin (~60-90% reduction)
 - **zsh Environment** — Shell config (VOLTA_HOME, GORGIAS_ROOT, aliases)
@@ -329,8 +364,9 @@ determines whether work is immediate, uses a merged plan, or follows full SDD.
 - **S/M** — use one concise merged SDD + implementation plan in
   `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, show it once,
   and obtain one approval before dispatching implementation to `@fixer` for
-  code or `@designer` for UI/UX as appropriate. Then dispatch exactly one
-  automatic post-implementation `@reviewer` and run proportionate validation.
+  code or `@designer` for UI/UX as appropriate. Then run exactly one
+  post-implementation review gate (OpenCode orchestrator) and run proportionate
+  validation.
   Do not create a separate spec, load `executing-plans`, create a ledger, run a
   per-task review, or prompt for a review choice.
 - **L** — multi-area/cross-system work or material uncertainty.
@@ -362,7 +398,7 @@ flowchart TD
         SM3["Show plan once"]
         SM4{"Approve plan once?"}
         SM5["Dispatch implementation\n@fixer (code) / @designer (UI/UX)"]
-        SM6["Dispatch exactly one automatic @reviewer\npost-implementation gate"]
+        SM6["Run exactly one review gate\nOpenCode: orchestrator\npost-implementation"]
         SM8["Proportionate validation\n(no separate spec, executing-plans, ledger,\nor per-task review or review-choice prompt)"]
         SM7["Revise, clarify, or defer"]
 
@@ -412,7 +448,7 @@ flowchart TD
         E2 -->|NEEDS_CONTEXT| E1
         E2 -->|BLOCKED, context issue| E1
         E2 -->|BLOCKED, too hard| E5[Escalate to @oracle]
-        E2 -->|DONE| E3[Dispatch @reviewer\nspec compliance + quality]
+        E2 -->|DONE| E3[Run review gate\nOpenCode: orchestrator\nspec compliance + quality]
         E3 --> E4{Review passed?}
         E4 -->|no, up to 3 rounds| E1
         E4 -->|yes| E6{More tasks\nin plan?}
@@ -426,7 +462,7 @@ flowchart TD
 
     subgraph P4["🔍 L/XL — Phase 4: Reviewing Plans"]
         direction TB
-        R1[Gather plan + ledger\n+ full branch diff] --> R2[Dispatch @reviewer\nfull comprehensive review]
+        R1[Gather plan + ledger\n+ full branch diff] --> R2[Run review gate\nOpenCode: orchestrator\nfull comprehensive review]
         R2 --> R3{Critical issues\n= 0?}
     end
 
@@ -444,8 +480,9 @@ flowchart TD
   SDD, or reviewer.
 - S/M work gets one concise merged plan in `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, shown once
   and approved once before dispatching implementation to `@fixer` for code or
-  `@designer` for UI/UX as appropriate. It then dispatches exactly one
-  automatic post-implementation `@reviewer` and runs proportionate validation.
+  `@designer` for UI/UX as appropriate. It then runs exactly one
+  automatic post-implementation review gate (OpenCode orchestrator) and runs
+  proportionate validation.
   It skips a separate spec, `executing-plans`, a ledger, per-task review, and
   the review-choice prompt.
 - L/XL work is full SDD: show and approve the separate design/spec in
@@ -463,7 +500,7 @@ flowchart TD
 **Orchestrator hard-enforced dispatch rules (no direct access):**
 
 - agent-browser CLI or chrome-devtools-mcp → dispatch to navigator; Navigator runs agent-browser through Bash
-- sentry, rootly → dispatch to detective, which reports those sources unavailable (gcp-logging disabled)
+- sentry, rootly, notion → dispatch to detective, which reports those sources unavailable (gcp-logging disabled)
 - cortex → dispatch to sage
 - linear, cortex → dispatch to librarian (internal docs/Notion)
 

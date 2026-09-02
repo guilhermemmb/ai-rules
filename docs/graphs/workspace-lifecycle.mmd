@@ -1,0 +1,45 @@
+%% Workspace and deployment lifecycle (current behavior)
+%% See docs/workflows.md; source: README.md, deploy.sh
+
+flowchart TD
+    START(["Operator request"])
+
+    subgraph OWNER["Ownership chain"]
+        direction TB
+        WT["Worktrunk<br/>only Git worktree lifecycle owner"]
+        ORCA["Orca<br/>attaches to existing Worktrunk path<br/>(never creates a 2nd checkout)"]
+        OC["OpenCode + OMO<br/>run inside Orca-owned terminal"]
+        WT --> ORCA --> OC
+    end
+
+    START --> PROVISION["wt-orca start<br/>(provisions checkout via Worktrunk)"]
+    PROVISION --> READY{"Worktree state?"}
+
+    READY -->|"ready"| ATTACH["wt-orca attach<br/>(reports Orca terminal handle)"]
+    READY -->|"failed"| RETRY["Fix setup error → rerun<br/>worktree-setup.sh + attach"]
+    READY -->|"degraded"| DEGRADED["attach --allow-degraded<br/>only if fallback acceptable"]
+    READY -->|"timeout"| TIMEOUT["status + allow more time / retry<br/>(worktree not removed)"]
+    RETRY --> READY
+    DEGRADED --> ATTACH
+    ATTACH --> DEPLOY["deploy.sh (in OpenCode)"]
+
+    subgraph DEPLOYLOOP["Deploy / check / rollback"]
+        direction TB
+        D1["Stage tracked config"]
+        D2{"Validation pass?"}
+        D3["Install manifest + config<br/>atomically"]
+        D4["Rollback via transaction snapshot<br/>preserve recovery artifacts"]
+        D5["--check dry-run<br/>ownership + drift (no mutation)"]
+        D6["--compatibility-check<br/>read-only host/plugin evidence"]
+    end
+
+    DEPLOY --> D1 --> D2
+    D2 -->|"yes"| D3
+    D2 -->|"no"| D4
+    D4 --> D1
+    D3 --> D5 --> D6
+
+    D6 --> DETACH["wt-orca stop<br/>(detach → cleanup → delegate remove)"]
+    DETACH --> REMOVE["wt remove --force<br/>(Worktrunk-owned removal)"]
+    REMOVE --> CLEANUP["pre-remove cleanup hook<br/>+ retry queue (worktree-cleanup.sh --retry-pending)"]
+    CLEANUP --> DONE(["Workspace removed"])

@@ -1,0 +1,160 @@
+%% ai-rules architecture — layers, authority, deployment
+%% Edge styles (see legend subgraph):
+%%   -->   solid  = current / source-recorded flow
+%%   -.->  dotted = read-only evidence (validator / --check / smoke)
+%%   ==>   thick  = ambiguous / unresolved precedence
+%%   --o   circle = rollback / restore
+%% Proposed relationships are not drawn here (see review-and-improvements doc).
+
+flowchart LR
+
+  subgraph SRC["Source (tracked in repo)"]
+    DEPLOY["deploy.sh"]
+    OC["opencode.json"]
+    OMO["oh-my-opencode-slim.json"]
+    RSYNC["rulesync.jsonc"]
+    RULES[".rulesync/rules/"]
+    SUB[".rulesync/subagents/"]
+    SKILLS[".rulesync/skills/"]
+    MCPJ[".rulesync/mcp.jsonc"]
+    CMD[".rulesync/commands/"]
+    APPEND[".rulesync/oh-my-opencode-slim/"]
+    PROF["profiles/models/"]
+  end
+
+  subgraph DOT["Sibling dotfiles (outside repo)"]
+    WTORCA["wt-orca.sh"]
+    WTSTATE["worktree-state.sh"]
+    WTCFG["worktrunk/config.toml"]
+    WTINST["worktrunk-install.sh"]
+  end
+
+  subgraph GEN["Generated (staged payload)"]
+    RSGEN["rulesync generate\n(AGENTS.md / opencode.jsonc /\nagents / skills)"]
+    PATCH["apply-model-profile.py"]
+    PAYLOAD["staged payload/"]
+    MANIFEST[".ai-rules.manifest.json"]
+  end
+
+  subgraph BLOCKING["Blocking deploy checks"]
+    VAL["validate-ai-rules.py\n(payload gate)"]
+    PREGATE{"deployment inputs +\nmanifest validate +\nshadow detect"}
+  end
+
+  subgraph DIAG["Read-only diagnostics"]
+    COMPAT["preflight_compatibility\n(non-blocking in deploy)"]
+    COMPATCHECK["--compatibility-check\n(status blocks smoke)"]
+  end
+
+  subgraph PRECHANGE["Pre-snapshot state changes"]
+    RECOVER["recover pending\ntransaction"]
+    PREDEP["install codebase-memory-mcp\n+ RTK / Homebrew"]
+  end
+
+  subgraph PHASES["Deployment phases"]
+    SNAPSHOT["snapshot live"]
+    PREP["rtk + omo\npackage prep"]
+    COMMIT["transactional\ncommit"]
+    ADAPT["integration artifact\ninstall"]
+  end
+
+  subgraph DEPSTATE["Deployment state (private)"]
+    SNAP["private live\nsnapshot"]
+    ABORT["abort deployment\n(no snapshot-covered\nconvergence)"]
+  end
+
+  subgraph LIVE["Installed (live)"]
+    OCDIR["~/.config/opencode/"]
+    RTK["plugins/rtk.ts"]
+    ADAPTOUT["~/.local/bin/wt-orca\n+ worktree-state.sh"]
+    WTCFGOUT["~/.config/worktrunk/\nconfig.toml"]
+    SHADOW["~/.agents/skills/reviewer/"]
+    CC["~/.claude/ (Claude Code)"]
+  end
+
+  subgraph EVID["Read-only evidence"]
+    COMPARE["manifest compare\n(--check)"]
+    CHECK["deploy.sh --check"]
+    SMOKE["smoke-*-runtime.sh"]
+  end
+
+  %% ---- current / source-recorded flows (solid) ----
+  %% Rulesync generates AGENTS.md/opencode.jsonc/agents/skills from these:
+  RULES --> RSGEN
+  SUB --> RSGEN
+  SKILLS --> RSGEN
+  MCPJ --> RSGEN
+  RSYNC -->|config| RSGEN
+  DEPLOY -->|invokes| RSGEN
+
+  %% commands, append prompts, and rulesync.jsonc are copied straight into payload:
+  CMD -->|copied directly| PAYLOAD
+  APPEND -->|copied directly| PAYLOAD
+  RSYNC -->|copied directly| PAYLOAD
+
+  PROF -->|model IDs| PATCH
+  OMO -->|base config| PATCH
+
+  PATCH --> PAYLOAD
+  OC --> PAYLOAD
+  RSGEN --> PAYLOAD
+
+  PAYLOAD --> MANIFEST
+
+  %% ---- pre-snapshot state changes (outside snapshot rollback boundary) ----
+  DEPLOY -->|may| RECOVER
+  DEPLOY -->|may| PREDEP
+
+  %% ---- blocking deploy checks ----
+  PAYLOAD --> VAL
+  PAYLOAD --> PREGATE
+  WTORCA --> PREGATE
+  WTSTATE --> PREGATE
+  WTCFG --> PREGATE
+  WTINST --> PREGATE
+  VAL -->|pass| SNAPSHOT
+  VAL -->|fail| ABORT
+  PREGATE -->|pass| SNAPSHOT
+  PREGATE -->|fail| ABORT
+
+  %% ---- read-only compatibility diagnostics (non-blocking in deploy) ----
+  DEPLOY -->|invokes| COMPAT
+  COMPAT -->|evaluated by| COMPATCHECK
+  COMPATCHECK -.->|blocks smoke when not matched| SMOKE
+
+  %% ---- deployment phases after validation ----
+  SNAPSHOT -->|captures| SNAP
+  SNAPSHOT --> PREP
+  PREP -->|initializes| RTK
+  RTK -->|contained in| OCDIR
+  PREP --> COMMIT
+  COMMIT -->|installs payload| OCDIR
+  COMMIT --> ADAPT
+  ADAPT -->|installs| ADAPTOUT
+  ADAPT -->|installs| WTCFGOUT
+
+  %% ---- rollback / restore (circle) ----
+  %% RTK is contained in OCDIR (see above); restoring OCDIR covers it.
+  SNAP --o OCDIR
+  SNAP --o ADAPTOUT
+  SNAP --o WTCFGOUT
+
+  %% ---- read-only evidence (dotted) ----
+  VAL -.->|validates source + payload| PAYLOAD
+  MANIFEST -.->|compare| COMPARE
+  COMPARE -.->|read-only| OCDIR
+  CHECK -.->|drift| OCDIR
+  CHECK -.->|detects| SHADOW
+  SMOKE -.->|runtime evidence| OCDIR
+
+  %% ---- ambiguous / unresolved precedence (thick) ----
+  RSYNC ==>|ambiguous: claudecode target| CC
+
+  %% ---- legend ----
+  subgraph LEG["Legend"]
+    L1["solid  = current / source-recorded"]
+    L2["dotted = read-only evidence"]
+    L3["thick  = ambiguous / unresolved"]
+    L4["circle = rollback / restore"]
+    L5["proposed = not drawn (see review doc)"]
+  end

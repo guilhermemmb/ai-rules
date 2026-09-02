@@ -44,7 +44,7 @@ Assign the right agent per task type:
 | Code implementation (multi-file, integration) | @fixer | xhigh |
 | UI/UX implementation (components, styling, layouts) | @designer | medium |
 | Architecture decisions, complex debugging | @oracle | high |
-| Task review (after each task) | @reviewer | high |
+| Task review (after each task) | OpenCode orchestrator's preloaded reviewer workflow; Claude Code @reviewer | high |
 | Escalation (stuck after 3 fix rounds) | @oracle | high |
 
 ## The Process
@@ -84,22 +84,32 @@ context.
    placed in the same batch. A task with missing or ambiguous metadata is not
    eligible for batching.
 
+The implementation scheduler has a hard maximum of **3** concurrent `@fixer`
+children. Each eligible child is dispatched with `background=true`; this
+implementation cap is independent of the reviewer workflow's own concurrency
+cap. Every path a task may create, modify, delete, or generate—including
+lockfiles, generated output, reports, and planning artifacts—is part of its
+write set. Unowned, shared, generated, lockfile, or ambiguous paths serialize.
+
 Run the following lifecycle for each batch:
 
 1. Select only ready tasks whose required predecessor tasks have completed
    implementation and passed review. Dispatch one fresh specialist per ready
-   task in the batch, with explicit non-overlapping ownership.
-2. Wait for an implementer report from every dispatched task in the batch
-   before advancing that batch. Track each task/session ID; do not release a
-   dependent task based on a partial report.
+   task in the batch, with explicit non-overlapping ownership, never exceeding
+   three fixer children.
+2. Wait for an implementer report from every dispatched task in the same batch
+   before advancing it. Record the exact returned session ID and job ID and
+   reconcile each result with `task_result` using that session ID—not an alias,
+   title, ordering assumption, or partial report.
 3. Send every `DONE` task to review, respecting the available reviewer cap.
    Queue excess reviews until a reviewer slot is available. Parallel reviewer
    dispatch is limited to this bounded batch review and is not permission for
    arbitrary conversational tool-call parallelism.
-4. Reconcile all implementer reports and reviews. A task is releasable only
-   after a passing review, or an explicit @oracle adjudication that resolves
-   the review under the existing escalation rules. Append each completed task
-   to the ledger.
+4. Reconcile all implementer reports and reviews, including changed paths
+   against each task's hard `Files` allowlist. A task is releasable only after
+   a passing per-child review, or an explicit @oracle adjudication that
+   resolves the review under the existing escalation rules. Append each
+   completed task to the ledger.
 5. Start a dependent batch only after every required predecessor is releasable.
    Unrelated ready tasks may continue through their own batches while a
    predecessor is blocked or being fixed; dependent tasks remain queued.
@@ -107,9 +117,11 @@ Run the following lifecycle for each batch:
 If an overlap or dependency is discovered after dispatch, stop the affected
 lanes from making further conflicting writes, preserve completed unrelated
 work, and escalate the ownership conflict for re-sequencing. Never guess which
-lane owns a shared file or output. A `NEEDS_CONTEXT` or `BLOCKED` task holds
-its dependents; unrelated tasks may finish. Apply the existing re-dispatch,
-fix-round, and @oracle escalation rules before releasing dependents.
+lane owns a shared file or output. A `NEEDS_CONTEXT`, `BLOCKED`, timeout, failed,
+missing, or malformed implementer or review result holds its dependents and is
+surfaced explicitly; unrelated tasks may finish. Apply the existing
+re-dispatch, fix-round, and @oracle escalation rules before releasing
+dependents.
 
 ### Per-Task Loop
 
@@ -163,7 +175,17 @@ The implementer returns a structured status report:
 
 **3. Review the task**
 
-Dispatch @reviewer with:
+Review coordinator ownership is target-specific:
+
+- **OpenCode:** The orchestrator runs its preloaded `reviewer` workflow directly
+  and dispatches the applicable `reviewer-*` lanes. Do not call
+  `functions.skill`, dispatch a nested `@reviewer` coordinator, or silently
+  fall back to a partial direct-lane review. A coordination failure is
+  Degraded/inconclusive and must be reported rather than bypassed.
+- **Claude Code:** Preserve the existing `@reviewer` coordinator path, which
+  selects and dispatches the same reviewer lanes.
+
+For Claude Code, dispatch @reviewer with:
 - The task brief file path
 - The implementer's report file path
 - The diff (git log --oneline + git diff from task start to HEAD)
@@ -194,7 +216,11 @@ predecessors are complete and releasable.
 
 After all tasks complete, commit the ledger file and ask the user whether to run the final comprehensive review. This is a mandatory user-choice gate. Do not load skill `reviewing-plans` or dispatch @reviewer unless the user explicitly chooses to run the review.
 
-- If the user opts in, load skill `reviewing-plans`. It will dispatch @reviewer with the plan file, ledger, and full branch diff, then present the structured report to the user.
+- If the user opts in, load skill `reviewing-plans`. In OpenCode, the
+  orchestrator runs the preloaded reviewer workflow directly with the plan file,
+  ledger, and full branch diff; it must not dispatch a nested @reviewer. In
+  Claude Code, `reviewing-plans` dispatches @reviewer with that context and then
+  presents the structured report to the user.
 - If the user skips it, append `Handoff: final review skipped by user` to the ledger and state that the merge-readiness review was not run.
 
 ## Ledger Format

@@ -1,0 +1,49 @@
+%% Dispatch and review flow (current behavior)
+%% See docs/workflows.md for prose; source: .rulesync/rules/custom-rules.md
+
+flowchart TD
+    START(["Task received"]) --> SIZE["Report: T-shirt size XS | S | M | L | XL"]
+    SIZE --> TRIAGE{"Size?"}
+
+    TRIAGE -->|"XS"| DIRECT["Immediate dispatch<br/>@fixer (code) / @designer (UI/UX)<br/>no approval · no artifact · no review"]
+    DIRECT --> DONE(["Complete"])
+
+    TRIAGE -->|"S / M"| SM_PLAN["One merged SDD + implementation plan<br/>plans/"]
+    SM_PLAN --> SM_APPROVE{"Approve once?"}
+    SM_APPROVE -->|"yes"| SM_IMPL["Dispatch @fixer / @designer"]
+    SM_APPROVE -->|"no"| SM_REVISE["Revise / clarify / defer"]
+    SM_IMPL --> SM_REVIEW["One automatic post-implementation gate<br/>OpenCode orchestrator · Claude @reviewer"]
+    SM_REVIEW --> DONE
+
+    TRIAGE -->|"L / XL"| LX_SPEC["Full SDD: separate spec (specs/)<br/>then plan (plans/)"]
+    LX_SPEC --> LX_PLAN["writing-plans → plan approved"]
+    LX_PLAN --> LX_EXEC["executing-plans → ledger + per-task dispatch"]
+
+    subgraph BATCH["Bounded fixer batch (≤ 3 concurrent @fixer children)"]
+        direction TB
+        B1["Classify: disjoint write sets only<br/>overlap/ambiguous/shared/ordered → serial"]
+        B2["Dispatch children background=true"]
+        B3["Wait for same batch"]
+        B4["Reconcile via task_result<br/>exact session IDs"]
+        B5{"Status?"}
+        B6["NEEDS_CONTEXT / BLOCKED<br/>hold dependents · surface"]
+        B7["DONE → per-child review gate"]
+    end
+
+    LX_EXEC --> BATCH
+    B1 --> B2 --> B3 --> B4 --> B5
+    B5 -->|"NEEDS_CONTEXT / BLOCKED"| B6
+    B5 -->|"DONE"| B7
+
+    B7 --> REVIEW{"Per-child review<br/>spec ✅ / quality?"}
+    REVIEW -->|"no"| FIX["Fix loop (max 3 rounds)<br/>rounds 1-2 same agent · round 3 fresh"]
+    FIX -->|"still failing"| ORACLE["Escalate to @oracle<br/>adjust plan or defer"]
+    ORACLE --> B7
+    REVIEW -->|"yes"| RELEASE["Release dependents<br/>append ledger"]
+    RELEASE --> MORE{"More tasks?"}
+    MORE -->|"yes"| BATCH
+    MORE -->|"no"| OPT_IN{"User opt-in for<br/>final comprehensive review?"}
+    OPT_IN -->|"yes"| FINAL["reviewing-plans<br/>all 10 reviewer-* lanes"]
+    OPT_IN -->|"no / skip"| SKIP["Skip final review (recorded)"]
+    FINAL --> DONE
+    SKIP --> DONE

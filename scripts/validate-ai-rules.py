@@ -8,6 +8,7 @@ tree directly, or compare that source tree with a staged deployment payload.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -33,6 +34,7 @@ BUILTIN_MCP_REFERENCES = frozenset({"gh_grep", "websearch"})
 EXTERNAL_SKILL_REFERENCES = frozenset({"codebase-memory", "orca-cli"})
 NON_MCP_OVERVIEW_ACCESS = frozenset({"agent-browser CLI", "pup CLI"})
 REVIEWER_PREFIX = "reviewer-"
+PROFILE_SCHEMA_VERSION = 1
 REQUIRED_PROFILES = ("default", "cost-efficient")
 REVIEWER_CONTRACT_FIELDS = (
     '"critical"',
@@ -41,6 +43,43 @@ REVIEWER_CONTRACT_FIELDS = (
     '"positive"',
     '"errors"',
 )
+REVIEWER_HEALTH_FIELDS = (
+    "coordinator identity",
+    "resolved concurrency",
+    "completed",
+    "failed or invalid",
+    "runtime smoke evidence",
+    "effective permission evidence",
+    "repository immutability",
+    "degraded/inconclusive",
+)
+RUNTIME_SMOKE_SCRIPT = "scripts/smoke-opencode-reviewer-runtime.sh"
+FIXER_RUNTIME_SMOKE_SCRIPT = "scripts/smoke-opencode-fixer-runtime.sh"
+FIXER_BATCH_MAX = 3
+FIXER_MODEL = "bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro"
+UNSUPPORTED_THINKING_PARAMETERS = frozenset({"temperature", "top_p", "top_k"})
+BIFROST_OPENAI_COMPATIBLE_PACKAGE = "@ai-sdk/openai-compatible"
+BIFROST_PROVIDER_NAME = "Gorgias Bifrost"
+BIFROST_BASE_URL = "https://bifrost.ops.gorgias.io/v1"
+BIFROST_CREDENTIAL_REFERENCE = (
+    "{file:/Users/guilhermebomfim/.config/gorgias-ai/bifrost-virtual-key}"
+)
+NOVITA_MODEL_ID = "huggingface/novita/deepseek-ai/DeepSeek-V4-Pro"
+NOVITA_FIXER_FALLBACKS = (
+    "bf-a/claude-sonnet-5",
+    "gemini/gemini-3-flash-preview",
+    "openai/gpt-5.4",
+    "anthropic/claude-haiku-4-5",
+)
+OPENCODE_MANIFEST_NAME = ".ai-rules.manifest.json"
+OPENCODE_MANAGED_BY = "ai-rules/deploy.sh"
+OPENCODE_MANIFEST_VERSION = 1
+PORTABLE_AGENT_OUTPUT_PATHS = {
+    "navigator": "~/.cache/opencode/agent-output/navigator/**",
+    "sage": "~/.cache/opencode/agent-output/sage/**",
+}
+RULESYNC_TARGETS = frozenset({"opencode"})
+OPENCODE_OUTPUT_ROOT = str(Path.home())
 
 
 def _has_reviewer_contract_agent(text: str, lane: str) -> bool:
@@ -167,9 +206,17 @@ def _jsonc_without_comments(text: str) -> str:
 
 
 class Validator:
-    def __init__(self, root: Path, payload: Path | None):
+    def __init__(
+        self,
+        root: Path,
+        payload: Path | None,
+        opencode_config: Path | None = None,
+    ):
         self.root = root.resolve()
         self.payload = payload.resolve() if payload else None
+        self.opencode_config = (
+            opencode_config.resolve() if opencode_config else None
+        )
         self.errors: list[str] = []
 
     def display_path(self, path: Path) -> str:
@@ -609,6 +656,158 @@ class Validator:
             )
         return agents, mcp_references, skill_references
 
+    def validate_opencode_reviewer_routing(self, artifact: Artifact) -> None:
+        """Validate active OpenCode reviewer ownership and compatibility aliasing."""
+
+        config = self.require_mapping(artifact, "oh-my-opencode-slim.json")
+        if config is None:
+            return
+
+        presets = config.get("presets")
+        active_preset = config.get("preset", "bifrost")
+        if not isinstance(presets, dict) or not isinstance(active_preset, str):
+            return
+
+        active_preset_specification = presets.get(active_preset)
+        if not isinstance(active_preset_specification, dict):
+            return
+
+        orchestrator = active_preset_specification.get("orchestrator")
+        if not isinstance(orchestrator, dict):
+            self.add_error(
+                artifact.path,
+                f"presets.{active_preset}.orchestrator must be a mapping for reviewer ownership",
+                key="orchestrator",
+                text=artifact.text,
+            )
+        else:
+            skills = orchestrator.get("skills")
+            if not isinstance(skills, list):
+                self.add_error(
+                    artifact.path,
+                    f"presets.{active_preset}.orchestrator.skills must be a list for reviewer ownership",
+                    key="skills",
+                    text=artifact.text,
+                )
+            elif "reviewer" not in skills:
+                self.add_error(
+                    artifact.path,
+                    f"presets.{active_preset}.orchestrator.skills must include reviewer",
+                    key="skills",
+                    text=artifact.text,
+                )
+
+        custom_agents = config.get("agents")
+        reviewer_alias = (
+            custom_agents.get("reviewer")
+            if isinstance(custom_agents, dict)
+            else None
+        )
+        if not isinstance(reviewer_alias, dict):
+            self.add_error(
+                artifact.path,
+                "agents.reviewer compatibility alias is missing",
+                key="reviewer",
+                text=artifact.text,
+            )
+            return
+
+        prompt = reviewer_alias.get("prompt")
+        normalized_prompt = prompt.casefold() if isinstance(prompt, str) else ""
+        explicit_non_coordinator = all(
+            marker in normalized_prompt
+            for marker in (
+                "compatibility alias",
+                "opencode",
+                "do not use this agent",
+                "coordinator",
+            )
+        )
+        if not explicit_non_coordinator:
+            self.add_error(
+                artifact.path,
+                "agents.reviewer must be explicitly non-coordinating for OpenCode",
+                key="reviewer",
+                text=artifact.text,
+            )
+
+    def validate_agent_output_permissions(self, artifact: Artifact) -> None:
+        """Require narrow, host-portable paths for agent-generated output."""
+
+        config = self.require_mapping(artifact, "oh-my-opencode-slim.json")
+        if config is None:
+            return
+        agents = config.get("agents")
+        if not isinstance(agents, dict):
+            return
+
+        for agent_id, expected_path in PORTABLE_AGENT_OUTPUT_PATHS.items():
+            specification = agents.get(agent_id)
+            if not isinstance(specification, dict):
+                self.add_error(
+                    artifact.path,
+                    f"agents.{agent_id} must define a portable output permission",
+                    key=agent_id,
+                    text=artifact.text,
+                )
+                continue
+            permission = specification.get("permission")
+            if not isinstance(permission, dict):
+                self.add_error(
+                    artifact.path,
+                    f"agents.{agent_id}.permission must define a portable output permission",
+                    key=agent_id,
+                    text=artifact.text,
+                )
+                continue
+
+            for permission_name in ("edit", "write", "external_directory"):
+                rules = permission.get(permission_name)
+                if not isinstance(rules, dict):
+                    self.add_error(
+                        artifact.path,
+                        f"agents.{agent_id}.permission.{permission_name} must be a mapping",
+                        key=permission_name,
+                        text=artifact.text,
+                    )
+                    continue
+                if rules.get("*") != "deny" or rules.get(expected_path) != "allow":
+                    self.add_error(
+                        artifact.path,
+                        f"agents.{agent_id}.permission.{permission_name} must deny broadly and allow only {expected_path!r}",
+                        key=permission_name,
+                        text=artifact.text,
+                    )
+                allowed_paths = {
+                    path for path, action in rules.items() if action == "allow"
+                }
+                if allowed_paths != {expected_path}:
+                    self.add_error(
+                        artifact.path,
+                        f"agents.{agent_id}.permission.{permission_name} has unexpected allowed paths: {sorted(allowed_paths)}",
+                        key=permission_name,
+                        text=artifact.text,
+                    )
+
+            prompt = specification.get("prompt")
+            prompt_path = expected_path.removesuffix("**")
+            if not isinstance(prompt, str) or prompt_path not in prompt:
+                self.add_error(
+                    artifact.path,
+                    f"agents.{agent_id}.prompt must document the portable output path {prompt_path!r}",
+                    key=agent_id,
+                    text=artifact.text,
+                )
+
+        for legacy_path in ("/tmp/navigator", "/tmp/sage"):
+            if legacy_path in artifact.text:
+                self.add_error(
+                    artifact.path,
+                    f"agent output permissions must not use hardcoded {legacy_path!r}",
+                    key=legacy_path,
+                    text=artifact.text,
+                )
+
     def _collect_agent_section(
         self,
         artifact: Artifact,
@@ -721,14 +920,355 @@ class Validator:
                     text=artifact.text,
                 )
             if selected_profile and selected_profile in profile_data:
-                expected = profile_data[selected_profile].get(agent_id)
-                if expected != model:
+                expected_spec = profile_data[selected_profile].get(agent_id)
+                if isinstance(expected_spec, dict):
+                    expected_model = expected_spec.get("model")
+                    if expected_model != model:
+                        self.add_error(
+                            artifact.path,
+                            f"agents.{agent_id}.model {model!r} does not match profile {selected_profile!r} ({expected_model!r})",
+                            key=agent_id,
+                            text=artifact.text,
+                        )
+                    # Validate variant preservation
+                    expected_variant = expected_spec.get("variant")
+                    actual_variant = specification.get("variant")
+                    if expected_variant is not None and actual_variant != expected_variant:
+                        self.add_error(
+                            artifact.path,
+                            f"agents.{agent_id}.variant {actual_variant!r} does not match profile {selected_profile!r} ({expected_variant!r})",
+                            key=agent_id,
+                            text=artifact.text,
+                        )
+
+    @staticmethod
+    def _unsupported_parameter_paths(value: Any, path: str) -> list[str]:
+        """Find sampling overrides that are unsupported by the thinking model."""
+
+        paths: list[str] = []
+        if isinstance(value, dict):
+            for key, child in value.items():
+                if not isinstance(key, str):
+                    continue
+                child_path = f"{path}.{key}" if path else key
+                normalized = re.sub(r"(?<!^)(?=[A-Z])", "_", key)
+                normalized = normalized.casefold().replace("-", "_")
+                if normalized in UNSUPPORTED_THINKING_PARAMETERS:
+                    paths.append(child_path)
+                paths.extend(Validator._unsupported_parameter_paths(child, child_path))
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                paths.extend(
+                    Validator._unsupported_parameter_paths(child, f"{path}[{index}]")
+                )
+        return paths
+
+    def validate_fixer_model_contract(
+        self,
+        omo_artifact: Artifact,
+        profiles: dict[str, dict[str, Any]],
+        opencode_artifact: Artifact | None,
+        model_catalog: set[str],
+        overview_artifact: Artifact | None = None,
+    ) -> None:
+        """Validate Novita wiring without allowing unrelated fixer drift."""
+
+        for profile_name in REQUIRED_PROFILES:
+            profile = profiles.get(profile_name)
+            if profile is None:
+                continue
+            fixer_spec = profile.get("fixer")
+            fixer_model = fixer_spec.get("model") if isinstance(fixer_spec, dict) else None
+            if fixer_model != FIXER_MODEL:
+                profile_path = self.root / "profiles" / "models" / f"{profile_name}.yml"
+                self.add_error(
+                    profile_path,
+                    f"profile {profile_name!r}.fixer must be {FIXER_MODEL!r}",
+                    key="fixer",
+                )
+
+        omo = self.require_mapping(omo_artifact, "oh-my-opencode-slim.json")
+        if omo is not None:
+            presets = omo.get("presets")
+            bifrost = presets.get("bifrost") if isinstance(presets, dict) else None
+            fixer = bifrost.get("fixer") if isinstance(bifrost, dict) else None
+            if not isinstance(fixer, dict):
+                self.add_error(
+                    omo_artifact.path,
+                    "presets.bifrost.fixer must be a mapping for model validation",
+                    key="fixer",
+                    text=omo_artifact.text,
+                )
+            else:
+                if fixer.get("model") != FIXER_MODEL:
                     self.add_error(
-                        artifact.path,
-                        f"agents.{agent_id}.model {model!r} does not match profile {selected_profile!r} ({expected!r})",
-                        key=agent_id,
-                        text=artifact.text,
+                        omo_artifact.path,
+                        f"presets.bifrost.fixer.model must be {FIXER_MODEL!r}",
+                        key="model",
+                        text=omo_artifact.text,
                     )
+                if fixer.get("variant") != "high":
+                    self.add_error(
+                        omo_artifact.path,
+                        "presets.bifrost.fixer.variant must preserve the high variant",
+                        key="variant",
+                        text=omo_artifact.text,
+                    )
+                if fixer.get("skills") != ["fixer"]:
+                    self.add_error(
+                        omo_artifact.path,
+                        "presets.bifrost.fixer.skills must remain exactly ['fixer']",
+                        key="skills",
+                        text=omo_artifact.text,
+                    )
+                if fixer.get("mcps") != ["codebase-memory-mcp"]:
+                    self.add_error(
+                        omo_artifact.path,
+                        "presets.bifrost.fixer.mcps must remain exactly ['codebase-memory-mcp']",
+                        key="mcps",
+                        text=omo_artifact.text,
+                    )
+                for field in ("role", "prompt", "permission", "permissions"):
+                    if field in fixer:
+                        self.add_error(
+                            omo_artifact.path,
+                            f"presets.bifrost.fixer must not override inherited {field}",
+                            key=field,
+                            text=omo_artifact.text,
+                        )
+                for parameter_path in self._unsupported_parameter_paths(fixer, "presets.bifrost.fixer"):
+                    self.add_error(
+                        omo_artifact.path,
+                        f"unsupported thinking-model sampling override {parameter_path!r}",
+                        key=parameter_path.rsplit(".", 1)[-1],
+                        text=omo_artifact.text,
+                    )
+
+        if opencode_artifact is None:
+            return
+        opencode = self.require_mapping(opencode_artifact, "opencode.json")
+        if opencode is None:
+            return
+        if FIXER_MODEL not in model_catalog:
+            self.add_error(
+                opencode_artifact.path,
+                f"provider catalog must contain exact fixer model {FIXER_MODEL!r}",
+                key="models",
+                text=opencode_artifact.text,
+            )
+
+        providers = opencode.get("provider")
+        bf = providers.get("bf") if isinstance(providers, dict) else None
+        novita_model_id = NOVITA_MODEL_ID
+        if not isinstance(bf, dict):
+            self.add_error(
+                opencode_artifact.path,
+                "provider.bf must be a mapping for the Novita fixer model",
+                key="bf",
+                text=opencode_artifact.text,
+            )
+        else:
+            if bf.get("npm") != BIFROST_OPENAI_COMPATIBLE_PACKAGE:
+                self.add_error(
+                    opencode_artifact.path,
+                    f"provider.bf.npm must be {BIFROST_OPENAI_COMPATIBLE_PACKAGE!r}",
+                    key="npm",
+                    text=opencode_artifact.text,
+                )
+            if bf.get("name") != BIFROST_PROVIDER_NAME:
+                self.add_error(
+                    opencode_artifact.path,
+                    f"provider.bf.name must be {BIFROST_PROVIDER_NAME!r}",
+                    key="name",
+                    text=opencode_artifact.text,
+                )
+            bf_options = bf.get("options")
+            if not isinstance(bf_options, dict):
+                self.add_error(
+                    opencode_artifact.path,
+                    "provider.bf.options must preserve the Bifrost connection settings",
+                    key="options",
+                    text=opencode_artifact.text,
+                )
+            else:
+                expected_connection = {
+                    "baseURL": BIFROST_BASE_URL,
+                    "apiKey": BIFROST_CREDENTIAL_REFERENCE,
+                }
+                for key, expected in expected_connection.items():
+                    if bf_options.get(key) != expected:
+                        self.add_error(
+                            opencode_artifact.path,
+                            f"provider.bf.options.{key} must preserve {expected!r}",
+                            key=key,
+                            text=opencode_artifact.text,
+                        )
+        novita_entry = (
+            bf.get("models", {}).get(novita_model_id)
+            if isinstance(bf, dict) and isinstance(bf.get("models"), dict)
+            else None
+        )
+        if not isinstance(novita_entry, dict):
+            self.add_error(
+                opencode_artifact.path,
+                f"provider.bf.models must define {novita_model_id!r}",
+                key="models",
+                text=opencode_artifact.text,
+            )
+        else:
+            if novita_entry.get("name") != novita_model_id:
+                self.add_error(
+                    opencode_artifact.path,
+                    f"Novita fixer model name must be {novita_model_id!r}",
+                    key="name",
+                    text=opencode_artifact.text,
+                )
+            if novita_entry.get("family") != "deepseek-thinking":
+                self.add_error(
+                    opencode_artifact.path,
+                    "Novita fixer model must be cataloged as deepseek-thinking",
+                    key="family",
+                    text=opencode_artifact.text,
+                )
+            if novita_entry.get("interleaved") != {"field": "reasoning_content"}:
+                self.add_error(
+                    opencode_artifact.path,
+                    "Novita fixer model must define exactly interleaved.field = reasoning_content",
+                    key="interleaved",
+                    text=opencode_artifact.text,
+                )
+            for parameter_path in self._unsupported_parameter_paths(
+                novita_entry, f"provider.bf.models.{novita_model_id}"
+            ):
+                self.add_error(
+                    opencode_artifact.path,
+                    f"unsupported thinking-model sampling override {parameter_path!r}",
+                    key=parameter_path.rsplit(".", 1)[-1],
+                    text=opencode_artifact.text,
+                )
+            novita_options = novita_entry.get("options")
+            if not isinstance(novita_options, dict):
+                self.add_error(
+                    opencode_artifact.path,
+                    "Novita fixer model options must preserve its fallback chain",
+                    key="options",
+                    text=opencode_artifact.text,
+                )
+            elif novita_options.get("fallbacks") != list(NOVITA_FIXER_FALLBACKS):
+                self.add_error(
+                    opencode_artifact.path,
+                    "Novita fixer model fallback list changed unexpectedly",
+                    key="fallbacks",
+                    text=opencode_artifact.text,
+                )
+
+        if overview_artifact is not None:
+            overview = self.require_mapping(overview_artifact, "agents-overview/data.yaml")
+            nodes = overview.get("nodes") if overview else None
+            fixer_node = next(
+                (
+                    node
+                    for node in nodes
+                    if isinstance(node, dict) and node.get("id") == "fixer"
+                ),
+                None,
+            ) if isinstance(nodes, list) else None
+            if not isinstance(fixer_node, dict):
+                self.add_error(
+                    overview_artifact.path,
+                    "overview fixer node is required for role validation",
+                    key="fixer",
+                    text=overview_artifact.text,
+                )
+            else:
+                if fixer_node.get("role") != "Implementation Specialist":
+                    self.add_error(
+                        overview_artifact.path,
+                        "overview fixer role must remain Implementation Specialist",
+                        key="role",
+                        text=overview_artifact.text,
+                    )
+                constraints = fixer_node.get("constraints")
+                if not isinstance(constraints, str) or "required handoff fields" not in constraints:
+                    self.add_error(
+                        overview_artifact.path,
+                        "overview fixer constraints must preserve the handoff prompt",
+                        key="constraints",
+                        text=overview_artifact.text,
+                    )
+
+        fixer_skill_path = self.root / ".rulesync" / "skills" / "fixer" / "SKILL.md"
+        fixer_skill_text = self.read_text(fixer_skill_path)
+        if fixer_skill_text is not None:
+            required_prompt_markers = (
+                "**Role**: Execute code changes efficiently.",
+                "Every fixer task dispatch carries these required fields",
+                "`Files` is a hard write allowlist",
+                "OpenCode does not expose a dynamic",
+                "per-task filesystem ACL",
+            )
+            missing_markers = [
+                marker for marker in required_prompt_markers if marker not in fixer_skill_text
+            ]
+            if missing_markers:
+                self.add_error(
+                    fixer_skill_path,
+                    "fixer prompt/permission contract is missing: "
+                    + ", ".join(missing_markers),
+                    key="Role",
+                    text=fixer_skill_text,
+                )
+
+        fixer_append_path = (
+            self.root / ".rulesync" / "oh-my-opencode-slim" / "fixer_append.md"
+        )
+        fixer_append_text = self.read_text(fixer_append_path)
+        if fixer_append_text is not None:
+            required_append_markers = (
+                "# Fixer — Implementation Specialist",
+                "Always use zsh. Source `~/.zshrc` before running commands.",
+                "Always run lint validation (check-only, no autofix)",
+            )
+            missing_markers = [
+                marker
+                for marker in required_append_markers
+                if marker not in fixer_append_text
+            ]
+            if missing_markers:
+                self.add_error(
+                    fixer_append_path,
+                    "OMO fixer prompt contract is missing: "
+                    + ", ".join(missing_markers),
+                    key="Fixer",
+                    text=fixer_append_text,
+                )
+
+        enabled_providers = opencode.get("enabled_providers")
+        if not isinstance(enabled_providers, list) or "bf" not in enabled_providers:
+            self.add_error(
+                opencode_artifact.path,
+                "enabled_providers must include bf for the Novita fixer model",
+                key="enabled_providers",
+                text=opencode_artifact.text,
+            )
+
+        if isinstance(providers, dict):
+            for provider_id, provider in providers.items():
+                if not isinstance(provider, dict) or not isinstance(provider.get("models"), dict):
+                    continue
+                for model_id, model in provider["models"].items():
+                    if (
+                        isinstance(model_id, str)
+                        and f"{provider_id}/{model_id}" != FIXER_MODEL
+                        and isinstance(model, dict)
+                        and "interleaved" in model
+                    ):
+                        self.add_error(
+                            opencode_artifact.path,
+                            "interleaved reasoning configuration is only allowed on the Novita fixer model",
+                            key="interleaved",
+                            text=opencode_artifact.text,
+                        )
 
     def validate_profiles(
         self,
@@ -742,33 +1282,83 @@ class Validator:
             data = self.require_mapping(artifact, f"model profile {profile_name!r}")
             if data is None:
                 continue
-            profiles[profile_name] = data
+            version = data.get("version")
+            if version != PROFILE_SCHEMA_VERSION:
+                self.add_error(
+                    artifact.path,
+                    f"profile {profile_name!r} schema version must be "
+                    f"{PROFILE_SCHEMA_VERSION}, got {version!r}",
+                    key="version",
+                    text=artifact.text,
+                )
+                continue
+            agents = data.get("agents")
+            if not isinstance(agents, dict):
+                self.add_error(
+                    artifact.path,
+                    f"profile {profile_name!r}.agents must be a mapping",
+                    key="agents",
+                    text=artifact.text,
+                )
+                continue
+            profile_agents: dict[str, Any] = {}
+            # Validate every agent entry
+            for agent_id, spec in agents.items():
+                if not isinstance(agent_id, str) or not agent_id:
+                    self.add_error(
+                        artifact.path,
+                        f"profile {profile_name!r} agent keys must be non-empty strings",
+                        key=str(agent_id),
+                        text=artifact.text,
+                    )
+                    continue
+                if not isinstance(spec, dict):
+                    self.add_error(
+                        artifact.path,
+                        f"profile {profile_name!r}.{agent_id} must be a mapping",
+                        key=agent_id,
+                        text=artifact.text,
+                    )
+                    continue
+                model = spec.get("model")
+                if not isinstance(model, str) or not model:
+                    self.add_error(
+                        artifact.path,
+                        f"profile {profile_name!r}.{agent_id}.model must be a non-empty string",
+                        key=agent_id,
+                        text=artifact.text,
+                    )
+                    continue
+                if model not in model_catalog:
+                    self.add_error(
+                        artifact.path,
+                        f"profile {profile_name!r}.{agent_id}.model references unknown model {model!r}",
+                        key=agent_id,
+                        text=artifact.text,
+                    )
+                profile_agents[agent_id] = {
+                    "model": model,
+                }
+                if "variant" in spec:
+                    variant = spec["variant"]
+                    if not isinstance(variant, str) or not variant:
+                        self.add_error(
+                            artifact.path,
+                            f"profile {profile_name!r}.{agent_id}.variant "
+                            f"must be a non-empty string or absent, got {variant!r}",
+                            key=agent_id,
+                            text=artifact.text,
+                        )
+                    else:
+                        profile_agents[agent_id]["variant"] = variant
+            profiles[profile_name] = profile_agents
             self.compare_sets(
                 artifact.path,
                 f"profile {profile_name!r} agent keys",
                 configured_agents,
-                data.keys(),
+                profile_agents.keys(),
                 text=artifact.text,
             )
-            for agent_id, model in data.items():
-                if (
-                    not isinstance(agent_id, str)
-                    or not isinstance(model, str)
-                    or not model
-                ):
-                    self.add_error(
-                        artifact.path,
-                        f"profile {profile_name!r} entries must map agent IDs to model IDs",
-                        key=str(agent_id),
-                        text=artifact.text,
-                    )
-                elif model not in model_catalog:
-                    self.add_error(
-                        artifact.path,
-                        f"profile {profile_name!r}.{agent_id} references unknown model {model!r}",
-                        key=agent_id,
-                        text=artifact.text,
-                    )
 
         self.compare_sets(
             self.root / "profiles" / "models",
@@ -808,7 +1398,13 @@ class Validator:
             )
             for profile_name, expected in profiles.items():
                 actual = overview_profiles.get(profile_name)
-                if actual != expected:
+                # overview emits {agent_id: model_name} from the new schema.
+                # Build expected overview shape: agent_id -> model string.
+                expected_overview = {
+                    agent_id: info["model"]
+                    for agent_id, info in expected.items()
+                }
+                if actual != expected_overview:
                     self.add_error(
                         overview_path,
                         f"profiles.{profile_name} does not match profiles/models/{profile_name}.yml",
@@ -951,31 +1547,31 @@ class Validator:
                 generated_names,
             )
 
-    def _load_frontmatter(self, path: Path) -> Artifact | None:
+    def _load_frontmatter(self, path: Path, *, kind: str = "agent") -> Artifact | None:
         text = self.read_text(path)
         if text is None:
             return None
         lines = text.splitlines(keepends=True)
         if not lines or lines[0].strip() != "---":
-            self.add_error(path, "agent file must start with YAML frontmatter", line=1)
+            self.add_error(path, f"{kind} file must start with YAML frontmatter", line=1)
             return None
         end = next(
             (index for index, line in enumerate(lines[1:], 1) if line.strip() == "---"),
             None,
         )
         if end is None:
-            self.add_error(path, "agent frontmatter is not closed", line=1)
+            self.add_error(path, f"{kind} frontmatter is not closed", line=1)
             return None
         frontmatter = "".join(lines[1:end])
         if yaml is None:
-            self.add_error(path, "PyYAML is required to parse agent frontmatter")
+            self.add_error(path, f"PyYAML is required to parse {kind} frontmatter")
             return None
         try:
             data = yaml.safe_load(frontmatter)
         except yaml.YAMLError as error:
             mark = getattr(error, "problem_mark", None)
             line = mark.line + 2 if mark else None
-            self.add_error(path, f"invalid agent frontmatter YAML: {error}", line=line)
+            self.add_error(path, f"invalid {kind} frontmatter YAML: {error}", line=line)
             return None
         return Artifact(path, text, data)
 
@@ -1157,6 +1753,18 @@ class Validator:
                         text=artifact.text,
                     )
 
+        for node_id, node in nodes_by_id.items():
+            parent = node.get("parent")
+            if parent is not None and (
+                not isinstance(parent, str) or parent not in nodes_by_id
+            ):
+                self.add_error(
+                    artifact.path,
+                    f"overview node {node_id!r} references unknown parent {parent!r}",
+                    key=node_id,
+                    text=artifact.text,
+                )
+
         seen_links: set[tuple[str, str, str]] = set()
         for index, link in enumerate(links):
             if not isinstance(link, dict):
@@ -1199,6 +1807,57 @@ class Validator:
                     text=artifact.text,
                 )
             seen_links.add(link_key)
+
+        orchestrator = nodes_by_id.get("orchestrator")
+        if not isinstance(orchestrator, dict) or orchestrator.get("type") != "agent":
+            self.add_error(
+                artifact.path,
+                "overview OpenCode orchestrator agent node is missing",
+                key="orchestrator",
+                text=artifact.text,
+            )
+        else:
+            if orchestrator.get("orchestrates") is not True:
+                self.add_error(
+                    artifact.path,
+                    "overview OpenCode orchestrator must declare orchestrates: true",
+                    key="orchestrator",
+                    text=artifact.text,
+                )
+
+            review_ownership = orchestrator.get("review_ownership")
+            if not isinstance(review_ownership, str) or not all(
+                marker in review_ownership
+                for marker in ("OpenCode", "sole coordinator", "reviewer-*")
+            ):
+                self.add_error(
+                    artifact.path,
+                    "overview OpenCode orchestrator is missing reviewer ownership metadata",
+                    key="review_ownership",
+                    text=artifact.text,
+                )
+
+            orchestrator_dispatches = orchestrator.get("dispatches")
+            if not isinstance(orchestrator_dispatches, list):
+                self.add_error(
+                    artifact.path,
+                    "overview OpenCode orchestrator.dispatches must be a list",
+                    key="dispatches",
+                    text=artifact.text,
+                )
+            else:
+                orchestrator_reviewer_dispatches = [
+                    value
+                    for value in orchestrator_dispatches
+                    if isinstance(value, str) and value.startswith(REVIEWER_PREFIX)
+                ]
+                self.compare_sets(
+                    artifact.path,
+                    "overview OpenCode orchestrator reviewer dispatches",
+                    reviewer_lanes,
+                    orchestrator_reviewer_dispatches,
+                    text=artifact.text,
+                )
 
         reviewer = nodes_by_id.get("reviewer")
         if not isinstance(reviewer, dict) or reviewer.get("type") != "agent":
@@ -1254,15 +1913,58 @@ class Validator:
             text=artifact.text,
         )
 
+        open_code_links: set[str] = set()
+        for link in links:
+            if not isinstance(link, dict) or link.get("source") != "orchestrator":
+                continue
+            target = link.get("target")
+            if isinstance(target, str) and target in reviewer_lanes:
+                open_code_links.add(target)
+        self.compare_sets(
+            artifact.path,
+            "overview OpenCode reviewer link targets",
+            reviewer_lanes,
+            open_code_links,
+            text=artifact.text,
+        )
+
         for lane in reviewer_lanes:
             node = nodes_by_id.get(lane)
-            if isinstance(node, dict) and node.get("parent") != "reviewer":
+            if isinstance(node, dict) and node.get("parent") != "orchestrator":
                 self.add_error(
                     artifact.path,
-                    f"overview reviewer lane {lane!r} must have parent reviewer",
+                    f"overview OpenCode reviewer lane {lane!r} must have parent orchestrator",
                     key=lane,
                     text=artifact.text,
                 )
+
+        lane_nodes = [
+            nodes_by_id[lane]
+            for lane in reviewer_lanes
+            if isinstance(nodes_by_id.get(lane), dict)
+        ]
+        has_claude_compatibility_metadata = any(
+            "claude_parent" in node for node in lane_nodes
+        )
+        if has_claude_compatibility_metadata:
+            for lane in reviewer_lanes:
+                node = nodes_by_id.get(lane)
+                if not isinstance(node, dict):
+                    continue
+                if "claude_parent" not in node:
+                    self.add_error(
+                        artifact.path,
+                        f"overview Claude compatibility metadata missing for reviewer lane {lane!r}",
+                        key=lane,
+                        text=artifact.text,
+                    )
+                elif node.get("claude_parent") != "reviewer":
+                    self.add_error(
+                        artifact.path,
+                        f"overview reviewer lane {lane!r} claude_parent must be reviewer",
+                        key=lane,
+                        text=artifact.text,
+                    )
 
         self.validate_reviewer_contracts(reviewer_lanes, reviewer_contract_texts)
 
@@ -1287,6 +1989,673 @@ class Validator:
                     f"reviewer contract references unknown lane {stale!r}",
                     key=stale,
                     text=text,
+                )
+
+    def validate_reviewer_runtime_health(
+        self, contract_texts: list[tuple[Path, str]]
+    ) -> None:
+        """Require runtime evidence fields in the reviewer report contract."""
+
+        for path, text in contract_texts:
+            health_match = re.search(
+                r"^##\s+Review Health\s*$([\s\S]*?)(?=^##\s+|\Z)",
+                text,
+                re.IGNORECASE | re.MULTILINE,
+            )
+            if health_match is None:
+                self.add_error(
+                    path,
+                    "reviewer health contract must contain a Review Health section",
+                    key="Review Health",
+                    text=text,
+                )
+                continue
+            normalized = health_match.group(1).casefold()
+            missing = [
+                field
+                for field in REVIEWER_HEALTH_FIELDS
+                if field.casefold() not in normalized
+            ]
+            if missing:
+                self.add_error(
+                    path,
+                    "reviewer health contract is missing runtime fields: "
+                    + ", ".join(missing),
+                    key="Review Health",
+                    text=text,
+                )
+            if "failed smoke" not in normalized:
+                self.add_error(
+                    path,
+                    "reviewer health contract must degrade on failed smoke evidence",
+                    key="runtime smoke evidence",
+                    text=text,
+                )
+            if "permission mismatch" not in normalized:
+                self.add_error(
+                    path,
+                    "reviewer health contract must degrade on effective permission mismatch",
+                    key="runtime smoke evidence",
+                    text=text,
+                )
+
+    def validate_runtime_smoke_script(self) -> None:
+        """Validate the opt-in smoke command without executing an LLM session."""
+
+        path = self.root / RUNTIME_SMOKE_SCRIPT
+        text = self.read_text(path)
+        if text is None:
+            return
+        if not path.is_file():
+            self.add_error(path, "runtime smoke command must be a regular file")
+        elif path.stat().st_mode & 0o111 == 0:
+            self.add_error(path, "runtime smoke command must be executable")
+
+        required_markers = (
+            "source \"$HOME/.zshrc\"",
+            "REVIEWER_MAX_PARALLEL=1",
+            "OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true",
+            "--agent orchestrator",
+            "reviewer-code",
+            "mode=ro",
+            "--run",
+            "sqlite3",
+            "metadata.get(\"background\") is not True",
+            "task_result",
+            '"jobId"',
+            '"parentSessionId"',
+            'safe_commands = {("pwd",), ("date", "+%s")}',
+            "argv not in safe_commands",
+            "allowed_read_only_tools = {",
+            "tool_name not in allowed_read_only_tools",
+            "required_session_columns = {",
+            "required_part_columns = {",
+            "required_message_columns = {",
+            "dispatch: dict = {}",
+            "invalid optional {key}",
+            "reconciliation_input",
+            "task_id",
+            'message.get("finish") != "stop"',
+            "CAST(data AS BLOB)",
+            "trap cleanup EXIT",
+            "rm -rf -- \"$RUN_DIR\"",
+            "snapshot_repository",
+            "BEFORE_SNAPSHOT",
+            "AFTER_SNAPSHOT",
+            "before_snapshot_ok",
+            "after_snapshot_ok",
+            "session.permission",
+            "mutation_permission_names",
+            "partial/observed",
+            "must not claim Healthy for partial permissions",
+            "must not be reported as read-only verified",
+            "must be reported as partial/observed",
+            "allowed_session_agents",
+            "coordinator_report",
+            "health_report",
+            "ACTIVE_OMO_PATH",
+            "--compatibility-check",
+            "COMPATIBILITY_STATUS=matched",
+            "OPENCODE_COMPATIBILITY_STATUS=matched",
+            "Compatibility preflight: matched",
+            "repository working tree snapshot changed",
+            "coordinator_text_parts",
+            "health_match",
+            "required_health_labels",
+            "structured Review Health",
+        )
+        missing = [marker for marker in required_markers if marker not in text]
+        if missing:
+            self.add_error(
+                path,
+                "runtime smoke command is missing required markers: "
+                + ", ".join(missing),
+                key="runtime smoke",
+                text=text,
+            )
+        forbidden_patterns = (
+            (
+                r"(?m)^\s*(?:git|rtk\s+git|curl|wget|dd|truncate|tee|cp|mv|touch)\b",
+                "runtime smoke command must not execute mutation-capable shell commands",
+                "mutation-capable shell",
+            ),
+            (
+                r"\b(?:subprocess|os\.system|os\.popen|Popen|eval\s*\(|exec\s*\()",
+                "runtime smoke command must not use indirect command execution",
+                "indirect command execution",
+            ),
+        )
+        for pattern, message, key in forbidden_patterns:
+            if re.search(pattern, text):
+                self.add_error(path, message, key=key, text=text)
+        heredocs = re.findall(r"<<'PY'\n(.*?)\nPY", text, re.DOTALL)
+        if not heredocs:
+            self.add_error(
+                path,
+                "runtime smoke command must contain Python heredocs",
+                key="PY",
+                text=text,
+            )
+        for index, source in enumerate(heredocs, 1):
+            try:
+                compile(source, f"{path}#heredoc-{index}", "exec")
+            except SyntaxError as error:
+                self.add_error(
+                    path,
+                    f"runtime smoke Python heredoc {index} is invalid: {error.msg}",
+                    line=error.lineno,
+                )
+
+    def validate_fixer_scheduler_contract(self, overview_artifact: Artifact | None) -> None:
+        """Validate the source and staged guidance for bounded fixer batches."""
+
+        source_paths = (
+            self.root / ".rulesync" / "oh-my-opencode-slim" / "orchestrator_append.md",
+            self.root / ".rulesync" / "rules" / "custom-rules.md",
+            self.root / ".rulesync" / "skills" / "executing-plans" / "SKILL.md",
+            self.root / ".rulesync" / "skills" / "fixer" / "SKILL.md",
+            self.root / ".rulesync" / "skills" / "writing-plans" / "SKILL.md",
+            self.root / ".rulesync" / "skills" / "deepwork" / "SKILL.md",
+        )
+        texts: list[tuple[Path, str]] = []
+        for path in source_paths:
+            text = self.read_text(path)
+            if text is not None:
+                texts.append((path, text))
+
+        if self.payload:
+            staged_paths = (
+                self.payload / "AGENTS.md",
+                self.payload / "skills" / "executing-plans" / "SKILL.md",
+                self.payload / "skills" / "fixer" / "SKILL.md",
+                self.payload / "skills" / "writing-plans" / "SKILL.md",
+                self.payload / "skills" / "deepwork" / "SKILL.md",
+            )
+            for path in staged_paths:
+                if path.is_file():
+                    text = self.read_text(path)
+                    if text is not None:
+                        texts.append((path, text))
+
+        combined = "\n".join(text for _, text in texts).casefold()
+        requirements = (
+            (
+                re.compile(r"(?:at most|maximum|max(?:imum)?|cap).{0,100}\b3\b"),
+                "scheduler guidance must cap concurrent fixer children at 3",
+            ),
+            (
+                re.compile(r"background\s*[=:]\s*true|background=true"),
+                "scheduler guidance must require background=true dispatch",
+            ),
+            (
+                re.compile(r"exact(?:ly)? returned session id|exact returned.*session id"),
+                "scheduler guidance must reconcile exact returned session IDs",
+            ),
+            (re.compile(r"\btask_result\b"), "scheduler guidance must use task_result reconciliation"),
+            (
+                re.compile(r"hard.{0,30}files.{0,30}allowlist|files.{0,30}hard write allowlist"),
+                "scheduler guidance must define a hard Files write allowlist",
+            ),
+            (
+                re.compile(r"overlap.{0,80}ambiguous|ambiguous.{0,80}overlap"),
+                "scheduler guidance must serialize overlapping or ambiguous work",
+            ),
+            (
+                re.compile(r"generated.{0,80}lockfile|lockfile.{0,80}generated"),
+                "scheduler guidance must address generated outputs and lockfiles",
+            ),
+            (
+                re.compile(r"needs_context.{0,120}blocked|blocked.{0,120}needs_context"),
+                "scheduler guidance must hold dependents for NEEDS_CONTEXT and BLOCKED",
+            ),
+            (
+                re.compile(r"timeout.{0,120}failure|failure.{0,120}timeout"),
+                "scheduler guidance must hold dependents for timeout and failure",
+            ),
+            (
+                re.compile(r"every.{0,80}done.{0,100}review|per-child review"),
+                "scheduler guidance must require a review gate for every DONE child",
+            ),
+        )
+        if not texts:
+            self.add_error(
+                self.root / ".rulesync",
+                "fixer scheduler source guidance is unavailable",
+            )
+        for pattern, message in requirements:
+            if pattern.search(combined) is None:
+                path = texts[0][0] if texts else self.root / ".rulesync"
+                self.add_error(path, message)
+
+        if overview_artifact is None:
+            return
+        overview = self.require_mapping(overview_artifact, "agents-overview/data.yaml")
+        nodes = overview.get("nodes") if overview else None
+        orchestrator = next(
+            (
+                node
+                for node in nodes
+                if isinstance(node, dict) and node.get("id") == "orchestrator"
+            ),
+            None,
+        ) if isinstance(nodes, list) else None
+        scheduler = orchestrator.get("fixer_scheduler") if isinstance(orchestrator, dict) else None
+        if not isinstance(scheduler, dict):
+            self.add_error(
+                overview_artifact.path,
+                "overview orchestrator must define fixer_scheduler metadata",
+                key="fixer_scheduler",
+                text=overview_artifact.text,
+            )
+            return
+        if scheduler.get("max_concurrent_children") != FIXER_BATCH_MAX:
+            self.add_error(
+                overview_artifact.path,
+                "overview fixer_scheduler.max_concurrent_children must be 3",
+                key="max_concurrent_children",
+                text=overview_artifact.text,
+            )
+        for key in (
+            "dispatch",
+            "lifecycle",
+            "dependency_policy",
+            "failure_policy",
+            "ownership_policy",
+        ):
+            if not isinstance(scheduler.get(key), str) or not scheduler[key].strip():
+                self.add_error(
+                    overview_artifact.path,
+                    f"overview fixer_scheduler.{key} must be a non-empty string",
+                    key=key,
+                    text=overview_artifact.text,
+                )
+
+    def validate_fixer_runtime_smoke_script(self) -> None:
+        """Validate the opt-in three-fixer smoke command without executing it."""
+
+        path = self.root / FIXER_RUNTIME_SMOKE_SCRIPT
+        text = self.read_text(path)
+        if text is None:
+            return
+        if not path.is_file():
+            self.add_error(path, "fixer runtime smoke command must be a regular file")
+        elif path.stat().st_mode & 0o111 == 0:
+            self.add_error(path, "fixer runtime smoke command must be executable")
+        required_markers = (
+            'source "$HOME/.zshrc"',
+            "mktemp -d",
+            "--agent orchestrator",
+            "--run",
+            '"fixer"',
+            '"background"',
+            '"parent_id"',
+            '"session_id"',
+            '"task_result"',
+            '"write_set"',
+            "unowned",
+            "unexpected",
+            "review",
+            "trap cleanup EXIT",
+            "isolated",
+        )
+        missing = [marker for marker in required_markers if marker not in text]
+        if missing:
+            self.add_error(
+                path,
+                "fixer runtime smoke command is missing required markers: "
+                + ", ".join(missing),
+                key="fixer runtime smoke",
+                text=text,
+            )
+        heredocs = re.findall(r"<<'PY'\n(.*?)\nPY", text, re.DOTALL)
+        if not heredocs:
+            self.add_error(path, "fixer runtime smoke command must contain Python heredocs", key="PY", text=text)
+        for index, source in enumerate(heredocs, 1):
+            try:
+                compile(source, f"{path}#heredoc-{index}", "exec")
+            except SyntaxError as error:
+                self.add_error(
+                    path,
+                    f"fixer runtime smoke Python heredoc {index} is invalid: {error.msg}",
+                    line=error.lineno,
+                )
+
+    def _manifest_path(
+        self,
+        root: Path,
+        value: Any,
+        manifest: Path,
+        *,
+        allow_final_symlink: bool = False,
+    ) -> Path | None:
+        """Validate a manifest path without following symlinks out of root.
+
+        When ``allow_final_symlink`` is true, a symlink at the managed path
+        itself is left for the caller to report (e.g. with a ``symlink``
+        diagnostic) instead of being rejected here. Intermediate-directory
+        symlinks remain path-safety errors in every case.
+        """
+
+        if not isinstance(value, str) or not value:
+            self.add_error(manifest, "manifest paths must be non-empty strings")
+            return None
+        if "\x00" in value or "\\" in value:
+            self.add_error(manifest, f"manifest path is not portable: {value!r}")
+            return None
+        path = Path(value)
+        parts = value.split("/")
+        if path.is_absolute() or value.startswith("/") or any(
+            part in ("", ".", "..") for part in parts
+        ):
+            self.add_error(
+                manifest,
+                f"manifest path must be a safe relative path: {value!r}",
+            )
+            return None
+
+        root = root.resolve()
+        candidate = root.joinpath(*parts)
+        try:
+            candidate.resolve(strict=False).relative_to(root)
+        except ValueError:
+            self.add_error(
+                manifest,
+                f"manifest path escapes the OpenCode config directory: {value!r}",
+            )
+            return None
+        current = root
+        for index, part in enumerate(parts):
+            current /= part
+            is_final = index == len(parts) - 1
+            if current.is_symlink() and not (allow_final_symlink and is_final):
+                self.add_error(
+                    manifest,
+                    f"manifest path traverses a symlink: {value!r}",
+                )
+                return None
+        return candidate
+
+    @staticmethod
+    def _sha256(path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    def _manifest_file_diagnostic(
+        self,
+        manifest_path: Path,
+        value: str,
+        status: str,
+        expected_hash: str,
+        actual_hash: str,
+    ) -> None:
+        """Emit one deterministic managed-file mismatch diagnostic.
+
+        Exposes the relative managed path, an explicit status, the manifest's
+        expected SHA-256 (or ``<none>`` when absent/invalid) and the actual
+        value: a real digest for ``changed`` files, or a ``<missing>`` /
+        ``<symlink>`` / ``<not-regular>`` placeholder for paths that must not
+        be hashed or read. Never emits file contents.
+        """
+
+        expected = (
+            expected_hash
+            if re.fullmatch(r"[0-9a-f]{64}", expected_hash or "") is not None
+            else "<none>"
+        )
+        self.add_error(
+            manifest_path,
+            f"manifest managed file {status}: path={value} "
+            f"expected_sha256={expected} actual_sha256={actual_hash}",
+        )
+
+    def validate_opencode_manifest(
+        self,
+        manifest_path: Path,
+        config_path: Path,
+        *,
+        require_present: bool,
+    ) -> None:
+        """Validate ownership metadata and, when available, its file hashes."""
+
+        if manifest_path.is_symlink():
+            self.add_error(manifest_path, "OpenCode ownership manifest must not be a symlink")
+            return
+        if config_path.is_symlink() or not config_path.is_dir():
+            self.add_error(
+                config_path,
+                "OpenCode config path must be a regular directory",
+            )
+            return
+        artifact = self.load_json(manifest_path)
+        if artifact is None:
+            return
+        manifest = self.require_mapping(artifact, "OpenCode ownership manifest")
+        if manifest is None:
+            return
+        if manifest.get("managed_by") != OPENCODE_MANAGED_BY:
+            self.add_error(
+                manifest_path,
+                f"manifest managed_by must be {OPENCODE_MANAGED_BY!r}",
+                key="managed_by",
+                text=artifact.text,
+            )
+        if manifest.get("version") != OPENCODE_MANIFEST_VERSION:
+            self.add_error(
+                manifest_path,
+                f"manifest version must be {OPENCODE_MANIFEST_VERSION}",
+                key="version",
+                text=artifact.text,
+            )
+        if not isinstance(manifest.get("timestamp"), str) or not manifest["timestamp"]:
+            self.add_error(
+                manifest_path,
+                "manifest timestamp must be a non-empty string",
+                key="timestamp",
+                text=artifact.text,
+            )
+
+        files = manifest.get("managed_files")
+        directories = manifest.get("managed_directories")
+        hashes = manifest.get("managed_file_hashes")
+        if not isinstance(files, list) or not isinstance(directories, list):
+            self.add_error(
+                manifest_path,
+                "manifest managed_files and managed_directories must be lists",
+                key="managed_files",
+                text=artifact.text,
+            )
+            return
+        if not all(isinstance(value, str) for value in [*files, *directories]):
+            self.add_error(
+                manifest_path,
+                "manifest managed paths must be strings",
+                key="managed_files",
+                text=artifact.text,
+            )
+        files = [value for value in files if isinstance(value, str)]
+        directories = [value for value in directories if isinstance(value, str)]
+        if len(set(files)) != len(files) or len(set(directories)) != len(directories):
+            self.add_error(
+                manifest_path,
+                "manifest contains duplicate managed paths",
+                key="managed_files",
+                text=artifact.text,
+            )
+        if set(files) & set(directories):
+            self.add_error(
+                manifest_path,
+                "manifest path cannot be both a file and a directory",
+                key="managed_files",
+                text=artifact.text,
+            )
+        if not isinstance(hashes, dict) or not all(
+            isinstance(key, str) and isinstance(value, str)
+            for key, value in (hashes.items() if isinstance(hashes, dict) else [])
+        ):
+            self.add_error(
+                manifest_path,
+                "manifest managed_file_hashes must be a mapping of strings",
+                key="managed_file_hashes",
+                text=artifact.text,
+            )
+            hashes = {}
+        hashes = {
+            key: value
+            for key, value in hashes.items()
+            if isinstance(key, str) and isinstance(value, str)
+        }
+        invalid_hashes = [
+            key
+            for key, value in hashes.items()
+            if re.fullmatch(r"[0-9a-f]{64}", value) is None
+        ]
+        if invalid_hashes:
+            self.add_error(
+                manifest_path,
+                "manifest file hashes must be lowercase SHA-256 values: "
+                + ", ".join(sorted(invalid_hashes)),
+                key="managed_file_hashes",
+                text=artifact.text,
+            )
+        if set(hashes) != set(files):
+            self.add_error(
+                manifest_path,
+                "manifest file hashes must exactly match managed_files",
+                key="managed_file_hashes",
+                text=artifact.text,
+            )
+
+        validated_files: dict[str, Path] = {}
+        validated_directories: dict[str, Path] = {}
+        for value in files:
+            candidate = self._manifest_path(
+                config_path, value, manifest_path, allow_final_symlink=True
+            )
+            if candidate is None:
+                continue
+            validated_files[value] = candidate
+            if not candidate.exists() and not candidate.is_symlink():
+                if require_present:
+                    self._manifest_file_diagnostic(
+                        manifest_path,
+                        value,
+                        "missing",
+                        hashes.get(value, ""),
+                        "<missing>",
+                    )
+            elif candidate.is_symlink():
+                self._manifest_file_diagnostic(
+                    manifest_path,
+                    value,
+                    "symlink",
+                    hashes.get(value, ""),
+                    "<symlink>",
+                )
+
+        for value in directories:
+            candidate = self._manifest_path(config_path, value, manifest_path)
+            if candidate is None:
+                continue
+            validated_directories[value] = candidate
+            if require_present and not candidate.exists():
+                self.add_error(manifest_path, f"manifest managed path is missing: {value}")
+            elif candidate.is_symlink():
+                self.add_error(manifest_path, f"manifest managed path is a symlink: {value}")
+
+        for value in directories:
+            candidate = validated_directories.get(value)
+            if candidate is None:
+                continue
+            if require_present and candidate.exists() and not candidate.is_dir():
+                self.add_error(
+                    manifest_path,
+                    f"manifest managed directory is not a directory: {value}",
+                )
+        for value in files:
+            candidate = validated_files.get(value)
+            if candidate is None:
+                continue
+            if not require_present:
+                continue
+            if candidate.is_symlink() or not candidate.exists():
+                # Already reported in the first pass.
+                continue
+            if not candidate.is_file():
+                self._manifest_file_diagnostic(
+                    manifest_path,
+                    value,
+                    "not-regular",
+                    hashes.get(value, ""),
+                    "<not-regular>",
+                )
+            elif re.fullmatch(r"[0-9a-f]{64}", hashes.get(value, "")):
+                try:
+                    actual_hash = self._sha256(candidate)
+                except OSError as error:
+                    self.add_error(manifest_path, f"cannot hash managed file {value}: {error}")
+                    continue
+                if actual_hash != hashes[value]:
+                    self._manifest_file_diagnostic(
+                        manifest_path,
+                        value,
+                        "changed",
+                        hashes[value],
+                        actual_hash,
+                    )
+
+        if self.payload and config_path == self.payload:
+            expected_files: set[str] = set()
+            expected_directories: set[str] = set()
+            for path in self.payload.rglob("*"):
+                relative = path.relative_to(self.payload).as_posix()
+                if relative == OPENCODE_MANIFEST_NAME:
+                    continue
+                if path.is_symlink():
+                    self.add_error(manifest_path, f"staged payload contains a symlink: {relative}")
+                elif path.is_file():
+                    expected_files.add(relative)
+                elif path.is_dir():
+                    expected_directories.add(relative)
+            self.compare_sets(
+                manifest_path,
+                "manifest managed files",
+                expected_files,
+                files,
+                text=artifact.text,
+            )
+            self.compare_sets(
+                manifest_path,
+                "manifest managed directories",
+                expected_directories,
+                directories,
+                text=artifact.text,
+            )
+
+    def validate_reviewer_shadow(self, canonical_path: Path) -> None:
+        """Report higher-priority reviewer skills without mutating them."""
+
+        candidates = (
+            Path.home() / ".agents" / "skills" / "reviewer" / "SKILL.md",
+            Path.home() / ".agents" / "skills" / "reviewer.md",
+            Path.home() / ".agents" / "skills" / "reviewer" / "SKILL.mdx",
+        )
+        canonical = self.read_text(canonical_path)
+        if canonical is None:
+            return
+        for shadow in candidates:
+            if not shadow.exists() and not shadow.is_symlink():
+                continue
+            if shadow.is_symlink() or not shadow.is_file():
+                self.add_error(shadow, "reviewer shadow entry is not a regular file")
+                continue
+            shadow_text = self.read_text(shadow)
+            if shadow_text is not None and shadow_text != canonical:
+                self.add_error(
+                    shadow,
+                    "reviewer shadow skill differs from canonical OpenCode skill; reconcile or remove it manually",
                 )
 
     def validate_reviewer_lane_prompts(
@@ -1357,6 +2726,222 @@ class Validator:
                     text=artifact.text,
                 )
 
+    def validate_reviewer_task_permissions(
+        self,
+        artifact: Artifact,
+        reviewer_lanes: list[str],
+        agents: dict[str, dict[str, Any]],
+    ) -> None:
+        reviewer = agents.get("reviewer")
+        if reviewer is None:
+            self.add_error(
+                artifact.path,
+                "agents.reviewer is required for reviewer task permissions",
+                key="reviewer",
+                text=artifact.text,
+            )
+            return
+
+        permission = reviewer.get("permission")
+        if not isinstance(permission, dict):
+            self.add_error(
+                artifact.path,
+                "agents.reviewer.permission must be a mapping",
+                key="reviewer",
+                text=artifact.text,
+            )
+            return
+
+        task = permission.get("task")
+        if not isinstance(task, dict):
+            self.add_error(
+                artifact.path,
+                "agents.reviewer.permission.task must be a mapping",
+                key="reviewer",
+                text=artifact.text,
+            )
+            return
+
+        if task.get("*") != "deny":
+            self.add_error(
+                artifact.path,
+                "agents.reviewer.permission.task must deny all targets by default",
+                key="reviewer",
+                text=artifact.text,
+            )
+
+        expected = set(reviewer_lanes)
+        for lane in sorted(expected):
+            if task.get(lane) != "allow":
+                self.add_error(
+                    artifact.path,
+                    f"agents.reviewer.permission.task.{lane} must be exactly 'allow'",
+                    key="reviewer",
+                    text=artifact.text,
+                )
+
+        wildcard_targets = sorted(
+            key
+            for key in task
+            if isinstance(key, str) and "*" in key and key != "*"
+        )
+        if wildcard_targets:
+            self.add_error(
+                artifact.path,
+                "agents.reviewer.permission.task must not use prefix-wildcard targets: "
+                + ", ".join(wildcard_targets),
+                key="reviewer",
+                text=artifact.text,
+            )
+
+        extra_allowed = sorted(
+            key
+            for key, value in task.items()
+            if value == "allow"
+            and isinstance(key, str)
+            and key not in expected
+            and key != "*"
+        )
+        if extra_allowed:
+            self.add_error(
+                artifact.path,
+                "agents.reviewer.permission.task has extra allowed targets: "
+                + ", ".join(extra_allowed),
+                key="reviewer",
+                text=artifact.text,
+            )
+
+    @staticmethod
+    def _body_after_frontmatter(text: str) -> str:
+        """Return the text after the closing frontmatter delimiter, or ""."""
+        lines = text.splitlines(keepends=True)
+        if not lines or lines[0].strip() != "---":
+            return ""
+        end = next(
+            (index for index, line in enumerate(lines[1:], 1) if line.strip() == "---"),
+            None,
+        )
+        if end is None:
+            return ""
+        return "".join(lines[end + 1 :])
+
+    def validate_review_command(self) -> None:
+        paths = [self.root / ".rulesync" / "commands" / "review-pr.md"]
+        if self.payload:
+            paths.append(self.payload / "commands" / "review-pr.md")
+
+        required_body_markers = (
+            "orchestrator",
+            "sole coordinator",
+            "reviewer-*",
+            "functions.skill",
+        )
+        forbidden_body_markers = ("claudecode", "claude code")
+        for path in paths:
+            artifact = self._load_frontmatter(path, kind="command")
+            if artifact is None:
+                continue
+            metadata = self.require_mapping(artifact, "command frontmatter")
+            if metadata is None:
+                continue
+            targets = metadata.get("targets")
+            if not isinstance(targets, list):
+                self.add_error(
+                    path,
+                    "review-pr command frontmatter targets must be a list",
+                    key="targets",
+                    text=artifact.text,
+                )
+                continue
+            if targets != ["opencode"]:
+                self.add_error(
+                    path,
+                    "review-pr command frontmatter targets must be exactly "
+                    "['opencode']",
+                    key="targets",
+                    text=artifact.text,
+                )
+
+            body = self._body_after_frontmatter(artifact.text)
+            normalized_body = body.casefold()
+            for marker in required_body_markers:
+                if marker not in normalized_body:
+                    self.add_error(
+                        path,
+                        "review-pr command body is missing OpenCode-only marker "
+                        f"{marker!r}",
+                        key=marker,
+                        text=artifact.text,
+                    )
+            for marker in forbidden_body_markers:
+                if marker in normalized_body:
+                    self.add_error(
+                        path,
+                        f"review-pr command body contains stale Claude marker {marker!r}",
+                        key=marker,
+                        text=artifact.text,
+                    )
+
+    def validate_rulesync_targets(self) -> None:
+        """Require the OpenCode-only Rulesync target and output root."""
+        path = self.root / "rulesync.jsonc"
+        artifact = self.load_json(path, jsonc=True)
+        if artifact is None:
+            return
+        config = self.require_mapping(artifact, "rulesync.jsonc")
+        if config is None:
+            return
+
+        targets = config.get("targets")
+        if not isinstance(targets, list):
+            self.add_error(
+                path,
+                "rulesync.jsonc targets must be a list",
+                key="targets",
+                text=artifact.text,
+            )
+        elif targets != ["opencode"]:
+            self.add_error(
+                path,
+                "rulesync.jsonc targets must be exactly ['opencode']",
+                key="targets",
+                text=artifact.text,
+            )
+
+        output_roots = config.get("outputRoots")
+        if not isinstance(output_roots, dict):
+            self.add_error(
+                path,
+                "rulesync.jsonc outputRoots must be a mapping",
+                key="outputRoots",
+                text=artifact.text,
+            )
+            return
+        self.compare_sets(
+            path,
+            "rulesync.jsonc outputRoots",
+            RULESYNC_TARGETS,
+            output_roots.keys(),
+            text=artifact.text,
+        )
+        for name, value in output_roots.items():
+            if not isinstance(name, str) or not isinstance(value, str):
+                self.add_error(
+                    path,
+                    "rulesync.jsonc outputRoots must map target names to paths",
+                    key="outputRoots",
+                    text=artifact.text,
+                )
+                continue
+            if name == "opencode" and value != OPENCODE_OUTPUT_ROOT:
+                self.add_error(
+                    path,
+                    "rulesync.jsonc outputRoots.opencode must be "
+                    f"{OPENCODE_OUTPUT_ROOT!r}",
+                    key="opencode",
+                    text=artifact.text,
+                )
+
     def validate_skill_references_from_omo(
         self,
         references: list[tuple[Path, str, list[Any], str]],
@@ -1382,6 +2967,16 @@ class Validator:
         omo_artifact = self.load_json(omo_path)
         if omo_artifact is None:
             return
+        source_omo_artifact = (
+            self.load_json(self.root / "oh-my-opencode-slim.json")
+            if self.payload
+            else omo_artifact
+        )
+        self.validate_opencode_reviewer_routing(omo_artifact)
+        self.validate_agent_output_permissions(omo_artifact)
+        if self.payload and source_omo_artifact is not None:
+            self.validate_opencode_reviewer_routing(source_omo_artifact)
+            self.validate_agent_output_permissions(source_omo_artifact)
         agents, omo_mcp_refs, omo_skill_refs = self.collect_omo_agents(omo_artifact)
         self.validate_mcp_references(omo_mcp_refs, server_names, disabled_server_names)
 
@@ -1430,6 +3025,13 @@ class Validator:
         profiles = self.validate_profiles(
             profile_artifacts, overview_artifact, set(agents), model_catalog
         )
+        self.validate_fixer_model_contract(
+            omo_artifact,
+            profiles,
+            opencode_artifact,
+            model_catalog,
+            overview_artifact,
+        )
 
         selected_profile = profile_name
         if selected_profile is None and self.payload is None:
@@ -1476,7 +3078,22 @@ class Validator:
             # particular, a staged reviewer skill must still be checked when
             # the overview itself cannot be parsed.
             self.validate_reviewer_contracts(reviewer_lanes, reviewer_contracts)
+        self.validate_reviewer_runtime_health(reviewer_contracts)
         self.validate_reviewer_lane_prompts(omo_artifact, reviewer_lanes, agents)
+        self.validate_reviewer_task_permissions(omo_artifact, reviewer_lanes, agents)
+        self.validate_fixer_scheduler_contract(overview_artifact)
+        if self.payload and source_omo_artifact is not None:
+            source_agents, _, _ = self.collect_omo_agents(source_omo_artifact)
+            source_reviewer_lanes = sorted(
+                agent_id
+                for agent_id in source_agents
+                if agent_id.startswith(REVIEWER_PREFIX)
+            )
+            self.validate_reviewer_task_permissions(
+                source_omo_artifact, source_reviewer_lanes, source_agents
+            )
+        self.validate_review_command()
+        self.validate_rulesync_targets()
 
         self.validate_source_subagents(
             set(agents),
@@ -1485,6 +3102,28 @@ class Validator:
             source_skill_names,
             payload_skill_names,
         )
+        self.validate_runtime_smoke_script()
+        self.validate_fixer_runtime_smoke_script()
+        if self.payload:
+            self.validate_opencode_manifest(
+                self.payload / OPENCODE_MANIFEST_NAME,
+                self.payload,
+                require_present=True,
+            )
+        if self.opencode_config:
+            live_manifest = self.opencode_config / OPENCODE_MANIFEST_NAME
+            if live_manifest.exists() or live_manifest.is_symlink():
+                self.validate_opencode_manifest(
+                    live_manifest,
+                    self.opencode_config,
+                    require_present=True,
+                )
+            canonical_skill = (
+                self.payload / "skills" / "reviewer" / "SKILL.md"
+                if self.payload
+                else self.root / ".rulesync" / "skills" / "reviewer" / "SKILL.md"
+            )
+            self.validate_reviewer_shadow(canonical_skill)
 
     def model_catalog(self, artifact: Artifact | None) -> set[str]:
         if artifact is None:
@@ -1613,13 +3252,19 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=None,
         help="profile applied to a staged payload (used to verify its effective model assignments)",
     )
+    parser.add_argument(
+        "--opencode-config",
+        type=Path,
+        default=None,
+        help="live or fixture OpenCode config directory to validate ownership and shadow state",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     root = (args.root or Path(__file__).resolve().parents[1]).resolve()
-    validator = Validator(root, args.payload)
+    validator = Validator(root, args.payload, args.opencode_config)
     validator.run(args.profile)
     if validator.errors:
         for error in validator.errors:

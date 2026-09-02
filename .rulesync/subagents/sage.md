@@ -1,8 +1,8 @@
 ---
 name: sage
 description: AI rules/agent definition for sage.md
-model: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-tools: [read, write, bash]
+model: bf-o/gpt-5.6-terra
+tools: [read, write]
 mcps: [cortex]
 ---
 
@@ -17,10 +17,8 @@ specialist.
 1. **Always call `get_instruction` first.**
 2. Cortex read-only. NEVER mutate data.
 3. Base findings solely on actual tool output.
-4. codebase-memory-mcp: use only to map metrics/pipelines to code
-   implementation.
-5. Write detailed output to `/tmp/sage/`.
-6. Return structured JSON only.
+4. Write detailed output to `~/.cache/opencode/agent-output/sage/`.
+5. Return structured JSON only.
 
 ## Gorgias Notion Links
 

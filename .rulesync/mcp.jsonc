@@ -25,7 +25,7 @@
     "sentry": {
       "type": "sse",
       "url": "https://mcp.sentry.dev/mcp",
-      "enabled": true,
+      "enabled": false,
     },
     "linear": {
       "type": "sse",
@@ -45,12 +45,12 @@
     "notion": {
       "type": "sse",
       "url": "https://mcp.notion.com/mcp",
-      "enabled": true,
+      "enabled": false,
     },
     "rootly": {
       "type": "sse",
       "url": "https://mcp.rootly.com/mcp",
-      "enabled": true,
+      "enabled": false,
     },
     "gorgias-mcp": {
       "type": "sse",

@@ -52,12 +52,16 @@
 ## Development Environment
 
 - **Never run any git command on your own — always ask and confirm first.**
-  Covers commit, push, checkout, rebase, merge.
+  This applies to every Git command, including read-only discovery commands such
+  as `git status`, `git log`, `git diff`, and `git branch`, as well as mutating
+  commands (commit, push, checkout, rebase, merge).
 - If a test or lint command fails to run, ask which command to use and where the
   root folder is, then remember it.
 - When tests fail, show only the errors — filter the console output, don't dump
   it raw.
-- Always run lint to fix files before finishing an implementation.
+- Lint is check-only by default. Run lint with autofix only when the handoff
+  explicitly includes a `Lint Autofix` directive, and limit autofix to the files
+  listed in that directive.
 
 ## Package Manager & Monorepo Paths
 
@@ -87,6 +91,44 @@
 - **Never use Linear MCP directly** — dispatch to **Librarian**
 - **For Gorgias/internal Notion links or docs** — delegate to **Sage** (extracts page ID, uses Cortex)
 - **For public Notion pages** — delegate to **Librarian**
+
+## OpenCode Multi-Fixer Scheduler
+
+For approved L/XL plans, OpenCode's orchestrator is the only implementation
+scheduler. It may run at most **3** independent `@fixer` children in one batch;
+this is a scheduler contract, not an unsupported top-level OpenCode setting.
+
+Before dispatching, normalize every task's complete write set: every path it
+may create, modify, delete, or generate, including reports, planning files,
+lockfiles, and generated output. Require exact `Files`, `Interfaces/Constraints`,
+dependencies/producers/consumers, validation, and stop conditions. Missing,
+ambiguous, overlapping, shared-resource, generated-output, lockfile, or
+explicitly ordered work is serial. A consumer waits for its producer and a
+dependent waits for implementation **and review**.
+
+For each eligible batch:
+
+1. Select only ready tasks with pairwise disjoint, complete write sets.
+2. Dispatch one fresh `@fixer` per task with `background=true`, recording the
+   exact returned child session ID and job ID. Never infer IDs from aliases,
+   titles, ordering, or task descriptions.
+3. Wait for every dispatched task in the same batch. Reconcile each terminal
+   result by its exact returned session ID with `task_result`; a partial wait or
+   malformed result is not completion.
+4. Reconcile changed paths against each child's declared `Files` allowlist.
+   The fixer may create, modify, or delete only those paths. The allowlist is a
+   cooperative prompt contract because OpenCode does not provide a dynamic
+   per-task path ACL; runtime smoke must detect violations and fail closed.
+5. Send every `DONE` child through the preloaded OpenCode reviewer workflow
+   individually. Do not release any dependent until that child's review passes
+   (or an explicit `@oracle` adjudication resolves the review). Review
+   concurrency remains governed separately by the reviewer workflow.
+
+`NEEDS_CONTEXT`, `BLOCKED`, timeout or failure, failed, missing, or malformed implementer
+or review results hold all dependents and must be surfaced in the scheduler
+report. Unrelated ready tasks may continue in another safe batch. Never create
+an extra fixer to work around an ownership conflict; stop the affected lane
+and re-sequence it.
 
 ## Security Scan (on-demand)
 

@@ -27,7 +27,7 @@ flowchart TD
         SM3["Show plan once"]
         SM4{"Approve plan once?"}
         SM5["Dispatch implementation\n@fixer (code) / @designer (UI/UX)"]
-        SM6["Automatically dispatch exactly one @reviewer\npost-implementation gate"]
+        SM6["Automatically run exactly one review gate\nOpenCode: orchestrator\nClaude Code: @reviewer\npost-implementation"]
         SM8["Proportionate validation\n(no separate spec, executing-plans, ledger,\nor per-task review loop or review-choice prompt)"]
         SM7["Revise, clarify, or defer"]
 
@@ -100,11 +100,12 @@ flowchart TD
         E2["Create ledger:\n~/developer/planning-docs/{{repository-name}}/.planning/\nledger-<plan>.md"]
         E3["Read plan, create todos"]
         E4["Scan for pre-flight conflicts"]
-        E5["Dispatch implementer\n@fixer (code) / @designer (UI)"]
+        E5["Dispatch ready implementers\nup to 3 disjoint @fixer children\nbackground=true; @designer as needed"]
+        E5A["Wait for same batch\nreconcile exact child session IDs\nwith task_result"]
         E6{"Implementer status?"}
         E7["Provide context,\nre-dispatch"]
         E8["Task blocked:\nassess + escalate\nto @oracle if needed"]
-        E9["Dispatch @reviewer\nper-task review"]
+        E9["Run per-child review gate\nOpenCode: orchestrator's preloaded reviewer workflow\nClaude Code: @reviewer compatibility coordinator"]
         E10{"Review: spec ✅\nquality approved?"}
         E11["Fix loop\n(rounds 1-2: same agent\nround 3: fresh agent)"]
         E12{"Round 3 still failing?"}
@@ -119,7 +120,8 @@ flowchart TD
         E2 --> E3
         E3 --> E4
         E4 --> E5
-        E5 --> E6
+        E5 --> E5A
+        E5A --> E6
         E6 -->|NEEDS_CONTEXT| E7
         E7 --> E5
         E6 -->|BLOCKED| E8
@@ -145,8 +147,8 @@ flowchart TD
         direction TB
         R1["Load skill: reviewing-plans"]
         R2["Gather context:\nplan file + ledger +\nfull branch diff"]
-        R3["@reviewer selects up to 10 applicable specialists\nDispatch concern lanes in bounded parallel batches\nthen run reviewer-simplifier final pass after Phase A"]
-        R4["@reviewer returns\nstructured report"]
+        R3["Coordinator selects applicable lanes\nOpenCode: orchestrator directly dispatches reviewer-*\nClaude Code: @reviewer compatibility coordinator\nPhase A: concern lanes in batches ≤ resolved cap\n(fallback/max 3), wait between batches\nPhase B: simplifier exactly once, sequentially\nNo implicit partial-lane fallback"]
+        R4["Coordinator returns\nstructured report"]
         R5{"Critical issues = 0?"}
         R6["✅ Plan executed\nwith success\n\nReport to orchestrator:\n- Tasks completed\n- Review summary\n- Strengths\n- Merge ready"]
         R7["❌ Gate not passed\n\nReport to orchestrator:\n- Critical issues\n- Recommended fixes\n- Do NOT signal\ncompletion"]
@@ -178,6 +180,24 @@ flowchart TD
 
 ## T-shirt sizing policy
 
+### Bounded fixer batches
+
+During L/XL execution, OpenCode uses one orchestrator-owned scheduler with a
+maximum of **3** concurrent `@fixer` children. A batch is eligible only when
+each task has complete `Files` ownership and dependency metadata and the write
+sets are disjoint. Any overlap, ambiguity, shared resource, generated output,
+lockfile, or explicit ordering is serialized. Every child uses
+`background=true`; the orchestrator waits for the same batch and reconciles by
+the exact returned session ID through `task_result`.
+
+`Files` is a hard allowlist for create/modify/delete operations. Since OpenCode
+cannot install dynamic path ACLs, this is cooperative prompt enforcement with
+changed-path verification; unowned changes fail closed. Every `DONE` child gets
+its own reviewer gate before a dependent is released. `NEEDS_CONTEXT`,
+`BLOCKED`, timeout, failure, missing, or malformed implementer/reviewer output
+holds dependents and is surfaced rather than treated as success. Reviewer
+concurrency remains separate from the fixer cap.
+
 Always evaluate and visibly report `T-shirt size: XS | S | M | L | XL` with a
 short rationale first, before exploration or implementation:
 
@@ -191,7 +211,8 @@ short rationale first, before exploration or implementation:
 - **S/M** — use one concise merged SDD + implementation plan in
   `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, show it once, and obtain one approval before dispatching implementation to
   `@fixer` for code or `@designer` for UI/UX as appropriate. Automatically
-  dispatch exactly one post-implementation `@reviewer`, then run proportionate
+  run exactly one post-implementation review gate (OpenCode orchestrator; Claude
+  Code `@reviewer`), then run proportionate
   validation. Do not create a separate spec, load `executing-plans`, create a
   ledger, run a per-task review, or prompt for a review choice.
 - **L** — multi-area/cross-system work or material uncertainty.
@@ -204,11 +225,11 @@ short rationale first, before exploration or implementation:
 
 ## Agent Usage by Phase
 
-| T-shirt path / phase           | @explorer         | @librarian           | @oracle               | @designer         | @fixer                      | @reviewer                         |
+| T-shirt path / phase           | @explorer         | @librarian           | @oracle               | @designer         | @fixer                      | Review coordinator                |
 | ------------------------------ | ----------------- | -------------------- | --------------------- | ----------------- | --------------------------- | --------------------------------- |
 | XS/immediate                   | —                 | —                    | —                     | ✅ UI/UX implementation | ✅ code implementation     | —                                 |
-| S/M merged plan                | optional context  | optional research    | optional architecture | ✅ UI/UX implementation | ✅ code implementation     | ✅ one automatic post-implementation gate |
+| S/M merged plan                | optional context  | optional research    | optional architecture | ✅ UI/UX implementation | ✅ code implementation     | ✅ one automatic post-implementation gate (OpenCode orchestrator / Claude @reviewer) |
 | L/XL — 1. Brainstorming        | ✅ codebase recon | ✅ external research | ✅ architecture       | ✅ UI sections    | —                           | —                                 |
 | L/XL — 2. Writing Plans        | ✅ context        | ✅ research          | ✅ architecture       | ✅ UI planning    | —                           | —                                 |
-| L/XL — 3. Executing            | —                 | —                    | ✅ escalation         | ✅ UI tasks       | ✅ code tasks               | ✅ per-task review                |
-| L/XL — 4. Reviewing (optional) | —                 | —                    | —                     | —                 | —                           | ✅ final gate (all 10 specialists) |
+| L/XL — 3. Executing            | —                 | —                    | ✅ escalation         | ✅ UI tasks       | ✅ code tasks               | ✅ per-task review (OpenCode orchestrator / Claude @reviewer) |
+| L/XL — 4. Reviewing (optional) | —                 | —                    | —                     | —                 | —                           | ✅ final gate (all 10 specialists; OpenCode orchestrator / Claude @reviewer) |

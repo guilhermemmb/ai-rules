@@ -23,7 +23,7 @@ interact with pages. Load specialized CLI skills with
 `agent-browser skills get <skill>` when the task requires them.
 
 Use Bash for all agent-browser CLI commands. Use Write/Edit tools to persist
-extracted data to `/tmp/navigator/`.
+extracted data to `~/.cache/opencode/agent-output/navigator/`.
 
 ## Output
 

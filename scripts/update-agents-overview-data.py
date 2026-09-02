@@ -411,13 +411,22 @@ def main():
     with open(data_yaml_path, "r") as f:
         data = yaml.safe_load(f)
 
-    # 2. Load profiles
+    # 2. Load profiles (versioned schema: agents.{id}.{model, variant})
     profiles = {}
     for filename in sorted(os.listdir(profiles_dir)):
         if filename.endswith(".yml"):
             name = filename[:-4]
             with open(os.path.join(profiles_dir, filename), "r") as f:
-                profiles[name] = yaml.safe_load(f)
+                raw = yaml.safe_load(f)
+            # Emit the existing flat shape for data.yaml compatibility:
+            # agent_id -> model string.  The full {model, variant} spec
+            # is the source of truth in the profile files.
+            if isinstance(raw, dict) and isinstance(raw.get("agents"), dict):
+                profiles[name] = {
+                    agent_id: spec.get("model", "")
+                    for agent_id, spec in raw["agents"].items()
+                    if isinstance(spec, dict)
+                }
 
     # 3. Get model names from opencode.json
     model_names = get_model_names(opencode_path)

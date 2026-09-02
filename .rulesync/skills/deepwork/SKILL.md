@@ -143,3 +143,16 @@ Use the scheduler model throughout:
   work remains, stop briefly and let the completion event resume the workflow;
 - do not advance to the next phase while relevant jobs are running or terminal
   results are unreconciled.
+
+For implementation phases, the scheduler may run at most **3** independent
+`@fixer` children concurrently. Dispatch eligible children with
+`background=true`, record each exact returned session ID and job ID, wait for
+all children in the same batch, and reconcile each with `task_result` by that
+session ID. Classify every possible path (create/modify/delete/generate) in the
+task's hard `Files` write allowlist. Overlapping, ambiguous, shared-resource,
+generated-output, lockfile, and ordered work is serial; consumers wait for
+producers. A `DONE` fixer is not releasable until its own reviewer gate passes
+or `@oracle` explicitly adjudicates it. `NEEDS_CONTEXT`, `BLOCKED`, timeout,
+failure, missing, or malformed results hold dependents and remain visible in
+the phase state. This is cooperative prompt enforcement: OpenCode cannot safely
+install a dynamic path ACL, so smoke evidence must reject unowned changes.

@@ -30,7 +30,8 @@ rationale.
   `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, containing rationale, scope/files, concrete steps,
   and validation. Present it once and wait for one approval, then dispatch
   implementation to `@fixer` for code or `@designer` for UI/UX as appropriate,
-  followed automatically by one post-implementation `@reviewer`. Do not create
+  followed automatically by one post-implementation review gate (OpenCode
+  orchestrator's preloaded reviewer workflow). Do not create
   a separate spec, load `executing-plans`, create a ledger, run a per-task
   review loop, or ask for a review choice.
 - **L** — a multi-area or cross-system change, or material uncertainty.
@@ -43,6 +44,15 @@ rationale.
 
 Subagents follow the assigned T-shirt workflow and must not bypass its approval
 or artifact requirements.
+
+## Review routing
+
+- **OpenCode:** The orchestrator preloads the `reviewer` skill and is the sole
+  review coordinator. It directly selects, batches, and aggregates the ten
+  `reviewer-*` lanes. OpenCode review commands must not call `functions.skill`,
+  dispatch a nested `@reviewer` coordinator, or silently fall back to only a
+  subset of direct lanes. Coordination failures are reported as
+  Degraded/inconclusive rather than bypassed.
 
 ## Parallel Specialist Decomposition
 
@@ -60,6 +70,9 @@ and dispatch multiple fresh specialist lanes in the same turn:
   acceptance criteria, validation commands, and stop conditions.
 - Include the complete handoff contract for every lane: `Goal`, `Files`,
   `Steps`, `Interfaces/Constraints`, `Validation`, and `Stop Conditions`.
+- OpenCode may dispatch at most **3** independent `@fixer` children in one
+  implementation batch, each with `background=true`; this cap does not change
+  the separate reviewer concurrency cap.
 - Classify dependencies conservatively from the plan's declared `Files` and
   `Interfaces/Constraints` before dispatch:
   - Treat every path a lane may create, modify, delete, or generate as its
@@ -73,6 +86,11 @@ and dispatch multiple fresh specialist lanes in the same turn:
     other plan-declared sequencing serialize even when files are disjoint.
   - Only tasks with complete disjoint write sets and no interface, shared-state,
     or ordering dependency may share a batch.
+- Treat every path a child may create, modify, delete, or generate as part of
+  its hard `Files` write allowlist. Reports, planning artifacts, generated
+  output, and lockfiles must be explicitly owned or the task stays serial. A
+  fixer must return `NEEDS_CONTEXT` or `BLOCKED` rather than write outside its
+  allowlist or an active task's ownership.
 - Do not create artificial micro-tasks when the work is tiny, tightly coupled,
   or coordination would cost more than the parallelism saves.
 - Preserve designer intent across later lanes. Use `@fixer` for follow-up UI
@@ -80,17 +98,18 @@ and dispatch multiple fresh specialist lanes in the same turn:
   decisions; route design changes back to `@designer`.
 
 For each batch, dispatch only ready tasks whose required predecessors passed
-review. Track every dispatched task/session ID and wait for hook-driven
-completion of all implementer reports in that batch before advancing. Review
-each `DONE` lane within the available reviewer cap, queueing excess reviews;
-this cap applies only to reviewer scheduling. Arbitrary conversational
-tool-call parallelism remains disallowed. Dependency-aware independent
-plan-task lanes may run concurrently under the documented ownership and
-dependency rules. Do not start a dependent batch until its required
-predecessor reviews pass (or an explicit @oracle adjudication resolves the
-review under the existing rules).
+review. Record the exact returned session ID and job ID for every background
+dispatch; wait for all tasks in that same batch, then reconcile with
+`task_result` using those exact session IDs rather than aliases. Review each
+`DONE` lane within the available reviewer cap, queueing excess reviews; this
+cap applies only to reviewer scheduling. Arbitrary conversational tool-call
+parallelism remains disallowed. Do not start a dependent batch until every
+required predecessor has a successful implementer result and a passing
+per-child review (or an explicit @oracle adjudication resolves it).
 Unrelated ready work may finish while a failed predecessor is fixed or
-escalated, but dependent work waits. After the batch's lanes finish, reconcile
+escalated, but dependent work waits. `NEEDS_CONTEXT`, `BLOCKED`, timeout,
+failure, missing, or malformed reports hold dependents and are surfaced
+explicitly. After the batch's lanes finish, reconcile
 their terminal reports against the complete plan and combined diff:
 
 1. Map every planned item to a completed specialist result or an explicit
@@ -132,7 +151,10 @@ status `NEEDS_CONTEXT` or `BLOCKED`, or has an unverified acceptance criterion.
   the root folder is, then remember it.
 - When tests fail, show me only the errors — filter the console output, don't
   dump it raw.
-- Always run lint to fix files before finishing an implementation.
+- Always run lint validation (check-only, no autofix) before finishing an
+  implementation. Run lint with autofix only when the handoff explicitly
+  includes a `Lint Autofix` directive, and limit autofix to the files listed in
+  that directive.
 
 ## Package Manager & Monorepo Paths
 

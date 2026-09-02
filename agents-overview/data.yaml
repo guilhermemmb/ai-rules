@@ -1,5 +1,6 @@
-# Agent model labels describe the default profile for display. YAML profile values
-# contain model IDs only; OMO agent configuration defines reasoning variants.
+# Agent model labels describe the default profile for display. YAML profiles are
+# schema version 1: each agent entry carries a required model and an optional
+# variant; an omitted variant leaves the agent's existing variant unchanged.
 nodes:
   - id: orchestrator
     label: Orchestrator
@@ -19,7 +20,25 @@ nodes:
       - navigator
       - detective
       - sage
+      - reviewer-code
+      - reviewer-test
+      - reviewer-errors
+      - reviewer-types
+      - reviewer-security
+      - reviewer-performance
+      - reviewer-data-integrity
+      - reviewer-accessibility
+      - reviewer-comments
+      - reviewer-simplifier
+    fixer_scheduler:
+      max_concurrent_children: 3
+      dispatch: "OpenCode-only: up to 3 independent @fixer children with background=true"
+      lifecycle: "Wait for the same batch, reconcile exact returned session IDs, then review each DONE child before dependent release"
+      dependency_policy: "Overlapping, ambiguous, shared, generated, lockfile, and ordered work serializes"
+      failure_policy: "NEEDS_CONTEXT, BLOCKED, timeout, failure, or malformed results hold dependents and are surfaced"
+      ownership_policy: "Fixer Files are hard write allowlists; unowned changes fail closed"
     mcp_access: codebase-memory-mcp, github
+    review_ownership: "OpenCode: orchestrator is the sole coordinator and directly dispatches all ten reviewer-* read-only lanes; no functions.skill call, nested reviewer coordinator, or implicit partial-lane fallback."
     constraints:
       "Hard-enforced at tool/config level: no sentry/rootly MCP access (unavailable in Detective),
 
@@ -51,7 +70,7 @@ nodes:
     role: Strategic Advisor
     color: "#a78bfa"
     parent: orchestrator
-    model: GPT-5.6 Luna
+    model: GPT-5.6 Terra
     skills: simplify
     mcp_access: codebase-memory-mcp
     trigger: Architecture review, hard debugging, trade-offs, code review
@@ -91,7 +110,7 @@ nodes:
     role: Knowledge Retrieval
     color: "#94a3b8"
     parent: orchestrator
-    model: DeepSeek V4 Flash (low)
+    model: GPT-5.6 Luna (low)
     mcp_access: websearch, context7, gh_grep, linear, cortex
     skills: cortex
     trigger:
@@ -119,7 +138,7 @@ nodes:
     role: UI/UX Excellence
     color: "#f59e0b"
     parent: orchestrator
-    model: GPT-5.6 Luna (medium)
+    model: GLM 5.2 (medium)
     mcp_access: codebase-memory-mcp, figma-mcp
     trigger: UI/UX implementation, visual components, frontend polish
     constraints: UI/UX focused. No backend/production tooling.
@@ -142,14 +161,15 @@ nodes:
     role: Implementation Specialist
     color: "#34d399"
     parent: orchestrator
-    model: GPT-5.6 Luna (high)
+    model: DeepSeek V4 Pro via Novita (high)
     skills: fixer
     mcp_access: codebase-memory-mcp
     trigger: Scoped implementation tasks, bug fixes, code changes
     constraints:
       Receives concrete plan from Orchestrator with required handoff fields
       (Goal, Files, Steps, Interfaces/Constraints, Validation, Stop Conditions). Follows
-      code-exploration rule. Loads fixer skill.
+      code-exploration rule. Loads fixer skill. Files is a hard write allowlist;
+      no generated outputs, lockfiles, reports, or planning artifacts unless listed.
     responsibilities: "• Fast, scoped code implementation within bounded plan
 
       • Bug fixes with clear reproduction steps
@@ -230,7 +250,7 @@ nodes:
     role: Production Diagnostics
     color: "#f87171"
     parent: orchestrator
-    model: DeepSeek V4 Flash
+    model: GPT-5.6 Luna (medium)
     tools: pup CLI, gcloud CLI via Bash
     trigger: Production errors, logs, metrics, traces, incidents, root cause analysis
     constraints:
@@ -240,8 +260,8 @@ nodes:
 
       Base findings solely on tool output — never infer telemetry.
 
-      Sentry and Rootly MCP access is disabled in this configuration. Do not attempt to call them; report
-      those sources as unavailable.
+      Sentry, Rootly, and Notion MCP access is disabled in this configuration. Do not attempt to call
+      them; report those sources as unavailable.
 
       Datadog: pup CLI (--agent --ro) via Bash — no Datadog MCP.
 
@@ -250,7 +270,7 @@ nodes:
 
       • Read GCP Cloud Logging
 
-      • Report Sentry and Rootly as unavailable
+      • Report Sentry, Rootly, and Notion as unavailable
 
       • Correlate telemetry with available source-code context
 
@@ -263,7 +283,7 @@ nodes:
     role: Domain Knowledge
     color: "#60a5fa"
     parent: orchestrator
-    model: DeepSeek V4 Flash
+    model: GPT-5.6 Terra
     mcp_access: cortex, codebase-memory-mcp
     skills: cortex
     trigger:
@@ -292,13 +312,13 @@ nodes:
   - id: reviewer
     label: Reviewer
     type: agent
-    role: PR Review Coordinator
+    role: Compatibility Coordinator Alias (retained)
     color: "#f59e0b"
     parent: orchestrator
-    model: GPT-5.6 Luna (medium)
+    model: DeepSeek V4 Flash (medium)
     mcp_access: codebase-memory-mcp
     skills: reviewer
-    trigger: review a PR, review a branch's changes, pre-commit check, code scope review
+    trigger: Retained compatibility alias; OpenCode review requests run through the orchestrator
     dispatches:
       - reviewer-code
       - reviewer-test
@@ -311,16 +331,18 @@ nodes:
       - reviewer-comments
       - reviewer-simplifier
     constraints:
-      "Orchestrator-only dispatch. Spawns reviewer-* sub-agents in background
-      batches capped by REVIEWER_MAX_PARALLEL (default and maximum 3; invalid values
-      fall back to 3; values above 3 are clamped).
+      "Retained compatibility-coordinator alias. OpenCode does not dispatch this
+      coordinator; its orchestrator runs the preloaded reviewer workflow directly.
+
+      Spawns reviewer-* sub-agents in background batches capped by REVIEWER_MAX_PARALLEL
+      (default and maximum 3; invalid values fall back to 3; values above 3 are clamped).
 
       All lanes are independent. Failed or invalid lane output is recorded in Review
       Health and does not abort later batches. Returns structured report: Review Health /
       Critical / Important / Suggestions / Strengths / Action Plan.
 
       "
-    responsibilities: "• Comprehensive PR and code review coordinator
+    responsibilities: "• Retained compatibility-coordinator alias for comprehensive PR and code review
 
       • Selects up to 10 applicable reviewer-* specialists using diff-based triggers
 
@@ -332,103 +354,115 @@ nodes:
 
       • Read-only — never modifies files or posts GitHub comments
 
+      • Not an OpenCode coordinator; OpenCode routes review ownership through the orchestrator
+
       "
   - id: reviewer-code
     label: reviewer-code
     type: agent
     role: CLAUDE.md Compliance & Bugs
     color: "#f87171"
-    parent: reviewer
+    parent: orchestrator
+    claude_parent: reviewer
     model: GPT-5.6 Luna (medium)
     mcp_access: codebase-memory-mcp
-    trigger: Always dispatched by reviewer
+    trigger: Always dispatched by the OpenCode orchestrator
   - id: reviewer-comments
     label: reviewer-comments
     type: agent
     role: Comment Accuracy & Rot
     color: "#94a3b8"
-    parent: reviewer
-    model: GPT-5.6 Luna (medium)
+    parent: orchestrator
+    claude_parent: reviewer
+    model: DeepSeek V4 Flash (low)
     mcp_access: codebase-memory-mcp
-    trigger: Comments/docs changes in diff
+    trigger: Comments/docs changes in diff; dispatched by the active coordinator
   - id: reviewer-test
     label: reviewer-test
     type: agent
     role: Test Coverage Analysis
     color: "#34d399"
-    parent: reviewer
+    parent: orchestrator
+    claude_parent: reviewer
     model: GPT-5.6 Luna (medium)
     mcp_access: codebase-memory-mcp
-    trigger: Test file changes in diff or production behavior changed without matching behavioral coverage
+    trigger: Test file changes in diff or production behavior changed without matching behavioral coverage; dispatched by the active coordinator
   - id: reviewer-errors
     label: reviewer-errors
     type: agent
     role: Silent Failure Hunting
     color: "#f87171"
-    parent: reviewer
+    parent: orchestrator
+    claude_parent: reviewer
     model: GPT-5.6 Luna (medium)
     mcp_access: codebase-memory-mcp
-    trigger: Error handling changes in diff
+    trigger: Error handling changes in diff; dispatched by the active coordinator
   - id: reviewer-types
     label: reviewer-types
     type: agent
     role: Type Design Analysis
     color: "#a78bfa"
-    parent: reviewer
+    parent: orchestrator
+    claude_parent: reviewer
     model: GPT-5.6 Luna (medium)
     mcp_access: codebase-memory-mcp
-    trigger: New types/interfaces in diff
+    trigger: New types/interfaces in diff; dispatched by the active coordinator
   - id: reviewer-security
     label: reviewer-security
     type: agent
     role: Security Boundary Audit
     color: "#f87171"
-    parent: reviewer
-    model: GPT-5.6 Luna (medium)
+    parent: orchestrator
+    claude_parent: reviewer
+    model: GPT-5.6 Terra (medium)
     mcp_access: codebase-memory-mcp
     trigger:
       Auth, secrets, validation, injection, permissions, crypto, network, dependency,
-      or sensitive-data changes
+      or sensitive-data changes; dispatched by the active coordinator
   - id: reviewer-performance
     label: reviewer-performance
     type: agent
     role: Performance & Scalability Audit
     color: "#38bdf8"
-    parent: reviewer
+    parent: orchestrator
+    claude_parent: reviewer
     model: GPT-5.6 Luna (medium)
     mcp_access: codebase-memory-mcp
     trigger:
       Algorithm, loop, query, cache, concurrency, I/O, rendering, allocation,
-      hot-path, or large-data changes
+      hot-path, or large-data changes; dispatched by the active coordinator
   - id: reviewer-data-integrity
     label: reviewer-data-integrity
     type: agent
     role: Persistence & State Integrity Audit
     color: "#f59e0b"
-    parent: reviewer
-    model: GPT-5.6 Luna (medium)
+    parent: orchestrator
+    claude_parent: reviewer
+    model: GPT-5.6 Terra (medium)
     mcp_access: codebase-memory-mcp
     trigger:
       Persistence, migration, transaction, serialization, idempotency, event,
-      state, synchronization, or invariant changes
+      state, synchronization, or invariant changes; dispatched by the active coordinator
   - id: reviewer-simplifier
     label: reviewer-simplifier
     type: agent
     role: Code Clarity & Simplification
     color: "#38bdf8"
-    parent: reviewer
-    model: GPT-5.6 Luna (medium)
+    parent: orchestrator
+    claude_parent: reviewer
+    model: DeepSeek V4 Flash (low)
     mcp_access: codebase-memory-mcp
-    trigger: Non-empty executable/source/config diff; clarity pass after Phase A
+    trigger: Non-empty executable/source/config diff; clarity pass after Phase A; dispatched by the active coordinator
   - id: reviewer-accessibility
     label: reviewer-accessibility
     type: agent
     role: WCAG 2.2 AA Audit
     color: "#f59e0b"
-    parent: reviewer
-    model: GPT-5.6 Luna (medium)
+    parent: orchestrator
+    claude_parent: reviewer
+    model: Gemini 3 Flash Preview (medium)
     mcp_access: codebase-memory-mcp
-    trigger: UI files changed in diff (html, jsx, tsx, js, ts, css, scss, vue, svelte) or rendering behavior changed
+    trigger: UI files changed in diff (html, jsx, tsx, js, ts, css, scss, vue, svelte) or rendering behavior changed; dispatched by the active coordinator
   - id: codebase-memory
     label: codebase-memory-mcp
     type: mcp
@@ -580,22 +614,22 @@ nodes:
     role: Log Search & Management
     color: "#34d399"
     parent: detective
-  - id: skill-dd-monitors
-    label: dd-monitors
+  - id: skill-dd-symdb
+    label: dd-symdb
     type: skill
-    role: Monitor Alerting
+    role: Symbol Database / Probe-able Methods
     color: "#34d399"
     parent: detective
-  - id: skill-dd-debugger
-    label: dd-debugger
+  - id: skill-traces
+    label: traces
     type: skill
-    role: Live Debugger Probes
+    role: APM Traces & Spans
     color: "#34d399"
     parent: detective
-  - id: skill-incident-response
-    label: incident-response
+  - id: skill-logs
+    label: logs
     type: skill
-    role: Incident Tracking & On-call
+    role: Datadog Log Search & Analysis
     color: "#34d399"
     parent: detective
   - id: skill-brainstorming
@@ -625,9 +659,9 @@ nodes:
   - id: skill-reviewer
     label: reviewer
     type: skill
-    role: PR Review Orchestration (10 specialist lanes)
+    role: PR Review Workflow (10 specialist lanes)
     color: "#34d399"
-    parent: reviewer
+    parent: orchestrator
   - id: skill-fixer
     label: fixer
     type: skill
@@ -697,10 +731,11 @@ nodes:
 
       • 7 built-in agents (council disabled)
 
-      • 14 custom agents (Navigator, Detective, Sage, Reviewer + 10 reviewer-*)
+      • 13 OpenCode custom agents (Navigator, Detective, Sage + 10 reviewer-* lanes)
+      • Reviewer retained as a compatibility-coordinator alias
 
       • 4 SDD skills (brainstorming, writing-plans, executing-plans, reviewing-plans)
-      + reviewer
+      + reviewer preloaded on the OpenCode orchestrator
 
       • Image routing: auto (Observer)
 
@@ -752,12 +787,21 @@ nodes:
     parent: null
     config:
       "• Profiles: default, cost-efficient • Location: profiles/models/*.yml •
-      Deploy: ./deploy.sh --model-profile=cost-efficient • default: GPT-5.6 Luna, DeepSeek
-      V4 Flash, Gemini 3 Flash • cost-efficient: DeepSeek V4 Flash/Pro,
-      Gemini 3 Flash • OMO variants are defined by agent configuration, not YAML:
-      default Fixer uses Luna/high and all reviewer agents use Luna/medium •
-      cost-efficient routes Fixer to DeepSeek V4 Flash and reviewer lanes to their
-      existing DeepSeek V4 Flash/Pro mix •
+      Deploy: ./deploy.sh --model-profile=<name> • Schema: version 1 — each agent entry
+      carries a required model and an optional variant; an omitted variant leaves the
+      agent's existing variant unchanged •
+      Balanced routing across speed, quality, and cost; no performance-first or
+      percentage-savings claims •
+      Shared both profiles: Novita DeepSeek V4 Pro (Fixer, high), GPT-5.6 Terra
+      (Oracle/Sage + security/data-integrity reviewers), GLM 5.2 (Designer),
+      DeepSeek V4 Flash, Gemini 3 Flash •
+      default: GPT-5.6 Luna for orchestrator/detective/most reviewer lanes; DeepSeek V4
+      Flash for explorer/librarian-low-tier and low-tier reviewer lanes; Gemini 3 Flash
+      for observer/navigator/reviewer-accessibility •
+      cost-efficient: Gemini 3 Flash orchestrator; DeepSeek V4 Flash/Pro for detective
+      and reviewer lanes •
+      Novita Fixer uses interleaved reasoning_content; sampling overrides
+      temperature/top_p/top_k are unsupported •
       Implementation: scripts/apply-model-profile.py patches oh-my-opencode-slim.json "
   - id: bifrost
     label: Bifrost
@@ -806,7 +850,37 @@ links:
     label: dispatches
   - source: orchestrator
     target: reviewer
-    label: dispatches
+    label: dispatches (compatibility alias only)
+  - source: orchestrator
+    target: reviewer-code
+    label: dispatches directly (OpenCode)
+  - source: orchestrator
+    target: reviewer-test
+    label: dispatches directly (OpenCode, if tests)
+  - source: orchestrator
+    target: reviewer-errors
+    label: dispatches directly (OpenCode, if errors)
+  - source: orchestrator
+    target: reviewer-types
+    label: dispatches directly (OpenCode, if types)
+  - source: orchestrator
+    target: reviewer-security
+    label: dispatches directly (OpenCode, if security-sensitive)
+  - source: orchestrator
+    target: reviewer-performance
+    label: dispatches directly (OpenCode, if performance-sensitive)
+  - source: orchestrator
+    target: reviewer-data-integrity
+    label: dispatches directly (OpenCode, if data-sensitive)
+  - source: orchestrator
+    target: reviewer-accessibility
+    label: dispatches directly (OpenCode, if UI files)
+  - source: orchestrator
+    target: reviewer-comments
+    label: dispatches directly (OpenCode, if docs)
+  - source: orchestrator
+    target: reviewer-simplifier
+    label: dispatches sequentially (OpenCode Phase B)
   - source: orchestrator
     target: codebase-memory
     label: uses
@@ -842,34 +916,34 @@ links:
     label: uses (Bash)
   - source: reviewer
     target: reviewer-code
-    label: dispatches
+    label: dispatches (compatibility alias only)
   - source: reviewer
     target: reviewer-comments
-    label: dispatches (if docs)
+    label: dispatches (compatibility alias, if docs)
   - source: reviewer
     target: reviewer-test
-    label: dispatches (if tests)
+    label: dispatches (compatibility alias, if tests)
   - source: reviewer
     target: reviewer-errors
-    label: dispatches (if errors)
+    label: dispatches (compatibility alias, if errors)
   - source: reviewer
     target: reviewer-types
-    label: dispatches (if types)
+    label: dispatches (compatibility alias, if types)
   - source: reviewer
     target: reviewer-security
-    label: dispatches (if security-sensitive)
+    label: dispatches (compatibility alias, if security-sensitive)
   - source: reviewer
     target: reviewer-performance
-    label: dispatches (if performance-sensitive)
+    label: dispatches (compatibility alias, if performance-sensitive)
   - source: reviewer
     target: reviewer-data-integrity
-    label: dispatches (if data-sensitive)
+    label: dispatches (compatibility alias, if data-sensitive)
   - source: reviewer
     target: reviewer-simplifier
-    label: dispatches (post-Phase-A, if executable/source/config diff)
+    label: dispatches (compatibility alias, post-Phase-A, if executable/source/config diff)
   - source: reviewer
     target: reviewer-accessibility
-    label: dispatches (if UI files)
+    label: dispatches (compatibility alias, if UI files)
   - source: reviewer
     target: codebase-memory
     label: uses
@@ -931,13 +1005,13 @@ links:
     target: skill-dd-logs
     label: invokes
   - source: detective
-    target: skill-dd-monitors
+    target: skill-dd-symdb
     label: invokes
   - source: detective
-    target: skill-dd-debugger
+    target: skill-traces
     label: invokes
   - source: detective
-    target: skill-incident-response
+    target: skill-logs
     label: invokes
   - source: orchestrator
     target: skill-brainstorming
@@ -954,9 +1028,12 @@ links:
   - source: orchestrator
     target: skill-screenshot
     label: invokes
+  - source: orchestrator
+    target: skill-reviewer
+    label: preloads and invokes (OpenCode)
   - source: reviewer
     target: skill-reviewer
-    label: invokes
+    label: invokes (compatibility alias only)
   - source: orchestrator
     target: tool-bash
     label: uses
@@ -990,48 +1067,48 @@ links:
 profiles:
   cost-efficient:
     orchestrator: bf/gemini/gemini-3-flash-preview
-    oracle: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro
+    oracle: bf-o/gpt-5.6-terra
     explorer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     librarian: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    fixer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    designer: bf/gemini/gemini-3-flash-preview
+    fixer: bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro
+    designer: bf/huggingface/together/zai-org/GLM-5.2
     observer: bf/gemini/gemini-3-flash-preview
     navigator: bf/gemini/gemini-3-flash-preview
-    sage: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+    sage: bf-o/gpt-5.6-terra
     detective: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     reviewer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    reviewer-code: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro
+    reviewer-code: bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro
     reviewer-comments: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    reviewer-test: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    reviewer-errors: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro
-    reviewer-types: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro
-    reviewer-security: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro
-    reviewer-performance: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro
-    reviewer-data-integrity: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro
+    reviewer-test: bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro
+    reviewer-errors: bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro
+    reviewer-types: bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro
+    reviewer-security: bf-o/gpt-5.6-terra
+    reviewer-performance: bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro
+    reviewer-data-integrity: bf-o/gpt-5.6-terra
     reviewer-simplifier: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     reviewer-accessibility: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
   default:
     orchestrator: bf-o/gpt-5.6-luna
-    oracle: bf-o/gpt-5.6-luna
+    oracle: bf-o/gpt-5.6-terra
     explorer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    librarian: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    fixer: bf-o/gpt-5.6-luna
-    designer: bf-o/gpt-5.6-luna
+    librarian: bf-o/gpt-5.6-luna
+    fixer: bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro
+    designer: bf/huggingface/together/zai-org/GLM-5.2
     observer: bf/gemini/gemini-3-flash-preview
     navigator: bf/gemini/gemini-3-flash-preview
-    sage: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    detective: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    reviewer: bf-o/gpt-5.6-luna
+    sage: bf-o/gpt-5.6-terra
+    detective: bf-o/gpt-5.6-luna
+    reviewer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     reviewer-code: bf-o/gpt-5.6-luna
-    reviewer-comments: bf-o/gpt-5.6-luna
+    reviewer-comments: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     reviewer-test: bf-o/gpt-5.6-luna
     reviewer-errors: bf-o/gpt-5.6-luna
     reviewer-types: bf-o/gpt-5.6-luna
-    reviewer-security: bf-o/gpt-5.6-luna
+    reviewer-security: bf-o/gpt-5.6-terra
     reviewer-performance: bf-o/gpt-5.6-luna
-    reviewer-data-integrity: bf-o/gpt-5.6-luna
-    reviewer-simplifier: bf-o/gpt-5.6-luna
-    reviewer-accessibility: bf-o/gpt-5.6-luna
+    reviewer-data-integrity: bf-o/gpt-5.6-terra
+    reviewer-simplifier: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+    reviewer-accessibility: bf/gemini/gemini-3-flash-preview
 model_names:
   bf/gemini/gemini-2.5-flash: Gemini 2.5 Flash
   bf/gemini/gemini-2.5-pro: Gemini 2.5 Pro

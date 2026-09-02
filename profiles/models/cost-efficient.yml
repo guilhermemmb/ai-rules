@@ -1,22 +1,68 @@
-# .planning/model-profiles/cost-efficient.yaml
-orchestrator: "bf/gemini/gemini-3-flash-preview"
-oracle: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro"
-explorer: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
-librarian: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
-fixer: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
-designer: "bf/gemini/gemini-3-flash-preview"
-observer: "bf/gemini/gemini-3-flash-preview"
-navigator: "bf/gemini/gemini-3-flash-preview"
-sage: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
-detective: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
-reviewer: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
-reviewer-code: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro"
-reviewer-comments: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
-reviewer-test: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
-reviewer-errors: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro"
-reviewer-types: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro"
-reviewer-security: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro"
-reviewer-performance: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro"
-reviewer-data-integrity: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Pro"
-reviewer-simplifier: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
-reviewer-accessibility: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
+# Model profile with per-agent model and optional variant.
+# Schema version 1: each agent entry is {model, optional variant}.
+# Variants are drawn from the OMO preset/custom-agent configuration;
+# no variants are invented here.
+# A profile entry that omits variant leaves the agent's existing
+# variant unchanged during application.
+version: 1
+agents:
+  orchestrator:
+    model: "bf/gemini/gemini-3-flash-preview"
+    variant: "high"
+  oracle:
+    model: "bf-o/gpt-5.6-terra"
+    variant: "high"
+  explorer:
+    model: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
+    variant: "low"
+  librarian:
+    model: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
+    variant: "low"
+  fixer:
+    model: "bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro"
+    variant: "high"
+  designer:
+    model: "bf/huggingface/together/zai-org/GLM-5.2"
+    variant: "medium"
+  observer:
+    model: "bf/gemini/gemini-3-flash-preview"
+  navigator:
+    model: "bf/gemini/gemini-3-flash-preview"
+  sage:
+    model: "bf-o/gpt-5.6-terra"
+  detective:
+    model: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
+    variant: "high"
+  reviewer:
+    model: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
+    variant: "medium"
+  reviewer-code:
+    model: "bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro"
+    variant: "medium"
+  reviewer-comments:
+    model: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
+    variant: "low"
+  reviewer-test:
+    model: "bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro"
+    variant: "medium"
+  reviewer-errors:
+    model: "bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro"
+    variant: "medium"
+  reviewer-types:
+    model: "bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro"
+    variant: "medium"
+  reviewer-security:
+    model: "bf-o/gpt-5.6-terra"
+    variant: "medium"
+  reviewer-performance:
+    model: "bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro"
+    variant: "medium"
+  reviewer-data-integrity:
+    model: "bf-o/gpt-5.6-terra"
+    variant: "medium"
+  reviewer-simplifier:
+    model: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
+    variant: "medium"
+  reviewer-accessibility:
+    model: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
+    variant: "medium"
