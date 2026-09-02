@@ -67,7 +67,7 @@ then runs a separate reviewer gate for every `DONE` child before releasing its
 dependents. `NEEDS_CONTEXT`, `BLOCKED`, timeout, failure, missing, or malformed
 results hold dependents and are surfaced. OpenCode has no dynamic per-task path
 ACL, so the fixer allowlist is cooperative prompt enforcement backed by
-changed-path smoke verification; unowned changes fail closed. Reviewer
+changed-path verification; unowned changes fail closed. Reviewer
 concurrency remains a separate reviewer-workflow setting.
 
 ### OpenCode deployment ownership
@@ -126,23 +126,16 @@ An optional, operator-supplied compatibility evidence file can be selected with
 `opencode_version`, `omo_version`, `plugin_version`, and `sdk_version`. A
 mismatch is reported as version skew; missing evidence remains unverified.
 Neither static validation nor a version match is a runtime Healthy claim.
-The opt-in smoke command runs `./deploy.sh --compatibility-check` before
+The opt-in compatibility check runs `./deploy.sh --compatibility-check` before
 starting OpenCode and blocks when this status is unknown or skewed, so no
 runtime report can claim Healthy from an unverified package pair.
 
 After deployment, start a fresh OpenCode process before relying on generated
-configuration. Runtime smoke evidence is the supported path for proving
-background-task parentage, reconciliation, effective permissions, and the
-absence of forbidden reviewer tool execution. Run the smoke command only after
-deploying and restarting; failed, unavailable, or inconclusive smoke evidence
-must remain Degraded/inconclusive rather than Healthy.
-
-The current OpenCode smoke inspection may expose only `partial/observed`
-effective permission state. When that occurs, the smoke result must report
-`Review Health: Degraded/inconclusive` and `Effective permission evidence:
-partial/observed`; it must never claim `Healthy` or `read-only verified`. The
-smoke check does not synthesize a complete permission map or broaden any agent
-permission to compensate.
+configuration. The repository's remaining validation mechanisms provide static,
+configuration, compatibility, and deployment-precondition evidence; they do not
+prove background-task parentage, reconciliation, effective permissions, or the
+absence of forbidden reviewer tool execution. Those runtime conclusions remain
+unverified without independent runtime evidence.
 
 ## Model Profiles
 
@@ -228,13 +221,15 @@ OMO `bifrost.fixer` assignment. The matching Bifrost provider entry enables
 chain and credential reference. The provider catalog confirms the model entry;
 the Bifrost grant, `high` variant acceptance, and multi-turn reasoning/tool-use
 round trip remain runtime compatibility checks rather than static guarantees.
-The regression assertion in `scripts/test_model_profile.py` ensures Fixer remains
-assigned to this model and the `high` variant across all configuration sources.
+The source profiles and provider configuration record this assignment, while
+runtime compatibility remains an operational concern rather than a static
+guarantee.
 
-After deployment, restart OpenCode in a fresh process, then run a multi-turn
-Fixer tool-use smoke test (at least two tool turns). Treat missing grant,
-unsupported variant/parameters, reasoning-content round-trip errors, or
-`finish_reason: length` as a compatibility failure—not a successful fallback.
+After deployment, restart OpenCode in a fresh process before relying on the
+configuration. Treat a missing grant, unsupported variant/parameters,
+reasoning-content round-trip error, or `finish_reason: length` observed during
+independent runtime verification as a compatibility failure—not a successful
+fallback.
 
 ## Directory Map
 

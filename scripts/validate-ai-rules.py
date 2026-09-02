@@ -53,8 +53,6 @@ REVIEWER_HEALTH_FIELDS = (
     "repository immutability",
     "degraded/inconclusive",
 )
-RUNTIME_SMOKE_SCRIPT = "scripts/smoke-opencode-reviewer-runtime.sh"
-FIXER_RUNTIME_SMOKE_SCRIPT = "scripts/smoke-opencode-fixer-runtime.sh"
 FIXER_BATCH_MAX = 3
 FIXER_MODEL = "bf-o/gpt-5.6-luna"
 UNSUPPORTED_THINKING_PARAMETERS = frozenset({"temperature", "top_p", "top_k"})
@@ -2029,113 +2027,6 @@ class Validator:
                     text=text,
                 )
 
-    def validate_runtime_smoke_script(self) -> None:
-        """Validate the opt-in smoke command without executing an LLM session."""
-
-        path = self.root / RUNTIME_SMOKE_SCRIPT
-        text = self.read_text(path)
-        if text is None:
-            return
-        if not path.is_file():
-            self.add_error(path, "runtime smoke command must be a regular file")
-        elif path.stat().st_mode & 0o111 == 0:
-            self.add_error(path, "runtime smoke command must be executable")
-
-        required_markers = (
-            "source \"$HOME/.zshrc\"",
-            "REVIEWER_MAX_PARALLEL=1",
-            "OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true",
-            "--agent orchestrator",
-            "reviewer-code",
-            "mode=ro",
-            "--run",
-            "sqlite3",
-            "metadata.get(\"background\") is not True",
-            "task_result",
-            '"jobId"',
-            '"parentSessionId"',
-            'safe_commands = {("pwd",), ("date", "+%s")}',
-            "argv not in safe_commands",
-            "allowed_read_only_tools = {",
-            "tool_name not in allowed_read_only_tools",
-            "required_session_columns = {",
-            "required_part_columns = {",
-            "required_message_columns = {",
-            "dispatch: dict = {}",
-            "invalid optional {key}",
-            "reconciliation_input",
-            "task_id",
-            'message.get("finish") != "stop"',
-            "CAST(data AS BLOB)",
-            "trap cleanup EXIT",
-            "rm -rf -- \"$RUN_DIR\"",
-            "snapshot_repository",
-            "BEFORE_SNAPSHOT",
-            "AFTER_SNAPSHOT",
-            "before_snapshot_ok",
-            "after_snapshot_ok",
-            "session.permission",
-            "mutation_permission_names",
-            "partial/observed",
-            "must not claim Healthy for partial permissions",
-            "must not be reported as read-only verified",
-            "must be reported as partial/observed",
-            "allowed_session_agents",
-            "coordinator_report",
-            "health_report",
-            "ACTIVE_OMO_PATH",
-            "--compatibility-check",
-            "COMPATIBILITY_STATUS=matched",
-            "OPENCODE_COMPATIBILITY_STATUS=matched",
-            "Compatibility preflight: matched",
-            "repository working tree snapshot changed",
-            "coordinator_text_parts",
-            "health_match",
-            "required_health_labels",
-            "structured Review Health",
-        )
-        missing = [marker for marker in required_markers if marker not in text]
-        if missing:
-            self.add_error(
-                path,
-                "runtime smoke command is missing required markers: "
-                + ", ".join(missing),
-                key="runtime smoke",
-                text=text,
-            )
-        forbidden_patterns = (
-            (
-                r"(?m)^\s*(?:git|rtk\s+git|curl|wget|dd|truncate|tee|cp|mv|touch)\b",
-                "runtime smoke command must not execute mutation-capable shell commands",
-                "mutation-capable shell",
-            ),
-            (
-                r"\b(?:subprocess|os\.system|os\.popen|Popen|eval\s*\(|exec\s*\()",
-                "runtime smoke command must not use indirect command execution",
-                "indirect command execution",
-            ),
-        )
-        for pattern, message, key in forbidden_patterns:
-            if re.search(pattern, text):
-                self.add_error(path, message, key=key, text=text)
-        heredocs = re.findall(r"<<'PY'\n(.*?)\nPY", text, re.DOTALL)
-        if not heredocs:
-            self.add_error(
-                path,
-                "runtime smoke command must contain Python heredocs",
-                key="PY",
-                text=text,
-            )
-        for index, source in enumerate(heredocs, 1):
-            try:
-                compile(source, f"{path}#heredoc-{index}", "exec")
-            except SyntaxError as error:
-                self.add_error(
-                    path,
-                    f"runtime smoke Python heredoc {index} is invalid: {error.msg}",
-                    line=error.lineno,
-                )
-
     def validate_fixer_scheduler_contract(self, overview_artifact: Artifact | None) -> None:
         """Validate the source and staged guidance for bounded fixer batches."""
 
@@ -2258,56 +2149,6 @@ class Validator:
                     f"overview fixer_scheduler.{key} must be a non-empty string",
                     key=key,
                     text=overview_artifact.text,
-                )
-
-    def validate_fixer_runtime_smoke_script(self) -> None:
-        """Validate the opt-in three-fixer smoke command without executing it."""
-
-        path = self.root / FIXER_RUNTIME_SMOKE_SCRIPT
-        text = self.read_text(path)
-        if text is None:
-            return
-        if not path.is_file():
-            self.add_error(path, "fixer runtime smoke command must be a regular file")
-        elif path.stat().st_mode & 0o111 == 0:
-            self.add_error(path, "fixer runtime smoke command must be executable")
-        required_markers = (
-            'source "$HOME/.zshrc"',
-            "mktemp -d",
-            "--agent orchestrator",
-            "--run",
-            '"fixer"',
-            '"background"',
-            '"parent_id"',
-            '"session_id"',
-            '"task_result"',
-            '"write_set"',
-            "unowned",
-            "unexpected",
-            "review",
-            "trap cleanup EXIT",
-            "isolated",
-        )
-        missing = [marker for marker in required_markers if marker not in text]
-        if missing:
-            self.add_error(
-                path,
-                "fixer runtime smoke command is missing required markers: "
-                + ", ".join(missing),
-                key="fixer runtime smoke",
-                text=text,
-            )
-        heredocs = re.findall(r"<<'PY'\n(.*?)\nPY", text, re.DOTALL)
-        if not heredocs:
-            self.add_error(path, "fixer runtime smoke command must contain Python heredocs", key="PY", text=text)
-        for index, source in enumerate(heredocs, 1):
-            try:
-                compile(source, f"{path}#heredoc-{index}", "exec")
-            except SyntaxError as error:
-                self.add_error(
-                    path,
-                    f"fixer runtime smoke Python heredoc {index} is invalid: {error.msg}",
-                    line=error.lineno,
                 )
 
     def _manifest_path(
@@ -3092,8 +2933,6 @@ class Validator:
             source_skill_names,
             payload_skill_names,
         )
-        self.validate_runtime_smoke_script()
-        self.validate_fixer_runtime_smoke_script()
         if self.payload:
             self.validate_opencode_manifest(
                 self.payload / OPENCODE_MANIFEST_NAME,

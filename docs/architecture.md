@@ -33,7 +33,7 @@ fourth is observed at runtime and cannot be proven from source alone.
 | **Source** | Files tracked in this repository define rules, agents, skills, commands, MCPs, model profiles, and deployment logic. Sibling dotfiles provide only Worktrunk integration/deployment inputs. | This repository + `$DOTFILES_DIR` |
 | **Generated** | Artifacts produced by `deploy.sh` + Rulesync + `apply-model-profile.py` into a private staging payload, then installed to `~/.config/opencode/`. | [`deploy.sh`](../deploy.sh) |
 | **Installed** | Live configuration under `~/.config/opencode/`, the RTK plugin, the wt-orca/worktree-state adapters and Worktrunk config, and OMO/SDK/plugin packages. | Generated payload + observed install state |
-| **Observed** | Runtime smoke evidence, `--check`/`--compatibility-check` output, and OMO-inside-Orca probe results. | [`deploy.sh`](../deploy.sh) for `--check`/`--compatibility-check`; [`scripts/`](../scripts/) for smoke scripts |
+| **Observed** | `--check`/`--compatibility-check` output and OMO-inside-Orca probe results. | [`deploy.sh`](../deploy.sh) for `--check`/`--compatibility-check`; installed runtime state for OMO-inside-Orca probes |
 
 ### Source layer (tracked in-repo)
 
@@ -49,7 +49,7 @@ fourth is observed at runtime and cannot be proven from source alone.
 | [`.rulesync/skills/`](../.rulesync/skills/) | Vendored skills distributed by Rulesync. |
 | [`.rulesync/mcp.jsonc`](../.rulesync/mcp.jsonc) | MCP server declarations (endpoints, enable flags). |
 | [`profiles/models/`](../profiles/models/) | Model profiles (`default.yml`, `cost-efficient.yml`) — schema version 1 with a required per-agent `model` and an optional `variant`. |
-| [`scripts/`](../scripts/) | Cross-artifact validator, profile applier, and runtime smoke scripts. |
+| [`scripts/`](../scripts/) | Cross-artifact validator, profile applier, and latency-reporting utilities. |
 | [`deploy.sh`](../deploy.sh) | Deployment/check/rollback entry point; source of truth for generated configuration. |
 | [`agents-overview/`](../agents-overview/) | Interactive visualization (`data.yaml` + `index.html`). |
 | [`skills-lock.json`](../skills-lock.json) | Pinned/locked external skills (`agent-browser` from `vercel-labs/agent-browser`). |
@@ -109,18 +109,20 @@ hashes). The payload is also validated by
 | `~/.config/worktrunk/config.toml` | Worktrunk config installed from sibling dotfiles. |
 | `~/.agents/skills/reviewer/SKILL.md` | **Observed** higher-priority reviewer shadow skill detected by `--check`; never auto-deleted. |
 
-### Observed layer (runtime evidence)
+### Observed layer (diagnostic evidence)
 
-Runtime health is proven only by the smoke scripts. The read-only deploy
-diagnostics provide configuration/compatibility/precondition evidence, not
-runtime-health proof. The supported evidence paths are:
+The repository's remaining validation mechanisms are the cross-artifact validator
+and the read-only deploy diagnostics. They provide source/configuration,
+compatibility, and deployment-precondition evidence, not runtime-health proof:
 
-- [`scripts/smoke-opencode-reviewer-runtime.sh`](../scripts/smoke-opencode-reviewer-runtime.sh) — reviewer runtime/parentage/effective-permission evidence (runtime-health proof).
-- [`scripts/smoke-opencode-fixer-runtime.sh`](../scripts/smoke-opencode-fixer-runtime.sh) — fixer tool-use/runtime evidence (runtime-health proof).
-- [`deploy.sh --check`](../deploy.sh) and [`deploy.sh --compatibility-check`](../deploy.sh) — read-only diagnostics (`run_check` and `run_compatibility_check`): configuration/compatibility/precondition evidence only, not runtime-health proof.
+- [`validate-ai-rules.py`](../scripts/validate-ai-rules.py) — static validation of
+  the tracked source tree and staged payload.
+- [`deploy.sh --check`](../deploy.sh) and
+  [`deploy.sh --compatibility-check`](../deploy.sh) — read-only ownership,
+  compatibility, and precondition diagnostics.
 
-A static validation pass or version match is **not** a runtime "Healthy" claim;
-missing/unavailable smoke evidence must remain Degraded/inconclusive.
+A static validation pass or version match is **not** a runtime "Healthy" claim.
+Runtime conclusions must remain unverified without independent runtime evidence.
 
 ## Authority model and unresolved precedence
 
@@ -275,8 +277,9 @@ literal secret).
 - [`deploy.sh`](../deploy.sh) is the source of truth for generated OpenCode config,
   RTK setup, the wt-orca/worktree-state adapters and Worktrunk config, and the
   ownership manifest.
-- Runtime smoke evidence is the supported proof path for permissions,
-  parentage, and reviewer behavior (see [Observed layer](#observed-layer-runtime-evidence)).
+- Independent runtime evidence is required to assess permissions, parentage, and
+  reviewer behavior; this documentation and the repository's static/deployment
+  checks do not provide that proof.
 
 ### Deployment gates and compatibility diagnostics
 
@@ -310,7 +313,7 @@ OMO/`@opencode-ai/plugin`/`@opencode-ai/sdk` metadata, then reports
 `COMPATIBILITY_STATUS` (`unverified`, `skew`, or `matched`). During `run_deploy`
 it is read-only and does **not** block. Its status is enforced only by
 `deploy.sh --compatibility-check` (`run_compatibility_check`), which blocks
-reviewer smoke when `COMPATIBILITY_STATUS` is not `matched`.
+the compatibility-check flow when `COMPATIBILITY_STATUS` is not `matched`.
 
 These blocking checks and compatibility diagnostics are distinct from the
 **read-only `--check` live comparison** (`run_check`), which uses
@@ -434,7 +437,8 @@ The Mermaid source for the layer/authority/deployment graph is at
 the in-graph legend:
 
 - **solid** — current / source-recorded flow.
-- **dotted** — read-only evidence only (validator, `--check`, smoke).
+- **dotted** — read-only evidence only (validator, `--check`, and
+  `--compatibility-check`).
 - **circle** — rollback / restore (private live snapshot → snapshotted outputs).
 - **thick** — ambiguous / unresolved precedence where the effective precedence
   cannot be proven from tracked source.
@@ -444,7 +448,8 @@ the in-graph legend:
 ## Label legend
 
 - **Current** — describes present, source-recorded behavior.
-- **Validated** — confirmed by the cross-artifact validator or a recorded smoke/check run.
+- **Validated** — confirmed by the cross-artifact validator or a recorded deploy
+  check run.
 - **Observed** — seen in an installed artifact or runtime probe, not proven from source alone.
 - **Current/source-recorded discrepancy** — two tracked source files disagree; documented, not resolved.
 - **Proposed** — a recommendation recorded in the review-and-improvements

@@ -40,8 +40,8 @@ repository and correlates them with the review evidence already recorded in
   repository's own tooling.
 - **Out of scope:** live runtime behavior, effective permissions inside a running
   OpenCode process, actual MCP reachability, and whether Claude Code is correctly
-  deployed on this machine. Those require runtime probes (the `smoke-*` scripts)
-  and are only *proposed* here.
+  deployed on this machine. Those require independent runtime probes and are
+  only *proposed* here.
 - **Stop condition applied:** any claim that cannot be supported by tracked source
   or supplied review evidence is labeled **Unverified**, not stated as fact.
 
@@ -50,8 +50,8 @@ repository and correlates them with the review evidence already recorded in
 Reused from [`architecture.md`](architecture.md#label-legend) with one addition:
 
 - **Current** — present, source-recorded behavior.
-- **Validated** — confirmed by the cross-artifact validator or a recorded
-  smoke/check run.
+- **Validated** — confirmed by the cross-artifact validator or a recorded deploy
+  check run.
 - **Observed** — seen in an installed artifact or runtime probe.
 - **Proposed** — a recommendation for future work; **not** implemented.
 - **Unverified** — not provable from this static pass; recorded without asserting
@@ -72,7 +72,7 @@ history; open findings remain proposals.
 | F6 Two-config precedence | **Open** | `opencode.json` top-level model vs OMO per-agent precedence still unrecorded. |
 | F7 Lint autofix wording | **Resolved** | Converged to check-only-by-default across `custom-rules.md`, `orchestrator_append.md`, `fixer_append.md`. |
 | F8 `clonedeps`/Git wording | **Resolved** | `clonedeps` now applies the confirmation rule to clone/fetch/`ls-remote`. |
-| F9 Validator/smoke test coverage | **Narrowed** | `test_model_profile.py` and `test_deploy_compatibility.py` added; validator/smoke scripts still lack direct coverage. |
+| F9 Validator/preflight coverage | **Narrowed** | The remaining validation is the cross-artifact validator plus deploy read-only checks; neither provides direct runtime coverage. |
 | F10 Compatibility preflight | **Resolved** | Normal deploy skips compatibility probing; `--compatibility-check` remains the explicit gate. |
 | F11 Skill provenance | **Partially resolved** | `skills-lock.json` now covers all 34 tracked skills; validator lock coverage still not enforced. |
 
@@ -317,36 +317,29 @@ gates (commit, push, checkout, rebase, merge) and explicitly state that `clonede
 clone/fetch is a separate, user-confirmed workflow, so the two rules cannot be
 read as contradictory.
 
-### F9. Brittle, lightly tested validator/smoke scripts — **Medium** → **Narrowed**
+### F9. Limited validator/preflight coverage — **Medium** → **Narrowed**
 
-**Status:** Narrowed. Test coverage has grown beyond the single latency-reporter
-test, but the validator and smoke scripts themselves still lack direct coverage.
+**Status:** Narrowed. The repository no longer contains standalone test files or
+tracked runtime probes. Current validation consists of the cross-artifact
+validator and the read-only deploy checks; these do not directly exercise runtime
+behavior.
 
 **Evidence**
 
 - [`scripts/validate-ai-rules.py`](../scripts/validate-ai-rules.py) — 3,215 lines
   with ~51 top-level methods; it is the primary static safety evidence.
-- [`scripts/smoke-opencode-fixer-runtime.sh`](../scripts/smoke-opencode-fixer-runtime.sh) —
-  502 lines.
-- [`scripts/smoke-opencode-reviewer-runtime.sh`](../scripts/smoke-opencode-reviewer-runtime.sh) —
-  1,043 lines.
-- Three test files now exist:
-  [`scripts/test_opencode_latency_report.py`](../scripts/test_opencode_latency_report.py)
-  (tests `opencode-latency-report.py`),
-  [`scripts/test_model_profile.py`](../scripts/test_model_profile.py)
-  (profile schema/applier tests), and
-  [`scripts/test_deploy_compatibility.py`](../scripts/test_deploy_compatibility.py)
-  (deployment/preflight tests). None of the three covers the validator or the
-  smoke scripts directly.
+- [`deploy.sh --check`](../deploy.sh) and
+  [`deploy.sh --compatibility-check`](../deploy.sh) — read-only ownership,
+  compatibility, and deployment-precondition diagnostics.
 
-**Impact** — Profile application and deployment preflight now have focused
-coverage, but the validator and the smoke scripts — the repository's safety and
-runtime-evidence backbone — still have no direct test coverage. A regression
-there silently weakens every future deployment's assurance.
+**Impact** — The remaining checks provide static/configuration and deployment
+precondition evidence, but not direct runtime evidence or dedicated automated
+coverage for the validator and deploy-check logic. A regression there could
+silently weaken future deployment assurance.
 
-**Proposed remediation** — Add focused unit tests for the validator's checks and
-the smoke scripts' parsing/reporting logic, and extract shared helpers so the
-scripts are testable and maintainable.
+**Proposed remediation** — Add focused automated coverage for the validator and
+deploy-check logic, and extract shared helpers where needed so the checks remain
+testable and maintainable.
 
 ### F10. Expensive compatibility preflight — **Medium** → **Resolved**
 
@@ -369,7 +362,7 @@ compatibility; the explicit, fail-closed gate is `--compatibility-check`.
 
 **Impact** — Every deploy/check pays a host-version spawn plus three package-metadata
 reads for what is only read-only diagnostics. It is heavier than the cheap static
-checks and blocks the opt-in smoke path on an unknown/skewed status.
+checks and blocks the opt-in compatibility-check path on an unknown/skewed status.
 
 **Proposed remediation** — Split the preflight: keep the cheap static checks on the
 normal deploy path and run the expensive version probing only under
@@ -425,8 +418,9 @@ resolved in tracked source; the rest remain **Proposed**.
    OpenCode-only.
 4. **Profile authority** (F5) — **done**: profiles are schema version 1 with
    per-agent `model` + optional `variant`; applier validates and applies both.
-5. **Validator/test consolidation** (F9) — **partial**: profile and deploy-preflight
-   tests added; validator and smoke scripts still lack direct coverage.
+5. **Validator/preflight coverage** (F9) — **partial**: the validator and deploy
+   checks remain the repository's validation mechanisms without dedicated
+   automated coverage.
 6. **Provenance & duplication reduction** (F11, F7, F8, F10) — **mostly done**:
    F7/F8/F10 resolved; F11 partial (lockfile expanded, validator coverage still
    open).
@@ -445,7 +439,7 @@ does it need user approval, or is it out of scope for this documentation pass?
 | Profile authority + variant validation (F5) | Safety | No | **Yes** (effective model check) | **Yes** | Yes |
 | Lint autofix wording (F7) | Speed | **Yes** (docs/rules text only) | No | No | Yes |
 | `clonedeps`/Git wording (F8) | Speed | **Yes** (docs/rules text only) | No | No | Yes |
-| Validator/smoke test consolidation (F9) | Speed | No — adds tests | No | No | Yes |
+| Validator/preflight test coverage (F9) | Speed | No — adds tests | No | No | Yes |
 | Split compatibility preflight (F10) | Speed | No — edits `deploy.sh` | No | No | Yes |
 | Extend skill provenance/locking (F11) | Speed | Partially (metadata) | No | No | Yes |
 | Produce this review document | — | **Yes** (this file) | No | No | **No — this pass** |

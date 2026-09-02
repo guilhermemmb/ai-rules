@@ -175,11 +175,8 @@ All under [`scripts/`](../scripts/).
 | :--- | :--- |
 | `validate-ai-rules.py` | Repository validator (static validation of rules/config) |
 | `apply-model-profile.py` | Apply a model profile to OMO config |
-| `smoke-opencode-fixer-runtime.sh` | Runtime smoke: fixer background parentage/reconciliation |
-| `smoke-opencode-reviewer-runtime.sh` | Runtime smoke: reviewer read-only permission evidence |
 | `update-agents-overview-data.py` | Regenerate `agents-overview/data.yaml` |
 | `opencode-latency-report.py` | OpenCode latency telemetry reporting |
-| `test_opencode_latency_report.py` | Tests for the latency reporter |
 
 Deployment logic itself is [`deploy.sh`](../deploy.sh) at the repo root.
 
