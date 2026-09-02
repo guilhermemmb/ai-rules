@@ -22,7 +22,8 @@ Concise navigation into the `ai-rules` system documentation:
 ./deploy.sh
 
 # Reinstall the pinned OMO package and deploy, overriding ownership-manifest hash
-# drift in only opencode.json / opencode.jsonc (does not bypass other safety checks)
+# drift in only opencode.json / opencode.jsonc. Deploy-only, no snapshot/rollback
+# backup — a later failure may require manual recovery (other safety checks stay strict)
 ./deploy.sh --force
 
 # Deploy cost-efficient profile (DeepSeek V4 + Gemini Flash)
@@ -95,11 +96,20 @@ Rulesync sources in this repository remain the source of truth.
 overrides an ownership-manifest hash mismatch in **only** the two mutable
 usage/config artifacts `opencode.json` and `opencode.jsonc`. Every other check
 — malformed or missing manifests, unsafe/absolute/escaping paths, symlinks,
-missing or non-regular managed files, changed non-exempt managed files,
-unknown-file collisions, pending/ambiguous transactions, reviewer shadows, and
-payload validation — remains strict and fail-closed. Force is a deploy-only
-operation: `--check --force` is rejected as ambiguous, and force does not bypass
-any structural, path-safety, ownership, transaction, or collision check.
+missing or non-regular managed files, changed non-exempt managed files, a staged
+payload whose managed files/directories do not match the prior manifest, unknown
+-file collisions, pending/ambiguous transactions, reviewer shadows, and payload
+validation — remains strict and fail-closed.
+
+Force is a deploy-only operation: it is rejected when combined with `--check`
+or `--compatibility-check`. The narrow override is validated after the staged
+payload is built and the prior manifest is captured, and before any live
+mutation. Force mode intentionally creates **no** snapshot or rollback backup
+state: it does not run `snapshot_live_configuration`, write a transaction
+marker, or create a rollback directory, and it replaces the live configuration
+atomically without retaining a backup. If a later operation fails, force mode
+reports that automatic rollback is unavailable and that manual recovery may be
+required. Normal `./deploy.sh` retains its full snapshot/rollback behavior.
 
 ### OpenCode compatibility and runtime evidence
 

@@ -58,7 +58,7 @@
         "mcps": ["codebase-memory-mcp", "figma-mcp"]
       },
       "fixer": {
-        "model": "bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro",
+        "model": "bf-o/gpt-5.6-luna",
         "variant": "high",
         "skills": ["fixer"],
         "mcps": ["codebase-memory-mcp"]

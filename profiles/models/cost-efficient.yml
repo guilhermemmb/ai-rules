@@ -19,7 +19,7 @@ agents:
     model: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
     variant: "low"
   fixer:
-    model: "bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro"
+    model: "bf-o/gpt-5.6-luna"
     variant: "high"
   designer:
     model: "bf/huggingface/together/zai-org/GLM-5.2"

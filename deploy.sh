@@ -10,7 +10,8 @@
 #   ./deploy.sh          — deploy (refresh OMO 2.2.17 and deploy)
 #   ./deploy.sh --check  — dry-run: show what would change
 #   ./deploy.sh --force  — reinstall the OMO 2.2.17 package, override hash
-#                           drift in opencode.json / opencode.jsonc, + deploy
+#                           drift in opencode.json / opencode.jsonc (deploy-only,
+#                           no snapshot/rollback backup), + deploy
 set -euo pipefail
 MV_BIN="${MV_BIN:-mv}"
 
@@ -94,9 +95,11 @@ while [[ $# -gt 0 ]]; do
 Usage: ./deploy.sh [--check | --compatibility-check | --force | --model-profile=<name>]
 
   --force  Reinstall the pinned OMO package, override ownership-manifest hash
-           drift in only opencode.json and opencode.jsonc, then deploy. It does
-           not bypass any other structural, path-safety, ownership, transaction,
-           or collision check.
+           drift in only opencode.json and opencode.jsonc, then deploy. Force
+           is deploy-only (rejected with --check or --compatibility-check) and
+           creates no snapshot or rollback backup, so a later failure may
+           require manual recovery. It does not bypass any other structural,
+           path-safety, ownership, transaction, or collision check.
 EOF
       exit 0
       ;;
@@ -107,8 +110,8 @@ EOF
   esac
 done
 
-if [[ "$MODE" = "check" && "$FORCE" = true ]]; then
-  printf '\033[31m%s\033[0m\n' "  ❌ --check --force is ambiguous; force is a deploy-only operation" >&2
+if [[ "$FORCE" = true && "$MODE" != "deploy" ]]; then
+  printf '\033[31m%s\033[0m\n' "  ❌ --force is a deploy-only operation and cannot be combined with --check or --compatibility-check" >&2
   exit 1
 fi
 
@@ -824,7 +827,7 @@ def operation_force(payload_manifest, live_manifest, live_root, plan_output):
     closed. Emits a machine-readable override plan and never prints contents.
     """
     expected = read_manifest(payload_manifest)
-    expected_files, _, expected_hashes = manifest_parts(expected)
+    expected_files, expected_directories, expected_hashes = manifest_parts(expected)
     files, directories, hashes = manifest_parts(read_manifest(live_manifest))
     root = Path(live_root)
     if root.is_symlink() or (root.exists() and not root.is_dir()):
@@ -832,6 +835,19 @@ def operation_force(payload_manifest, live_manifest, live_root, plan_output):
 
     for relative in [*files, *directories]:
         safe_path(root, relative)
+
+    # Force override is narrow: the ownership sets (managed files and managed
+    # directories) must match the prior live manifest exactly. Only the content
+    # hash of the exempt mutable files may differ; a staged manifest that adds,
+    # removes, or reclassifies a managed path (or drops an exempt file that the
+    # live manifest still owns) fails closed.
+    if set(expected_files) != set(files):
+        fail("staged manifest managed_files do not match the prior live manifest")
+    if set(expected_directories) != set(directories):
+        fail("staged manifest managed_directories do not match the prior live manifest")
+    for relative in FORCE_EXEMPT_PATHS:
+        if relative in files and relative not in expected_files:
+            fail(f"staged manifest is missing exempt managed file: {relative}")
 
     for relative in directories:
         candidate = root.joinpath(*relative.split("/"))
@@ -857,7 +873,7 @@ def operation_force(payload_manifest, live_manifest, live_root, plan_output):
                         "path": relative,
                         "expected_sha256": hashes[relative],
                         "actual_sha256": actual_hash,
-                        "staged_sha256": expected_hashes.get(relative, ""),
+                        "staged_sha256": expected_hashes[relative],
                     }
                 )
             else:
@@ -1814,6 +1830,39 @@ deployment_failpoint() {
   fi
 }
 
+replace_live_configuration_force() {
+  # Force mode replaces the live OpenCode configuration atomically without
+  # retaining any rollback backup state. No transaction marker or rollback
+  # directory is created. On failure there is no automatic rollback: the
+  # previous configuration is restored best-effort, and manual recovery is
+  # reported when that restore also fails.
+  local incoming="$1"
+  local parent="$(dirname "$OPENDIR")"
+  local displaced="$parent/.opencode.removing.$$"
+
+  rm -rf "$displaced"
+  if [[ -e "$OPENDIR" || -L "$OPENDIR" ]]; then
+    if ! "$MV_BIN" "$OPENDIR" "$displaced"; then
+      red "  ❌ could not move the current OpenCode configuration aside; no automatic rollback is available; recover manually"
+      return 1
+    fi
+    if ! "$MV_BIN" "$incoming" "$OPENDIR"; then
+      if "$MV_BIN" "$displaced" "$OPENDIR"; then
+        red "  ❌ OpenCode replacement failed; the previous configuration was restored"
+      else
+        red "  ❌ OpenCode replacement failed and the previous configuration could not be restored; manual recovery is required"
+      fi
+      return 1
+    fi
+    rm -rf "$displaced"
+  else
+    if ! "$MV_BIN" "$incoming" "$OPENDIR"; then
+      red "  ❌ OpenCode replacement failed; no automatic rollback is available; recover manually"
+      return 1
+    fi
+  fi
+}
+
 commit_opencode_configuration() {
   local payload="$STAGE_ROOT/payload"
   local parent="$(dirname "$OPENDIR")"
@@ -1823,14 +1872,9 @@ commit_opencode_configuration() {
 
   rm -rf "$incoming" "$rollback_path"
   if [[ -e "$OPENCODE_MANIFEST_PATH" || -L "$OPENCODE_MANIFEST_PATH" ]]; then
-    if [[ "$FORCE" = true ]]; then
-      manifest_override_plan "$payload" "$PRIOR_MANIFEST" "$OPENDIR" "$STAGE_ROOT/force-plan.json" ||
-        fail "force override preflight failed; refusing deployment"
-      preflight_force_summary "$payload" "$OPENDIR"
-    else
-      manifest_tool validate "$OPENCODE_MANIFEST_PATH" "$OPENDIR" ||
-        fail "existing OpenCode ownership manifest is invalid; refusing deployment"
-    fi
+    # The prior manifest was captured (and, in force mode, the narrow override
+    # was validated) before snapshot/mutation in run_deploy. Commit consumes the
+    # captured prior manifest and never re-validates after mutation.
     cp "$PRIOR_MANIFEST" "$previous_manifest"
   else
     # A migration without a manifest can only adopt payload files whose bytes
@@ -1848,8 +1892,14 @@ commit_opencode_configuration() {
   mkdir -p "$incoming"
   # Seed the incoming tree from the pre-validated live snapshot (not a re-read
   # of the live directory) so unknown files present at snapshot time survive
-  # the replacement exactly as captured.
-  if [[ "$LIVE_WAS_PRESENT" = true && -d "$LIVE_SNAPSHOT" ]]; then
+  # the replacement exactly as captured. Force mode runs without a snapshot and
+  # seeds directly from the live directory instead, with no rollback backup.
+  if [[ "$FORCE" = true ]]; then
+    if [[ -e "$OPENDIR" ]]; then
+      [[ ! -L "$OPENDIR" && -d "$OPENDIR" ]] || fail "OpenCode config path changed to a non-regular directory"
+      cp -R "$OPENDIR/." "$incoming/"
+    fi
+  elif [[ "$LIVE_WAS_PRESENT" = true && -d "$LIVE_SNAPSHOT" ]]; then
     cp -R "$LIVE_SNAPSHOT/." "$incoming/"
   elif [[ -e "$OPENDIR" ]]; then
     [[ ! -L "$OPENDIR" && -d "$OPENDIR" ]] || fail "OpenCode config path changed to a non-regular directory"
@@ -1865,6 +1915,11 @@ commit_opencode_configuration() {
   validate_json_file "$incoming/oh-my-opencode-slim.json"
   validate_jsonc_file "$incoming/opencode.jsonc"
   validate_jsonc_file "$incoming/rulesync.jsonc"
+
+  if [[ "$FORCE" = true ]]; then
+    replace_live_configuration_force "$incoming"
+    return $?
+  fi
 
   write_opencode_transaction_marker "$incoming" "$rollback_path" prepared
   if [[ -e "$OPENDIR" ]]; then
@@ -2038,10 +2093,10 @@ run_deploy() {
   # The explicit, fail-closed gate remains `./deploy.sh --compatibility-check`.
   build_staged_payload
   # Normal deploy keeps strict ownership-manifest validation. Force mode defers
-  # it to the force override preflight, which relaxes only the content-hash drift
-  # of the two mutable config files (opencode.json / opencode.jsonc); every other
-  # structural, path-safety, ownership, transaction, and collision check stays
-  # strict and fail-closed.
+  # it to the force override preflight below, which relaxes only the content-hash
+  # drift of the two mutable config files (opencode.json / opencode.jsonc); every
+  # other structural, path-safety, ownership, transaction, and collision check
+  # stays strict and fail-closed.
   if [[ "$FORCE" != true ]]; then
     if [[ -e "$OPENCODE_MANIFEST_PATH" || -L "$OPENCODE_MANIFEST_PATH" ]]; then
       manifest_tool validate "$OPENCODE_MANIFEST_PATH" "$OPENDIR" ||
@@ -2050,13 +2105,25 @@ run_deploy() {
   fi
   detect_reviewer_shadow "$STAGE_ROOT/payload/skills/reviewer/SKILL.md" ||
     fail "reviewer shadow configuration requires manual reconciliation"
-  # Capture the prior ownership manifest before snapshot mutation so force
-  # override validation runs against a stable, structurally-valid prior state.
+  # Capture the prior ownership manifest before any snapshot or mutation so
+  # force override validation runs against a stable, structurally-valid prior
+  # state.
   if [[ -e "$OPENCODE_MANIFEST_PATH" || -L "$OPENCODE_MANIFEST_PATH" ]]; then
     capture_prior_manifest ||
       fail "could not capture prior ownership manifest"
   fi
-  snapshot_live_configuration
+  # Force mode validates the narrow override before the RTK plugin init, the
+  # OMO package install, snapshot creation, or any live mutation. The validated
+  # plan is consumed by the commit path and is never re-validated after
+  # mutation. Force mode creates no snapshot or rollback backup state.
+  if [[ "$FORCE" = true && -n "$PRIOR_MANIFEST" ]]; then
+    manifest_override_plan "$STAGE_ROOT/payload" "$PRIOR_MANIFEST" "$OPENDIR" "$STAGE_ROOT/force-plan.json" ||
+      fail "force override preflight failed; refusing deployment"
+    preflight_force_summary "$STAGE_ROOT/payload" "$OPENDIR"
+  fi
+  if [[ "$FORCE" != true ]]; then
+    snapshot_live_configuration
+  fi
   initialize_rtk_plugin
 
   # Dependency installation is intentionally separate from convergence.  The

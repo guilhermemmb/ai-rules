@@ -346,6 +346,11 @@ completes and does not undo the pre-snapshot actions above.
   the staged payload against the live directory for drift.
 - **Remove** — `manifest_tool remove` removes only paths recorded in the previous
   manifest; managed directories are removed only when empty.
+- **Force** — `manifest_tool force` validates the narrow force override before
+  any mutation: only `opencode.json` / `opencode.jsonc` hash drift may differ;
+  the staged payload's managed files/directories must match the prior manifest,
+  and any exempt file present in the prior manifest must also be present in the
+  staged payload (so an override never emits an empty staged hash).
 
 Rollback is **not** a manifest responsibility. See
 [Deployment phases and failure boundary](#deployment-phases-and-failure-boundary).
@@ -380,6 +385,19 @@ deployment. Rollback restores the previous live configuration; it does not deriv
 from or rewrite the ownership manifest, and it does not undo pre-snapshot actions
 such as a recovered pending transaction or a newly installed codebase-memory-mcp
 or RTK/Homebrew.
+
+### Force mode: no snapshot or rollback backup
+
+`deploy.sh --force` is a deploy-only override for the two mutable config files.
+After the staged payload is built and the prior manifest is captured, the force
+override is validated before `initialize_rtk_plugin`, `install_omo`, snapshot
+creation, or any live mutation; the commit path then consumes that validated
+plan and never re-validates after mutation. Force mode intentionally skips
+`snapshot_live_configuration` and creates no transaction marker or rollback
+directory: it replaces the live configuration atomically without retaining a
+backup. On a post-validation failure there is no automatic rollback, and the
+failure is reported with an explicit manual-recovery requirement. Normal
+deployment retains the snapshot/rollback contract described above.
 
 ### Worktrunk integration artifacts boundary
 

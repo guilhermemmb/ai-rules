@@ -578,7 +578,7 @@ def test_omitted_variant_preserves_existing():
 # Fixer regression guard (real source files)
 # ---------------------------------------------------------------------------
 
-FIXER_MODEL = "bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro"
+FIXER_MODEL = "bf-o/gpt-5.6-luna"
 
 
 def test_fixer_unchanged_in_profiles_and_omo():

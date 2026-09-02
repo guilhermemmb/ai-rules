@@ -599,9 +599,16 @@ class ManifestToolForceTests(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
 
-    def _live_manifest(self, files: list[str], hashes: dict[str, str]) -> Path:
+    def _live_manifest(
+        self,
+        files: list[str],
+        hashes: dict[str, str],
+        directories: list[str] | None = None,
+    ) -> Path:
         manifest = self.root / ".ai-rules.manifest.json"
-        _write_manifest_file(manifest, files=files, directories=[], hashes=hashes)
+        _write_manifest_file(
+            manifest, files=files, directories=directories or [], hashes=hashes
+        )
         return manifest
 
     def _payload_manifest(
@@ -776,6 +783,96 @@ class ManifestToolForceTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("unsafe", result.stderr)
+
+    # 6a — staged manifest missing an exempt file the live manifest owns refuses
+    def test_force_missing_staged_exempt_file_refused(self) -> None:
+        files = ["opencode.json", "opencode.jsonc"]
+        self._write("opencode.json", "live-json")
+        self._write("opencode.jsonc", "live-jsonc")
+        live_manifest = self._live_manifest(
+            files,
+            {
+                "opencode.json": _sha256_text("staged-json"),
+                "opencode.jsonc": _sha256_text("staged-jsonc"),
+            },
+        )
+        # The staged payload manifest omits opencode.json, which the live
+        # manifest still owns; force must fail closed and never emit an empty
+        # staged hash.
+        payload_manifest = self._payload_manifest(
+            ["opencode.jsonc"], [], {"opencode.jsonc": _sha256_text("new-jsonc")}
+        )
+
+        result = self._run(
+            "force",
+            str(payload_manifest),
+            str(live_manifest),
+            str(self.root),
+            str(Path(self._tmp.name) / "plan.json"),
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("managed_files", result.stderr)
+        self.assertNotIn('"staged_sha256": ""', result.stdout)
+
+    # 6b — staged manifest adding a managed file the live manifest lacks refuses
+    def test_force_managed_file_set_mismatch_refused(self) -> None:
+        files = ["opencode.json", "other.txt"]
+        self._write("opencode.json", "live-json")
+        self._write("other.txt", "unchanged")
+        live_manifest = self._live_manifest(
+            files,
+            {
+                "opencode.json": _sha256_text("staged-json"),
+                "other.txt": _sha256_text("unchanged"),
+            },
+        )
+        # Staged adds a managed file the live manifest does not own.
+        payload_manifest = self._payload_manifest(
+            ["opencode.json", "new.txt"],
+            [],
+            {
+                "opencode.json": _sha256_text("new-json"),
+                "new.txt": _sha256_text("new"),
+            },
+        )
+
+        result = self._run(
+            "force",
+            str(payload_manifest),
+            str(live_manifest),
+            str(self.root),
+            str(Path(self._tmp.name) / "plan.json"),
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("managed_files", result.stderr)
+
+    # 6c — staged manifest directory set mismatch refuses
+    def test_force_managed_directory_set_mismatch_refused(self) -> None:
+        files = ["opencode.json"]
+        self._write("opencode.json", "live-json")
+        (self.root / "skills").mkdir(parents=True, exist_ok=True)
+        live_manifest = self._live_manifest(
+            files,
+            {"opencode.json": _sha256_text("staged-json")},
+            directories=["skills"],
+        )
+        # Staged omits the managed directory the live manifest owns.
+        payload_manifest = self._payload_manifest(
+            ["opencode.json"], [], {"opencode.json": _sha256_text("new-json")}
+        )
+
+        result = self._run(
+            "force",
+            str(payload_manifest),
+            str(live_manifest),
+            str(self.root),
+            str(Path(self._tmp.name) / "plan.json"),
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("managed_directories", result.stderr)
 
     # 7 — unowned payload collision refused
     def test_collisions_unowned_refused(self) -> None:
@@ -1048,18 +1145,69 @@ class RealDeployAuditTests(unittest.TestCase):
         self.assertIn('"$FORCE" != true', body,
                       "run_deploy must gate strict validate on non-force mode")
 
-    def test_commit_force_uses_override_plan_not_backup(self) -> None:
-        """Force deploy invokes the force override plan and creates no backups."""
+    def test_force_validates_before_mutation(self) -> None:
+        """Force override validation must run before any live or package mutation."""
+        body = _extract_function_body(self.source, "run_deploy")
+        self.assertTrue(body, "run_deploy not found in deploy.sh")
+        self.assertIn("manifest_override_plan", body,
+                      "run_deploy must invoke manifest_override_plan")
+        override_pos = body.index("manifest_override_plan")
+        for token in ("initialize_rtk_plugin", "install_omo", "snapshot_live_configuration"):
+            self.assertIn(token, body, f"{token} missing from run_deploy")
+            self.assertLess(override_pos, body.index(token),
+                            f"manifest_override_plan must precede {token} in run_deploy")
+
+    def test_force_skips_snapshot_in_run_deploy(self) -> None:
+        """Force mode must not call snapshot_live_configuration."""
+        body = _extract_function_body(self.source, "run_deploy")
+        self.assertIn('if [[ "$FORCE" != true ]]; then', body,
+                      "run_deploy must gate snapshot_live_configuration on non-force")
+        self.assertIn("snapshot_live_configuration", body)
+
+    def test_commit_consumes_force_plan_without_revalidating(self) -> None:
+        """Commit consumes the pre-validated force plan; no re-validation after mutation."""
         body = _extract_function_body(self.source, "commit_opencode_configuration")
         self.assertTrue(body, "commit_opencode_configuration not found in deploy.sh")
-        self.assertIn("manifest_override_plan", body,
-                      "force path must invoke manifest_override_plan")
-        self.assertNotIn("create_force_backup", body,
-                         "force path must not create a backup")
-        self.assertNotIn("verify_force_backup", body,
-                         "force path must not verify a backup")
-        self.assertNotIn("write_force_metadata", body,
-                         "force path must not record backup metadata")
+        self.assertNotIn("manifest_override_plan", body,
+                         "commit must not re-run force validation after mutation")
+        self.assertNotIn("preflight_force_summary", body,
+                         "commit must not re-run force preflight summary after mutation")
+
+    def test_commit_force_creates_no_rollback(self) -> None:
+        """Force commit path replaces without transaction markers or rollback backup."""
+        body = _extract_function_body(self.source, "commit_opencode_configuration")
+        self.assertIn("replace_live_configuration_force", body,
+                      "force commit path must delegate to replace_live_configuration_force")
+        self.assertIn('if [[ "$FORCE" = true ]]; then', body,
+                      "commit must branch force mode")
+        force_fn = _extract_function_body(self.source, "replace_live_configuration_force")
+        self.assertTrue(force_fn, "replace_live_configuration_force not found in deploy.sh")
+        self.assertNotIn("write_opencode_transaction_marker", force_fn,
+                         "force replacement must not write a transaction marker")
+        self.assertNotIn("$rollback_path", force_fn,
+                         "force replacement must not create a rollback directory")
+        self.assertNotIn("LIVE_SNAPSHOT", force_fn,
+                         "force replacement must not reference the live snapshot")
+        self.assertNotIn("snapshot_live_configuration", force_fn,
+                         "force replacement must not invoke snapshot_live_configuration")
+
+    def test_force_rejects_compatibility_combination(self) -> None:
+        """--force with --compatibility-check must be rejected as deploy-only."""
+        result = subprocess.run(  # noqa: PLW1510 — manual exit code assertion
+            ["bash", str(DEPLOY_SCRIPT), "--compatibility-check", "--force"],
+            capture_output=True, text=True, timeout=5,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("deploy-only", result.stderr + result.stdout)
+
+    def test_force_rejects_check_combination(self) -> None:
+        """--force with --check must be rejected as deploy-only."""
+        result = subprocess.run(  # noqa: PLW1510 — manual exit code assertion
+            ["bash", str(DEPLOY_SCRIPT), "--check", "--force"],
+            capture_output=True, text=True, timeout=5,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("deploy-only", result.stderr + result.stdout)
 
     def test_no_backup_helpers_remain(self) -> None:
         """The backup-only production helpers must be fully removed."""

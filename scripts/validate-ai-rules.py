@@ -56,21 +56,14 @@ REVIEWER_HEALTH_FIELDS = (
 RUNTIME_SMOKE_SCRIPT = "scripts/smoke-opencode-reviewer-runtime.sh"
 FIXER_RUNTIME_SMOKE_SCRIPT = "scripts/smoke-opencode-fixer-runtime.sh"
 FIXER_BATCH_MAX = 3
-FIXER_MODEL = "bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro"
+FIXER_MODEL = "bf-o/gpt-5.6-luna"
 UNSUPPORTED_THINKING_PARAMETERS = frozenset({"temperature", "top_p", "top_k"})
-BIFROST_OPENAI_COMPATIBLE_PACKAGE = "@ai-sdk/openai-compatible"
-BIFROST_PROVIDER_NAME = "Gorgias Bifrost"
-BIFROST_BASE_URL = "https://bifrost.ops.gorgias.io/v1"
 BIFROST_CREDENTIAL_REFERENCE = (
     "{file:/Users/guilhermebomfim/.config/gorgias-ai/bifrost-virtual-key}"
 )
-NOVITA_MODEL_ID = "huggingface/novita/deepseek-ai/DeepSeek-V4-Pro"
-NOVITA_FIXER_FALLBACKS = (
-    "bf-a/claude-sonnet-5",
-    "gemini/gemini-3-flash-preview",
-    "openai/gpt-5.4",
-    "anthropic/claude-haiku-4-5",
-)
+FIXER_PROVIDER = "bf-o"
+FIXER_MODEL_KEY = "gpt-5.6-luna"
+FIXER_REASONING_EFFORT = "high"
 OPENCODE_MANIFEST_NAME = ".ai-rules.manifest.json"
 OPENCODE_MANAGED_BY = "ai-rules/deploy.sh"
 OPENCODE_MANIFEST_VERSION = 1
@@ -971,7 +964,7 @@ class Validator:
         model_catalog: set[str],
         overview_artifact: Artifact | None = None,
     ) -> None:
-        """Validate Novita wiring without allowing unrelated fixer drift."""
+        """Validate GPT-5.6 Luna fixer model wiring under the bf-o provider."""
 
         for profile_name in REQUIRED_PROFILES:
             profile = profiles.get(profile_name)
@@ -1058,107 +1051,99 @@ class Validator:
             )
 
         providers = opencode.get("provider")
-        bf = providers.get("bf") if isinstance(providers, dict) else None
-        novita_model_id = NOVITA_MODEL_ID
-        if not isinstance(bf, dict):
+        if not isinstance(providers, dict):
             self.add_error(
                 opencode_artifact.path,
-                "provider.bf must be a mapping for the Novita fixer model",
-                key="bf",
+                "provider must be a mapping",
+                key="provider",
                 text=opencode_artifact.text,
             )
-        else:
-            if bf.get("npm") != BIFROST_OPENAI_COMPATIBLE_PACKAGE:
-                self.add_error(
-                    opencode_artifact.path,
-                    f"provider.bf.npm must be {BIFROST_OPENAI_COMPATIBLE_PACKAGE!r}",
-                    key="npm",
-                    text=opencode_artifact.text,
-                )
-            if bf.get("name") != BIFROST_PROVIDER_NAME:
-                self.add_error(
-                    opencode_artifact.path,
-                    f"provider.bf.name must be {BIFROST_PROVIDER_NAME!r}",
-                    key="name",
-                    text=opencode_artifact.text,
-                )
-            bf_options = bf.get("options")
-            if not isinstance(bf_options, dict):
-                self.add_error(
-                    opencode_artifact.path,
-                    "provider.bf.options must preserve the Bifrost connection settings",
-                    key="options",
-                    text=opencode_artifact.text,
-                )
-            else:
-                expected_connection = {
-                    "baseURL": BIFROST_BASE_URL,
-                    "apiKey": BIFROST_CREDENTIAL_REFERENCE,
-                }
-                for key, expected in expected_connection.items():
-                    if bf_options.get(key) != expected:
-                        self.add_error(
-                            opencode_artifact.path,
-                            f"provider.bf.options.{key} must preserve {expected!r}",
-                            key=key,
-                            text=opencode_artifact.text,
-                        )
-        novita_entry = (
-            bf.get("models", {}).get(novita_model_id)
-            if isinstance(bf, dict) and isinstance(bf.get("models"), dict)
-            else None
-        )
-        if not isinstance(novita_entry, dict):
+            return
+
+        # Validate the fixer model entry under its provider (bf-o).
+        fixer_provider_spec = providers.get(FIXER_PROVIDER)
+        if not isinstance(fixer_provider_spec, dict):
             self.add_error(
                 opencode_artifact.path,
-                f"provider.bf.models must define {novita_model_id!r}",
+                f"provider.{FIXER_PROVIDER} must be a mapping for the fixer model",
+                key=FIXER_PROVIDER,
+                text=opencode_artifact.text,
+            )
+            return
+
+        provider_models = fixer_provider_spec.get("models")
+        if not isinstance(provider_models, dict):
+            self.add_error(
+                opencode_artifact.path,
+                f"provider.{FIXER_PROVIDER}.models must be a mapping",
                 key="models",
                 text=opencode_artifact.text,
             )
         else:
-            if novita_entry.get("name") != novita_model_id:
+            fixer_entry = provider_models.get(FIXER_MODEL_KEY)
+            if not isinstance(fixer_entry, dict):
                 self.add_error(
                     opencode_artifact.path,
-                    f"Novita fixer model name must be {novita_model_id!r}",
-                    key="name",
+                    f"provider.{FIXER_PROVIDER}.models must define {FIXER_MODEL_KEY!r}",
+                    key="models",
                     text=opencode_artifact.text,
                 )
-            if novita_entry.get("family") != "deepseek-thinking":
+            else:
+                # Reasoning must be enabled.
+                if fixer_entry.get("reasoning") is not True:
+                    self.add_error(
+                        opencode_artifact.path,
+                        f"fixer model {FIXER_MODEL!r} must have reasoning enabled",
+                        key="reasoning",
+                        text=opencode_artifact.text,
+                    )
+                # reasoningEffort must be high.
+                reasoning_opts = fixer_entry.get("options")
+                if not isinstance(reasoning_opts, dict) or reasoning_opts.get("reasoningEffort") != FIXER_REASONING_EFFORT:
+                    self.add_error(
+                        opencode_artifact.path,
+                        f"fixer model {FIXER_MODEL!r} must preserve reasoningEffort={FIXER_REASONING_EFFORT!r}",
+                        key="reasoningEffort",
+                        text=opencode_artifact.text,
+                    )
+                for parameter_path in self._unsupported_parameter_paths(
+                    fixer_entry, f"provider.{FIXER_PROVIDER}.models.{FIXER_MODEL_KEY}"
+                ):
+                    self.add_error(
+                        opencode_artifact.path,
+                        f"unsupported thinking-model sampling override {parameter_path!r}",
+                        key=parameter_path.rsplit(".", 1)[-1],
+                        text=opencode_artifact.text,
+                    )
+                # The fixer model must not use interleaved (that is a
+                # Novita-specific legacy mechanism; bf-o uses native reasoning).
+                if "interleaved" in fixer_entry:
+                    self.add_error(
+                        opencode_artifact.path,
+                        f"fixer model {FIXER_MODEL!r} must not use interleaved under bf-o",
+                        key="interleaved",
+                        text=opencode_artifact.text,
+                    )
+
+        # Validate every Bifrost provider key has its base URL and credentials.
+        for provider_id in (FIXER_PROVIDER, "bf", "bf-a"):
+            spec = providers.get(provider_id)
+            if not isinstance(spec, dict):
+                continue
+            opts = spec.get("options")
+            if not isinstance(opts, dict):
                 self.add_error(
                     opencode_artifact.path,
-                    "Novita fixer model must be cataloged as deepseek-thinking",
-                    key="family",
-                    text=opencode_artifact.text,
-                )
-            if novita_entry.get("interleaved") != {"field": "reasoning_content"}:
-                self.add_error(
-                    opencode_artifact.path,
-                    "Novita fixer model must define exactly interleaved.field = reasoning_content",
-                    key="interleaved",
-                    text=opencode_artifact.text,
-                )
-            for parameter_path in self._unsupported_parameter_paths(
-                novita_entry, f"provider.bf.models.{novita_model_id}"
-            ):
-                self.add_error(
-                    opencode_artifact.path,
-                    f"unsupported thinking-model sampling override {parameter_path!r}",
-                    key=parameter_path.rsplit(".", 1)[-1],
-                    text=opencode_artifact.text,
-                )
-            novita_options = novita_entry.get("options")
-            if not isinstance(novita_options, dict):
-                self.add_error(
-                    opencode_artifact.path,
-                    "Novita fixer model options must preserve its fallback chain",
+                    f"provider.{provider_id}.options must preserve the Bifrost connection settings",
                     key="options",
                     text=opencode_artifact.text,
                 )
-            elif novita_options.get("fallbacks") != list(NOVITA_FIXER_FALLBACKS):
+                continue
+            if opts.get("apiKey") != BIFROST_CREDENTIAL_REFERENCE:
                 self.add_error(
                     opencode_artifact.path,
-                    "Novita fixer model fallback list changed unexpectedly",
-                    key="fallbacks",
+                    f"provider.{provider_id}.options.apiKey must preserve {BIFROST_CREDENTIAL_REFERENCE!r}",
+                    key="apiKey",
                     text=opencode_artifact.text,
                 )
 
@@ -1244,31 +1229,36 @@ class Validator:
                 )
 
         enabled_providers = opencode.get("enabled_providers")
-        if not isinstance(enabled_providers, list) or "bf" not in enabled_providers:
+        if not isinstance(enabled_providers, list) or FIXER_PROVIDER not in enabled_providers:
             self.add_error(
                 opencode_artifact.path,
-                "enabled_providers must include bf for the Novita fixer model",
+                f"enabled_providers must include {FIXER_PROVIDER!r} for the fixer model",
                 key="enabled_providers",
                 text=opencode_artifact.text,
             )
 
-        if isinstance(providers, dict):
-            for provider_id, provider in providers.items():
-                if not isinstance(provider, dict) or not isinstance(provider.get("models"), dict):
-                    continue
-                for model_id, model in provider["models"].items():
-                    if (
-                        isinstance(model_id, str)
-                        and f"{provider_id}/{model_id}" != FIXER_MODEL
-                        and isinstance(model, dict)
-                        and "interleaved" in model
-                    ):
-                        self.add_error(
-                            opencode_artifact.path,
-                            "interleaved reasoning configuration is only allowed on the Novita fixer model",
-                            key="interleaved",
-                            text=opencode_artifact.text,
-                        )
+        # interleaved is a Novita-specific mechanism. Only the bf provider
+        # models may have it (legacy backward compat). No model under bf-o,
+        # bf-a, or any provider other than bf may declare interleaved.
+        for provider_id, provider in providers.items():
+            if not isinstance(provider, dict) or not isinstance(provider.get("models"), dict):
+                continue
+            for model_id, model in provider["models"].items():
+                if (
+                    isinstance(model_id, str)
+                    and isinstance(model, dict)
+                    and "interleaved" in model
+                    and (
+                        provider_id != "bf"
+                        or model_id != "huggingface/novita/deepseek-ai/DeepSeek-V4-Pro"
+                    )
+                ):
+                    self.add_error(
+                        opencode_artifact.path,
+                        "interleaved reasoning configuration is only allowed on the legacy Novita DeepSeek-V4-Pro model",
+                        key="interleaved",
+                        text=opencode_artifact.text,
+                    )
 
     def validate_profiles(
         self,

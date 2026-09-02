@@ -161,7 +161,7 @@ nodes:
     role: Implementation Specialist
     color: "#34d399"
     parent: orchestrator
-    model: DeepSeek V4 Pro via Novita (high)
+    model: GPT-5.6 Luna (high)
     skills: fixer
     mcp_access: codebase-memory-mcp
     trigger: Scoped implementation tasks, bug fixes, code changes
@@ -792,7 +792,7 @@ nodes:
       agent's existing variant unchanged •
       Balanced routing across speed, quality, and cost; no performance-first or
       percentage-savings claims •
-      Shared both profiles: Novita DeepSeek V4 Pro (Fixer, high), GPT-5.6 Terra
+      Shared both profiles: GPT-5.6 Luna (Fixer, high), GPT-5.6 Terra
       (Oracle/Sage + security/data-integrity reviewers), GLM 5.2 (Designer),
       DeepSeek V4 Flash, Gemini 3 Flash •
       default: GPT-5.6 Luna for orchestrator/detective/most reviewer lanes; DeepSeek V4
@@ -1070,7 +1070,7 @@ profiles:
     oracle: bf-o/gpt-5.6-terra
     explorer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     librarian: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    fixer: bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro
+    fixer: bf-o/gpt-5.6-luna
     designer: bf/huggingface/together/zai-org/GLM-5.2
     observer: bf/gemini/gemini-3-flash-preview
     navigator: bf/gemini/gemini-3-flash-preview
@@ -1092,7 +1092,7 @@ profiles:
     oracle: bf-o/gpt-5.6-terra
     explorer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
     librarian: bf-o/gpt-5.6-luna
-    fixer: bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro
+    fixer: bf-o/gpt-5.6-luna
     designer: bf/huggingface/together/zai-org/GLM-5.2
     observer: bf/gemini/gemini-3-flash-preview
     navigator: bf/gemini/gemini-3-flash-preview
