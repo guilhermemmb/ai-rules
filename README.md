@@ -382,27 +382,23 @@ does not enforce it as a universal process-level boundary. OpenCode denies the
 normalized `gitnexus_rename` tool, so agents cannot invoke server-side rename
 through this managed OpenCode configuration; this is an OpenCode-side control.
 Serena uses `start-mcp-server --context ide --project-from-cwd` and its global
-configuration sets `read_only: true` while excluding mutation tools. Worktrunk setup creates
-and checks only the current worktree's indexes synchronously:
+configuration sets `read_only: true` while excluding mutation tools. Serena
+remains a global OpenCode semantic-agent integration; Worktrunk lifecycle setup
+uses GitNexus only:
 
 ```bash
 gitnexus analyze --index-only "$WORKSPACE_PATH"
-serena project create --index "$WORKSPACE_PATH"
-serena project index "$WORKSPACE_PATH"
-serena project health-check "$WORKSPACE_PATH"
 ```
 
 GitNexus setup is path-scoped and does not inject `AGENTS.md`, `CLAUDE.md`, or
-skills. A failed GitNexus or Serena command, including a failed Serena health
-check, publishes `failed` rather than silently publishing `ready`.
+skills. A failed GitNexus command publishes `failed` rather than silently
+publishing `ready`. Worktrunk does not create, index, health-check, or remove
+Serena projects.
 
 Cleanup runs `gitnexus remove --force "$WORKSPACE_PATH"`, accepts an absent
-index as idempotent, and removes only the strictly validated
-`$WORKSPACE_PATH/.serena` directory. Serena has no supported project-delete
-CLI, so any global registration is retained rather than claimed as removed.
-Cleanup failures use the durable retry queue; cleanup never runs
-`gitnexus clean --all`, global Serena sweeps, `wt remove`, or `git worktree
-remove`.
+index as idempotent, and targets only GitNexus state. Cleanup failures use the
+durable retry queue; cleanup never runs `gitnexus clean --all`, touches global
+Serena state, `wt remove`, or `git worktree remove`.
 
 ### Deferred/manual uninstall runbook — legacy Codebase Memory state
 

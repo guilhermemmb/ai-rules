@@ -210,23 +210,18 @@ universal process-level boundary.
 GitNexus is installed persistently by `deploy.sh` at version `1.6.5`. Its source
 MCP command retains `GITNEXUS_MCP_READ_ONLY=1` for forward compatibility, but
 GitNexus 1.6.5 does not enforce it as a universal process-level boundary.
-Worktrunk explicitly indexes the canonical
-worktree path during `post-start`:
+Worktrunk explicitly indexes only the canonical worktree path during
+`post-start`:
 
 ```bash
 gitnexus analyze --index-only "$WORKSPACE_PATH"
-serena project create --index "$WORKSPACE_PATH"
-serena project index "$WORKSPACE_PATH"
-serena project health-check "$WORKSPACE_PATH"
 ```
 
 The pinned `--index-only` mode does not generate agent files. Setup is
-synchronous; a failed GitNexus command or Serena health check publishes
-`failed`, never `ready`. Cleanup runs the targeted command
-`gitnexus remove --force "$WORKSPACE_PATH"`, treats an absent index as an
-idempotent success, and removes only `$WORKSPACE_PATH/.serena` after strict
-canonical/symlink checks. It does not run `gitnexus clean --all`, Serena
-internal APIs, or global sweeps.
+synchronous; a failed GitNexus command publishes `failed`, never `ready`.
+Cleanup runs only `gitnexus remove --force "$WORKSPACE_PATH"` and treats an
+absent index as an idempotent success. It does not run `gitnexus clean --all`,
+touch Serena state, or remove the worktree.
 
 Serena is installed from commit `e771adedb5657c07ab890177d2f17df6ce436026`
 and starts with `start-mcp-server --context ide --project-from-cwd`. Its global

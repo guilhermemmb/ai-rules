@@ -311,7 +311,7 @@ rtk init -g --opencode --auto-patch
 The manual prerequisite is `brew install rtk-ai/tap/rtk` (Homebrew only when
 RTK is absent). Test with `git status` — RTK rewrites it transparently.
 
-### GitNexus and Serena lifecycle
+### GitNexus and Serena integration
 
 Deployment persistently installs GitNexus `1.6.5` and Serena from pinned commit
 `e771adedb5657c07ab890177d2f17df6ce436026`. The GitNexus source MCP command
@@ -323,24 +323,19 @@ Serena starts with
 `start-mcp-server --context ide --project-from-cwd`; its global configuration
 sets `read_only: true` and excludes shell/file mutation tools.
 
-Worktrunk owns setup for each canonical worktree path and runs these commands
+Worktrunk owns setup for each canonical worktree path and runs GitNexus only,
 synchronously from its `post-start` hook:
 
 ```bash
 gitnexus analyze --index-only "$WORKSPACE_PATH"
-serena project create --index "$WORKSPACE_PATH"
-serena project index "$WORKSPACE_PATH"
-serena project health-check "$WORKSPACE_PATH"
 ```
 
-The `--index-only` mode does not generate agent files. A failed command or
-Serena health check publishes `failed`, not `ready`. `pre-remove` runs
-`gitnexus remove --force "$WORKSPACE_PATH"` and then removes only the strictly
-validated worktree-local `.serena` directory. An absent GitNexus index is an
-idempotent success. Serena has no supported project-delete CLI, so global
-registrations are retained. Cleanup failures remain in the durable retry queue.
-Cleanup never runs `gitnexus clean --all`, Serena internal APIs, `wt remove`, or
-`git worktree remove`.
+The `--index-only` mode does not generate agent files. A failed GitNexus
+command publishes `failed`, not `ready`. `pre-remove` runs only
+`gitnexus remove --force "$WORKSPACE_PATH"`; an absent index is an idempotent
+success. Cleanup failures remain in the durable retry queue. No Serena
+project lifecycle command is run by Worktrunk, and cleanup never touches global
+Serena state, `gitnexus clean --all`, `wt remove`, or `git worktree remove`.
 
 The GitNexus sequence for graph work through the managed OpenCode configuration remains
 context/freshness → query/context → process → impact → detect_changes; schema

@@ -15,7 +15,7 @@ flowchart TD
     START --> PROVISION["wt-orca start<br/>(provisions checkout via Worktrunk)"]
     PROVISION --> READY{"Worktree state?"}
 
-    PROVISION --> INTELLIGENCE["post-start: GitNexus analyze --index-only<br/>Serena create --index → index → health-check"]
+    PROVISION --> INTELLIGENCE["post-start: GitNexus analyze --index-only"]
     INTELLIGENCE --> READY
 
     READY -->|"ready"| ATTACH["wt-orca attach<br/>(reports Orca terminal handle)"]
@@ -45,5 +45,5 @@ flowchart TD
     D6 --> DETACH["wt-orca stop<br/>(detach → cleanup → delegate remove)"]
     DETACH --> REMOVE["wt remove --force<br/>(Worktrunk-owned removal)"]
     REMOVE --> CLEANUP["pre-remove cleanup hook<br/>+ retry queue (worktree-cleanup.sh --retry-pending)"]
-    CLEANUP --> INTEL_CLEAN["gitnexus remove --force<br/>then remove worktree-local .serena"]
+    CLEANUP --> INTEL_CLEAN["gitnexus remove --force"]
     INTEL_CLEAN --> DONE(["Workspace removed by Worktrunk"])
