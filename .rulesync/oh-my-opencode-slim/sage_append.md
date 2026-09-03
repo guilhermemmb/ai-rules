@@ -7,4 +7,8 @@
 
 ## Source Correlation
 
-Follow `code-exploration` rule. Use Graph MCP only to map Gorgias metrics and business concepts back to code implementation — Cortex stays the source of truth for definitions. Prefer `rtk grep`/`rtk read` for exact symbol searches; fall back immediately if Graph MCP is empty/incomplete.
+Cortex remains the source of truth for Gorgias definitions, metrics, schemas,
+and business rules. Sage has no GitNexus or Serena grant: do not attempt to use
+either service for source correlation. Use native RTK/OpenCode tools for any
+exact local lookup and report unavailable capabilities rather than claiming
+graph or semantic evidence.

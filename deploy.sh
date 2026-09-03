@@ -35,17 +35,24 @@ WORKTREE_STATE_SOURCE="${WORKTREE_STATE_SOURCE:-$DOTFILES_DIR/worktree-state.sh}
 WORKTREE_STATE_DESTINATION="${WORKTREE_STATE_DESTINATION:-$(dirname "$WT_ORCA_DESTINATION")/worktree-state.sh}"
 DEPLOYMENT_LOCK_HELPER="${DEPLOYMENT_LOCK_HELPER:-$DOTFILES_DIR/deployment-lock.sh}"
 
-CODEBASE_MEMORY_MCP_BIN="${CODEBASE_MEMORY_MCP_BIN:-${HOME}/.local/bin/codebase-memory-mcp}"
-CODEBASE_MEMORY_MCP_VERSION="0.9.0"
-CODEBASE_MEMORY_MCP_INSTALLER_URL="https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/v${CODEBASE_MEMORY_MCP_VERSION}/install.sh"
-CODEBASE_MEMORY_MCP_RELEASE_URL="https://github.com/DeusData/codebase-memory-mcp/releases/download/v${CODEBASE_MEMORY_MCP_VERSION}"
-# Recorded from the versioned installer used by the current 0.9.0 release.
-CODEBASE_MEMORY_MCP_INSTALLER_SHA256="90ef82a3da3336ddc2c3851ad56822067b161856f24cd88cbd405fe423af6a66"
+GITNEXUS_VERSION="1.6.5"
+GITNEXUS_TARBALL_URL="https://registry.npmjs.org/gitnexus/-/gitnexus-1.6.5.tgz"
+# Registry tarball SRI for the pinned GitNexus artifact. The downloaded bytes
+# are verified directly before the tarball is passed to npm for installation.
+GITNEXUS_INTEGRITY="sha512-xluRjhobdJ0M0IJniTSZompGoZJQdKBQ4AbZ3HfcbNYRR1Z9jebqOi7/IVrHYGdTdW55/lvnnT1n+zYTq4CnyQ=="
+GITNEXUS_INSTALL_PREFIX="${GITNEXUS_INSTALL_PREFIX:-${HOME}/.local}"
+GITNEXUS_BIN="${GITNEXUS_BIN:-${GITNEXUS_INSTALL_PREFIX}/bin/gitnexus}"
+GITNEXUS_ARTIFACT_ROOT=""
+GITNEXUS_ARTIFACT=""
+SERENA_GIT_SHA="e771adedb5657c07ab890177d2f17df6ce436026"
+SERENA_BIN="${SERENA_BIN:-${HOME}/.local/bin/serena}"
+SERENA_CONFIG_DIR="${SERENA_CONFIG_DIR:-${HOME}/.serena}"
+SERENA_CONFIG_PATH="$SERENA_CONFIG_DIR/serena_config.yml"
 RTK_BIN="${RTK_BIN:-}"
 RTK_HOMEBREW_FORMULA="rtk-ai/tap/rtk"
 RTK_PLUGIN_PATH="${OPENDIR}/plugins/rtk.ts"
 
-# Rulesync and codebase-memory-mcp are repository-recorded convergence inputs.
+# Rulesync is a repository-recorded convergence input.
 # OMO is pinned to the repository-recorded 2.2.17 release.
 RULESYNC_VERSION="16.2.0"
 OH_MY_OPENCODE_SLIM_PACKAGE="oh-my-opencode-slim@2.2.17"
@@ -70,6 +77,8 @@ WORKTRUNK_SNAPSHOT=""
 WORKTRUNK_WAS_PRESENT=false
 DEPLOY_SUCCEEDED=false
 SNAPSHOT_COMPLETE=false
+FORCE_MUTATION_STARTED=false
+RECOVERY_ARTIFACTS_PRESERVED=false
 
 # ── parse args ──
 while [[ $# -gt 0 ]]; do
@@ -120,6 +129,12 @@ green() { printf '\033[32m%s\033[0m\n' "$1"; }
 cyan()  { printf '\033[36m%s\033[0m\n' "$1"; }
 yellow() { printf '\033[33m%s\033[0m\n' "$1"; }
 
+force_recovery_warning() {
+  yellow "  ⚠️  --force changed OpenCode configuration without snapshot or automatic rollback protection."
+  yellow "     Affected paths: $OPENDIR and $OPENCODE_MANIFEST_PATH (temporary path: $(dirname "$OPENDIR")/.opencode.removing.$$)."
+  yellow "     Manual recovery: inspect the affected paths and restore the prior OpenCode configuration from a trusted backup if deployment fails."
+}
+
 fail() {
   red "  ❌ $1" >&2
   return 1
@@ -132,14 +147,32 @@ source "$DEPLOYMENT_LOCK_HELPER"
 cleanup_stage() {
   local exit_code=$?
   if [[ "$DEPLOY_SUCCEEDED" != true ]] && [[ "$SNAPSHOT_COMPLETE" = true ]]; then
-    rollback_deployment
-    local rollback_rc=$?
-    if [[ $rollback_rc -ne 0 ]]; then
+    if ! rollback_deployment; then
+      exit_code=1
+      RECOVERY_ARTIFACTS_PRESERVED=true
+    fi
+  fi
+  if [[ "$FORCE_MUTATION_STARTED" = true && $exit_code -ne 0 ]]; then
+    force_recovery_warning
+  fi
+  if [[ -n "$GITNEXUS_ARTIFACT_ROOT" && -d "$GITNEXUS_ARTIFACT_ROOT" ]]; then
+    if rm -rf "$GITNEXUS_ARTIFACT_ROOT"; then
+      GITNEXUS_ARTIFACT_ROOT=""
+      GITNEXUS_ARTIFACT=""
+    else
+      red "  ❌ could not remove GitNexus staging artifacts: $GITNEXUS_ARTIFACT_ROOT"
       exit_code=1
     fi
   fi
-  if [[ $exit_code -eq 0 && -n "$STAGE_ROOT" && -d "$STAGE_ROOT" ]]; then
-    rm -rf "$STAGE_ROOT"
+  if [[ -n "$STAGE_ROOT" && -d "$STAGE_ROOT" ]]; then
+    if [[ "$RECOVERY_ARTIFACTS_PRESERVED" = true ]]; then
+      yellow "  ⚠️  preserving private staging/recovery artifacts at $STAGE_ROOT"
+    elif rm -rf "$STAGE_ROOT"; then
+      STAGE_ROOT=""
+    else
+      red "  ❌ could not remove private staging artifacts: $STAGE_ROOT"
+      exit_code=1
+    fi
   fi
   if [[ "${DEPLOYMENT_LOCK_HELD:-false}" = true && "${DEPLOYMENT_LOCK_REENTRANT:-false}" != true ]] &&
     ! deployment_lock_release; then
@@ -169,7 +202,7 @@ rollback_deployment() {
     red "  ❌ rollback of wt-orca failed; preserving recovery artifacts"
     rollback_failed=true
   fi
-  if [[ -e "$OPENCODE_TRANSACTION_MARKER" ]]; then
+  if [[ -e "$OPENCODE_TRANSACTION_MARKER" || -L "$OPENCODE_TRANSACTION_MARKER" ]]; then
     red "  ❌ OpenCode transaction rollback failed; preserving marker and recoverable paths"
     rollback_failed=true
     pending_marker=true
@@ -244,47 +277,617 @@ preflight_pyyaml() {
   fi
 }
 
-install_codebase_memory_mcp() {
-  if [[ -x "$CODEBASE_MEMORY_MCP_BIN" ]]; then
-    green "  ✅ codebase-memory-mcp already installed — skipping"
+gitnexus_version_matches() {
+  gitnexus_path_is_trusted || return 1
+  gitnexus_artifact_is_verified || return 1
+  "$GITNEXUS_BIN" --version 2>/dev/null | grep -Eq "(^|[^0-9])${GITNEXUS_VERSION//./\\.}([^0-9]|$)"
+}
+
+gitnexus_prefix_is_trusted() {
+  "$PYTHON_BIN" - "$GITNEXUS_INSTALL_PREFIX" <<'PY'
+import os
+import stat
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+current_uid = os.getuid()
+if path.is_symlink():
+    raise SystemExit("GitNexus install prefix is a symlink")
+
+existing = path
+while not existing.exists():
+    parent = existing.parent
+    if parent == existing:
+        raise SystemExit("GitNexus install prefix has no existing parent")
+    existing = parent
+
+for candidate in [existing, *existing.parents]:
+    candidate_stat = os.lstat(candidate)
+    if candidate in (path, existing) and candidate_stat.st_uid != current_uid:
+        raise SystemExit(f"GitNexus install prefix component is not owned by the current user: {candidate}")
+    if stat.S_IMODE(candidate_stat.st_mode) & 0o022:
+        raise SystemExit(f"GitNexus install prefix component is group- or world-writable: {candidate}")
+    if not stat.S_ISDIR(candidate_stat.st_mode):
+        raise SystemExit(f"GitNexus install prefix component is not a directory: {candidate}")
+PY
+}
+
+gitnexus_path_is_trusted() {
+  [[ -e "$GITNEXUS_BIN" && -x "$GITNEXUS_BIN" ]] || return 1
+  "$PYTHON_BIN" - "$GITNEXUS_BIN" "$GITNEXUS_INSTALL_PREFIX" <<'PY'
+import os
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+prefix = Path(sys.argv[2]).resolve()
+try:
+    resolved = path.resolve(strict=True)
+except OSError:
+    raise SystemExit("GitNexus executable is dangling or cannot be resolved")
+if not resolved.is_file() or not os.access(resolved, os.X_OK):
+    raise SystemExit("GitNexus executable does not resolve to an executable regular file")
+try:
+    resolved.relative_to(prefix)
+except ValueError:
+    raise SystemExit("GitNexus executable resolves outside the expected npm install prefix")
+PY
+}
+
+prepare_gitnexus_artifact() {
+  GITNEXUS_ARTIFACT_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/gitnexus-artifact.XXXXXX")" || return 1
+  chmod 700 "$GITNEXUS_ARTIFACT_ROOT"
+  GITNEXUS_ARTIFACT="$GITNEXUS_ARTIFACT_ROOT/gitnexus-${GITNEXUS_VERSION}.tgz"
+  if ! "$PYTHON_BIN" - "$GITNEXUS_TARBALL_URL" "$GITNEXUS_ARTIFACT" <<'PY'
+import shutil
+import sys
+import urllib.request
+from pathlib import Path
+
+url, destination = sys.argv[1:]
+with urllib.request.urlopen(url, timeout=120) as response, Path(destination).open("xb") as handle:
+    shutil.copyfileobj(response, handle)
+PY
+  then
+    red "  ❌ could not download the pinned GitNexus package artifact"
+    return 1
+  fi
+  [[ -f "$GITNEXUS_ARTIFACT" && ! -L "$GITNEXUS_ARTIFACT" ]] || {
+    red "  ❌ npm did not produce a regular GitNexus package artifact"
+    return 1
+  }
+  "$PYTHON_BIN" - "$GITNEXUS_ARTIFACT" "$GITNEXUS_INTEGRITY" <<'PY'
+import base64
+import hashlib
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+expected = sys.argv[2].removeprefix("sha512-")
+actual = base64.b64encode(hashlib.sha512(path.read_bytes()).digest()).decode("ascii")
+if actual != expected:
+    raise SystemExit("GitNexus package artifact does not match the pinned SRI")
+PY
+}
+
+gitnexus_artifact_is_verified() {
+  [[ -n "$GITNEXUS_ARTIFACT" && -f "$GITNEXUS_ARTIFACT" ]] || return 1
+  gitnexus_prefix_is_trusted || return 1
+  gitnexus_path_is_trusted || return 1
+  "$PYTHON_BIN" - "$GITNEXUS_ARTIFACT" "$GITNEXUS_INSTALL_PREFIX" "$GITNEXUS_BIN" "$GITNEXUS_INTEGRITY" <<'PY'
+import base64
+import hashlib
+import json
+import os
+import stat
+import sys
+import tarfile
+from pathlib import Path
+
+artifact, prefix, executable, expected_sri = sys.argv[1:]
+prefix = Path(prefix).resolve()
+package_root = prefix / "lib" / "node_modules" / "gitnexus"
+current_uid = os.getuid()
+
+def check_regular(path, label):
+    info = os.lstat(path)
+    if info.st_uid != current_uid or stat.S_IMODE(info.st_mode) & 0o022:
+        raise SystemExit(f"{label} has unsafe ownership or permissions: {path}")
+    if not stat.S_ISREG(info.st_mode):
+        raise SystemExit(f"{label} is not a regular file: {path}")
+
+actual_sri = base64.b64encode(hashlib.sha512(Path(artifact).read_bytes()).digest()).decode("ascii")
+if expected_sri != "sha512-" + actual_sri:
+    raise SystemExit("GitNexus package artifact SRI mismatch")
+
+artifact_files = {}
+with tarfile.open(artifact, "r:gz") as archive:
+    for member in archive.getmembers():
+        name = member.name
+        if name in ("package", "package/"):
+            continue
+        if not name.startswith("package/") or "\x00" in name:
+            raise SystemExit("GitNexus package artifact contains an unsafe path")
+        relative = Path(name.removeprefix("package/"))
+        if relative.is_absolute() or ".." in relative.parts:
+            raise SystemExit("GitNexus package artifact contains a path traversal")
+        if member.issym() or member.islnk():
+            raise SystemExit("GitNexus package artifact contains a symlink")
+        if member.isfile():
+            extracted = archive.extractfile(member)
+            if extracted is None:
+                raise SystemExit("GitNexus package artifact member cannot be read")
+            artifact_files[relative.as_posix()] = extracted.read()
+        elif not member.isdir():
+            raise SystemExit("GitNexus package artifact contains an unsupported member")
+
+if not artifact_files or "package.json" not in artifact_files:
+    raise SystemExit("GitNexus package artifact has no valid package files")
+for relative, expected in artifact_files.items():
+    candidate = package_root / relative
+    check_regular(candidate, "GitNexus installed package file")
+    # GitNexus 1.6.5's native dependency lifecycle scripts regenerate these
+    # Makefiles during npm install. All other package bytes remain pinned to the
+    # verified tarball; the executable itself is checked exactly below.
+    lifecycle_generated = (
+        relative.startswith("vendor/node_modules/node-addon-api/")
+        and (relative.endswith(".mk") or relative.endswith(".Makefile"))
+    )
+    if not lifecycle_generated and candidate.read_bytes() != expected:
+        raise SystemExit(f"GitNexus installed package bytes differ from the pinned artifact: {relative}")
+
+package = json.loads(artifact_files["package.json"].decode("utf-8"))
+bins = package.get("bin")
+if isinstance(bins, str):
+    bin_target = bins
+elif isinstance(bins, dict):
+    bin_target = bins.get("gitnexus")
+else:
+    bin_target = None
+if not isinstance(bin_target, str) or not bin_target:
+    raise SystemExit("GitNexus package has no gitnexus executable entry")
+resolved_executable = Path(executable).resolve(strict=True)
+try:
+    executable_relative = resolved_executable.relative_to(package_root).as_posix()
+except ValueError:
+    raise SystemExit("GitNexus executable resolves outside the installed package")
+if executable_relative != bin_target.removeprefix("./"):
+    raise SystemExit("GitNexus executable is not the package's declared bin target")
+check_regular(resolved_executable, "GitNexus executable")
+if resolved_executable.read_bytes() != artifact_files.get(executable_relative):
+    raise SystemExit("GitNexus executable bytes differ from the pinned artifact")
+PY
+}
+
+install_gitnexus() {
+  gitnexus_prefix_is_trusted || return 1
+  prepare_gitnexus_artifact || return 1
+  if gitnexus_version_matches; then
+    green "  ✅ GitNexus ${GITNEXUS_VERSION} already matches the verified artifact at $GITNEXUS_BIN — skipping"
+    return 0
+  fi
+  if [[ ! -d "$GITNEXUS_INSTALL_PREFIX" ]]; then
+    mkdir -p "$GITNEXUS_INSTALL_PREFIX"
+    chmod 700 "$GITNEXUS_INSTALL_PREFIX"
+  fi
+  cyan "  ⚡ installing pinned GitNexus ${GITNEXUS_VERSION}..."
+  if ! "$NPM_BIN" install --global --prefix "$GITNEXUS_INSTALL_PREFIX" --no-audit --no-fund "$GITNEXUS_ARTIFACT"; then
+    red "  ❌ GitNexus installation failed"
+    return 1
+  fi
+
+  [[ -x "$GITNEXUS_BIN" ]] || {
+    red "  ❌ GitNexus installation did not create $GITNEXUS_BIN"
+    return 1
+  }
+  gitnexus_path_is_trusted || {
+    red "  ❌ GitNexus executable is dangling or resolves outside $GITNEXUS_INSTALL_PREFIX"
+    return 1
+  }
+  gitnexus_artifact_is_verified || return 1
+  gitnexus_version_matches || {
+    red "  ❌ installed GitNexus version did not match ${GITNEXUS_VERSION}"
+    return 1
+  }
+  green "  ✅ GitNexus ${GITNEXUS_VERSION} installed at $GITNEXUS_BIN"
+}
+
+serena_source_matches() {
+  local tool_dir=""
+  tool_dir="$($UV_BIN tool dir 2>/dev/null)" || return 1
+  [[ -n "$tool_dir" && -d "$tool_dir/serena-agent" ]] || return 1
+  "$PYTHON_BIN" - "$tool_dir/serena-agent" "$SERENA_GIT_SHA" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+tool_root = Path(sys.argv[1]).resolve()
+expected_sha = sys.argv[2]
+
+def normalized_name(value):
+    return re.sub(r"[-_.]+", "-", value).lower()
+
+candidates = []
+for dist_info in tool_root.rglob("*.dist-info"):
+    if dist_info.is_symlink() or not dist_info.is_dir():
+        continue
+    metadata_path = dist_info / "METADATA"
+    if metadata_path.is_symlink() or not metadata_path.is_file():
+        continue
+    try:
+        metadata_lines = metadata_path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError):
+        continue
+    names = [
+        line.split(":", 1)[1].strip()
+        for line in metadata_lines
+        if line.lower().startswith("name:")
+    ]
+    if len(names) == 1 and normalized_name(names[0]) == "serena-agent":
+        candidates.append(dist_info)
+
+if len(candidates) != 1:
+    raise SystemExit("Serena source metadata is missing or ambiguous")
+
+direct_url_path = candidates[0] / "direct_url.json"
+if direct_url_path.is_symlink() or not direct_url_path.is_file():
+    raise SystemExit("Serena distribution has no regular direct_url.json")
+try:
+    with direct_url_path.open(encoding="utf-8") as handle:
+        direct_url = json.load(handle)
+except (OSError, ValueError) as error:
+    raise SystemExit(f"cannot read Serena distribution direct_url.json: {error}")
+
+vcs_info = direct_url.get("vcs_info") if isinstance(direct_url, dict) else None
+if not isinstance(vcs_info, dict):
+    raise SystemExit("Serena distribution direct_url.json has no VCS metadata")
+if vcs_info.get("vcs") != "git" or vcs_info.get("commit_id") != expected_sha:
+    raise SystemExit("Serena distribution source commit does not match the pinned commit")
+url = direct_url.get("url")
+if not isinstance(url, str):
+    raise SystemExit("Serena distribution direct_url.json has no source URL")
+normalized_url = url.rstrip("/")
+if normalized_url.endswith(".git"):
+    normalized_url = normalized_url[:-4]
+if normalized_url != "https://github.com/oraios/serena":
+    raise SystemExit("Serena distribution source URL does not match the pinned repository")
+PY
+}
+
+serena_dependency_integrity_matches() {
+  local tool_dir=""
+  tool_dir="$($UV_BIN tool dir 2>/dev/null)" || return 1
+  [[ -n "$tool_dir" && -d "$tool_dir/serena-agent" ]] || return 1
+  "$PYTHON_BIN" - "$tool_dir/serena-agent" <<'PY'
+import base64
+import csv
+import hashlib
+import sys
+from pathlib import Path
+
+tool_root = Path(sys.argv[1]).resolve()
+record_paths = list(tool_root.rglob("*.dist-info/RECORD"))
+if not record_paths:
+    raise SystemExit("Serena tool has no wheel RECORD metadata for dependency integrity verification")
+
+for record_path in record_paths:
+    site_packages = record_path.parent.parent
+    try:
+        with record_path.open(newline="", encoding="utf-8") as handle:
+            rows = list(csv.reader(handle))
+    except (OSError, UnicodeError, csv.Error) as error:
+        raise SystemExit(f"cannot read Serena wheel RECORD: {error}")
+    for row in rows:
+        if len(row) != 3:
+            raise SystemExit(f"malformed Serena wheel RECORD entry: {record_path}")
+        relative_name, hash_spec, size = row
+        if not hash_spec:
+            continue
+        try:
+            algorithm, encoded_digest = hash_spec.split("=", 1)
+            digest = base64.urlsafe_b64decode(encoded_digest + "=" * (-len(encoded_digest) % 4))
+            hasher = hashlib.new(algorithm)
+        except (ValueError, TypeError):
+            raise SystemExit(f"unsupported Serena wheel RECORD hash: {hash_spec}")
+        raw_candidate = site_packages / relative_name
+        if raw_candidate.is_symlink():
+            raise SystemExit(f"Serena wheel RECORD path is a symlink: {relative_name}")
+        candidate = raw_candidate.resolve(strict=True)
+        try:
+            candidate.relative_to(tool_root)
+        except ValueError:
+            raise SystemExit(f"Serena wheel RECORD path escapes its tool environment: {relative_name}")
+        if not candidate.is_file():
+            raise SystemExit(f"Serena wheel RECORD path is not a regular file: {relative_name}")
+        with candidate.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                hasher.update(chunk)
+        if hasher.digest() != digest:
+            raise SystemExit(f"Serena wheel RECORD hash mismatch: {relative_name}")
+PY
+}
+
+resolve_serena_executable() {
+  local bin_dir=""
+  local candidate=""
+  local tool_dir=""
+  bin_dir="$($UV_BIN tool dir --bin 2>/dev/null)" || {
+    red "  ❌ uv could not resolve its tool binary directory"
+    return 1
+  }
+  bin_dir="${bin_dir//$'\n'/}"
+  [[ -n "$bin_dir" && -d "$bin_dir" ]] || {
+    red "  ❌ uv returned an invalid tool binary directory: $bin_dir"
+    return 1
+  }
+  tool_dir="$($UV_BIN tool dir 2>/dev/null)" || {
+    red "  ❌ uv could not resolve its tool directory"
+    return 1
+  }
+  [[ -n "$tool_dir" && -d "$tool_dir/serena-agent" ]] || {
+    red "  ❌ uv returned an invalid Serena tool directory: $tool_dir"
+    return 1
+  }
+  for candidate in "$bin_dir/serena" "$bin_dir/serena-agent"; do
+    if [[ -x "$candidate" ]] && "$PYTHON_BIN" - "$candidate" "$tool_dir/serena-agent" <<'PY'
+import os
+import sys
+from pathlib import Path
+
+candidate = Path(sys.argv[1])
+tool_root = Path(sys.argv[2]).resolve()
+try:
+    resolved = candidate.resolve(strict=True)
+except OSError:
+    raise SystemExit(1)
+if not resolved.is_file() or not os.access(resolved, os.X_OK):
+    raise SystemExit(1)
+try:
+    resolved.relative_to(tool_root)
+except ValueError:
+    raise SystemExit(1)
+PY
+    then
+      SERENA_RESOLVED_BIN="$candidate"
+      return 0
+    fi
+  done
+  red "  ❌ uv tool bin-dir does not contain a Serena executable inside the uv-managed tool"
+  return 1
+}
+
+serena_paths_are_trusted() {
+  local tool_dir=""
+  local bin_dir=""
+  tool_dir="$($UV_BIN tool dir 2>/dev/null)" || return 1
+  bin_dir="$($UV_BIN tool dir --bin 2>/dev/null)" || return 1
+  "$PYTHON_BIN" - "$tool_dir/serena-agent" "$bin_dir" "$SERENA_RESOLVED_BIN" <<'PY'
+import os
+import stat
+import sys
+from pathlib import Path
+
+tool_root = Path(sys.argv[1])
+bin_dir = Path(sys.argv[2])
+resolved_executable = Path(sys.argv[3]).resolve(strict=True)
+current_uid = os.getuid()
+
+def check_path(path, label, *, regular=False):
+    info = os.lstat(path)
+    if info.st_uid != current_uid or stat.S_IMODE(info.st_mode) & 0o022:
+        raise SystemExit(f"{label} has unsafe ownership or permissions: {path}")
+    if regular and not stat.S_ISREG(info.st_mode):
+        raise SystemExit(f"{label} is not a regular file: {path}")
+    if not regular and not stat.S_ISDIR(info.st_mode):
+        raise SystemExit(f"{label} is not a directory: {path}")
+
+check_path(tool_root, "Serena uv tool root")
+check_path(bin_dir, "Serena uv tool binary directory")
+check_path(resolved_executable, "Serena uv executable", regular=True)
+try:
+    resolved_executable.relative_to(tool_root.resolve())
+except ValueError:
+    raise SystemExit("Serena uv executable resolves outside its tool root")
+
+for path in tool_root.rglob("*"):
+    if path.name == "direct_url.json" or (path.parent.name.endswith(".dist-info") and path.name == "RECORD"):
+        if path.is_symlink():
+            raise SystemExit(f"Serena installation metadata is a symlink: {path}")
+        check_path(path, "Serena installation metadata", regular=True)
+        check_path(path.parent, "Serena installation metadata directory")
+PY
+}
+
+serena_install_matches() {
+  validate_serena_config || return 1
+  [[ -x "$SERENA_BIN" ]] || return 1
+  resolve_serena_executable || return 1
+  serena_paths_are_trusted || return 1
+  serena_source_matches || return 1
+  serena_dependency_integrity_matches || return 1
+  serena_launcher_matches_resolved || return 1
+  "$SERENA_BIN" --version >/dev/null 2>&1
+}
+
+serena_launcher_matches_resolved() {
+  [[ -x "$SERENA_BIN" && -x "$SERENA_RESOLVED_BIN" ]] || return 1
+  "$PYTHON_BIN" - "$SERENA_BIN" "$SERENA_RESOLVED_BIN" <<'PY'
+import os
+import stat
+import sys
+from pathlib import Path
+
+launcher = Path(sys.argv[1])
+expected = Path(sys.argv[2])
+current_uid = os.getuid()
+launcher_stat = os.lstat(launcher)
+if launcher_stat.st_uid != current_uid:
+    raise SystemExit("Serena stable launcher is not owned by the current user")
+if not launcher.is_symlink() and stat.S_IMODE(launcher_stat.st_mode) & 0o022:
+    raise SystemExit("Serena stable launcher is group- or world-writable")
+parent_stat = os.stat(launcher.parent)
+if parent_stat.st_uid != current_uid or stat.S_IMODE(parent_stat.st_mode) & 0o022:
+    raise SystemExit("Serena stable launcher directory has unsafe ownership or permissions")
+try:
+    resolved_launcher = launcher.resolve(strict=True)
+    resolved_expected = expected.resolve(strict=True)
+except OSError:
+    raise SystemExit("Serena launcher or uv-managed executable cannot be resolved")
+if resolved_launcher != resolved_expected:
+    raise SystemExit("Serena stable launcher does not resolve to the uv-managed executable")
+PY
+}
+
+refresh_serena_launcher() {
+  local launcher_dir
+  launcher_dir="$(dirname "$SERENA_BIN")"
+  mkdir -p "$launcher_dir"
+  if [[ "$SERENA_BIN" = "$SERENA_RESOLVED_BIN" ]]; then
+    return 0
+  fi
+  if [[ -L "$SERENA_BIN" ]] && [[ "$(readlink "$SERENA_BIN")" = "$SERENA_RESOLVED_BIN" ]]; then
+    return 0
+  fi
+  if [[ -e "$SERENA_BIN" && ! -L "$SERENA_BIN" ]]; then
+    red "  ❌ stable Serena path is occupied by a regular file: $SERENA_BIN"
+    return 1
+  fi
+  ln -sfn "$SERENA_RESOLVED_BIN" "$SERENA_BIN"
+}
+
+install_serena() {
+  # The mandatory policy must exist before any Serena executable, --version,
+  # or uv installation path that may invoke Serena can run.
+  ensure_serena_config || return 1
+  if serena_install_matches && resolve_serena_executable && refresh_serena_launcher; then
+    green "  ✅ Serena pinned source already installed at $SERENA_BIN — skipping"
     return 0
   fi
 
-  resolve_command CURL_BIN "curl" curl || return 1
-  local install_dir
-  local installer_file
-  local installer_hash
-  install_dir="$(dirname "$CODEBASE_MEMORY_MCP_BIN")"
-  installer_file="$(mktemp "${TMPDIR:-/tmp}/codebase-memory-installer.XXXXXX")"
-  cyan "  ⚡ codebase-memory-mcp not found — installing pinned UI variant..."
-  if ! "$CURL_BIN" -fsSL "$CODEBASE_MEMORY_MCP_INSTALLER_URL" -o "$installer_file"; then
-    rm -f "$installer_file"
-    red "  ❌ codebase-memory-mcp installation failed"
+  cyan "  ⚡ installing Serena from pinned source ${SERENA_GIT_SHA}..."
+  if ! "$UV_BIN" tool install --force --python 3.13 \
+    --from "git+https://github.com/oraios/serena@${SERENA_GIT_SHA}" \
+    serena-agent; then
+    red "  ❌ Serena installation failed"
     return 1
   fi
-  installer_hash="$(shasum -a 256 "$installer_file" | awk '{print $1}')"
-  if [[ "$installer_hash" != "$CODEBASE_MEMORY_MCP_INSTALLER_SHA256" ]]; then
-    rm -f "$installer_file"
-    red "  ❌ codebase-memory-mcp installer checksum did not match the recorded release"
-    return 1
-  fi
-  chmod 0700 "$installer_file"
-  if ! HOME="$HOME" CBM_DOWNLOAD_URL="$CODEBASE_MEMORY_MCP_RELEASE_URL" bash "$installer_file" --ui "--dir=$install_dir"; then
-    rm -f "$installer_file"
-    red "  ❌ codebase-memory-mcp installation failed"
-    return 1
-  fi
-  rm -f "$installer_file"
-
-  [[ -x "$CODEBASE_MEMORY_MCP_BIN" ]] || {
-    red "  ❌ codebase-memory-mcp installation did not create $CODEBASE_MEMORY_MCP_BIN"
+  resolve_serena_executable || return 1
+  refresh_serena_launcher || return 1
+  serena_install_matches || {
+    red "  ❌ installed Serena does not match source ${SERENA_GIT_SHA} or does not respond to --version"
     return 1
   }
-  if ! "$CODEBASE_MEMORY_MCP_BIN" --version 2>/dev/null | grep -Fq "$CODEBASE_MEMORY_MCP_VERSION"; then
-    red "  ❌ installed codebase-memory-mcp version did not match the recorded release"
+  green "  ✅ Serena installed from pinned source at $SERENA_BIN"
+}
+
+validate_serena_config() {
+  [[ ! -L "$SERENA_CONFIG_PATH" && -f "$SERENA_CONFIG_PATH" ]] || {
+    red "  ❌ Serena global configuration is missing or not a regular file: $SERENA_CONFIG_PATH"
     return 1
+  }
+  "$PYTHON_BIN" - "$SERENA_CONFIG_PATH" <<'PY'
+import os
+import stat
+import sys
+import yaml
+
+path = sys.argv[1]
+config_path = os.path.abspath(path)
+try:
+    config_stat = os.stat(config_path)
+    parent_stat = os.stat(os.path.dirname(config_path))
+except OSError as error:
+    raise SystemExit(f"cannot stat Serena global configuration: {error}")
+if config_stat.st_uid != os.getuid():
+    raise SystemExit("Serena global configuration is not owned by the current user")
+if stat.S_IMODE(config_stat.st_mode) != 0o400:
+    raise SystemExit("Serena global configuration must be owner-only and read-only")
+if parent_stat.st_uid != os.getuid():
+    raise SystemExit("Serena config directory is not owned by the current user")
+if stat.S_IMODE(parent_stat.st_mode) & 0o022:
+    raise SystemExit("Serena config directory is group- or world-writable")
+try:
+    with open(path, encoding="utf-8") as handle:
+        config = yaml.safe_load(handle)
+except (OSError, yaml.YAMLError) as error:
+    raise SystemExit(f"invalid Serena global configuration: {error}")
+
+required_tools = {
+    "execute_shell_command",
+    "create_text_file",
+    "replace_string_in_file",
+    "apply_patch",
+}
+if not isinstance(config, dict):
+    raise SystemExit("invalid Serena global configuration: top level must be a mapping")
+if config.get("read_only") is not True:
+    raise SystemExit("Serena global configuration must set read_only: true")
+excluded_tools = config.get("excluded_tools")
+if not isinstance(excluded_tools, list) or not required_tools.issubset(excluded_tools):
+    raise SystemExit(
+        "Serena global configuration must exclude execute_shell_command, "
+        "create_text_file, replace_string_in_file, and apply_patch"
+    )
+PY
+}
+
+ensure_serena_config() {
+  if [[ -e "$SERENA_CONFIG_DIR" || -L "$SERENA_CONFIG_DIR" ]]; then
+    [[ ! -L "$SERENA_CONFIG_DIR" && -d "$SERENA_CONFIG_DIR" ]] || {
+      red "  ❌ Serena config directory is not a regular directory: $SERENA_CONFIG_DIR"
+      return 1
+    }
+  else
+    mkdir -p "$SERENA_CONFIG_DIR"
   fi
-  green "  ✅ codebase-memory-mcp installed at the pinned release"
+
+  if [[ -e "$SERENA_CONFIG_PATH" || -L "$SERENA_CONFIG_PATH" ]]; then
+    if ! validate_serena_config; then
+      red "  ❌ Serena global configuration conflicts with the mandatory read-only policy"
+      return 1
+    fi
+    green "  ✅ validated Serena read-only global configuration"
+    return 0
+  fi
+
+  cat > "$SERENA_CONFIG_PATH" <<'EOF'
+read_only: true
+excluded_tools:
+  - execute_shell_command
+  - create_text_file
+  - replace_string_in_file
+  - apply_patch
+EOF
+  chmod 0400 "$SERENA_CONFIG_PATH"
+  validate_serena_config || return 1
+  green "  ✅ created Serena read-only global configuration"
+}
+
+preflight_gitnexus_serena() {
+  local check_only="$1"
+  local gitnexus_ok=true
+  if [[ "$check_only" = true ]]; then
+    if ! prepare_gitnexus_artifact || ! gitnexus_version_matches; then
+      red "  ❌ missing dependency: GitNexus ${GITNEXUS_VERSION} at $GITNEXUS_BIN"
+      gitnexus_ok=false
+    fi
+    if ! validate_serena_config; then
+      red "  ❌ missing or invalid Serena read-only global configuration: $SERENA_CONFIG_PATH"
+      return 1
+    fi
+    if ! serena_install_matches; then
+      red "  ❌ missing dependency: pinned Serena at $SERENA_BIN"
+    fi
+    [[ "$gitnexus_ok" = true ]] && serena_install_matches
+    return $?
+  fi
+
+  install_gitnexus || return 1
+  ensure_serena_config || return 1
+  install_serena || return 1
+  yellow "  ⚠️  Serena transitive dependencies are resolved by uv at install time; wheel RECORD hashes are checked, but no immutable dependency lock is supplied by this command."
 }
 
 verify_rtk() {
@@ -355,19 +958,16 @@ preflight_dependencies() {
   resolve_command OPENCODE_BIN "opencode" opencode || failed=1
   resolve_command BUNX_BIN "bunx" bunx || failed=1
   resolve_command PNPM_BIN "pnpm" pnpm || failed=1
+  resolve_command NPM_BIN "npm" npm || failed=1
+  resolve_command UV_BIN "uv" uv || failed=1
   resolve_command PYTHON_BIN "Python 3" python3 || failed=1
   preflight_rtk "$check_only" || failed=1
   if [[ -n "${PYTHON_BIN:-}" && -x "${PYTHON_BIN:-}" ]]; then
     preflight_pyyaml || failed=1
   fi
 
-  if [[ -x "$CODEBASE_MEMORY_MCP_BIN" ]]; then
-    :
-  elif [[ "$check_only" = true ]]; then
-    red "  ❌ missing dependency: codebase-memory-mcp at $CODEBASE_MEMORY_MCP_BIN"
-    failed=1
-  else
-    install_codebase_memory_mcp || failed=1
+  if [[ -n "${NPM_BIN:-}" && -n "${UV_BIN:-}" && -n "${PYTHON_BIN:-}" ]]; then
+    preflight_gitnexus_serena "$check_only" || failed=1
   fi
 
   return "$failed"
@@ -538,6 +1138,7 @@ manifest_tool() {
   "$PYTHON_BIN" - "$operation" "$@" <<'PY'
 import datetime
 import difflib
+import errno
 import hashlib
 import json
 import os
@@ -750,9 +1351,12 @@ def operation_remove(root, manifest):
             fail(f"refusing to remove non-directory managed path: {relative}")
         try:
             candidate.rmdir()
-        except OSError:
-            # Unknown files in a managed directory are intentionally retained.
-            pass
+        except OSError as error:
+            # Unknown files in a managed directory are intentionally retained,
+            # but every failure other than the portable non-empty-directory
+            # errors must propagate.
+            if error.errno not in (errno.ENOTEMPTY, errno.EEXIST):
+                raise
 
 
 def ensure_directory(root, relative):
@@ -1572,6 +2176,16 @@ snapshot_live_configuration() {
   WORKTRUNK_SNAPSHOT=""
   parent="$(dirname "$OPENDIR")"
   mkdir -p "$parent"
+  wt_orca_snapshot="$STAGE_ROOT/wt-orca-snapshot"
+  worktree_state_snapshot="$STAGE_ROOT/worktree-state-snapshot"
+  worktrunk_snapshot="$STAGE_ROOT/worktrunk-snapshot"
+  # Complete all auxiliary snapshots before taking the OpenCode snapshot. The
+  # live OpenCode tree is not considered recoverable until every snapshot has
+  # succeeded, so an auxiliary failure cannot strand a moved live tree.
+  wt_orca_was_present="$(snapshot_file "$WT_ORCA_DESTINATION" "$wt_orca_snapshot")" || return 1
+  worktree_state_was_present="$(snapshot_file "$WORKTREE_STATE_DESTINATION" "$worktree_state_snapshot")" || return 1
+  worktrunk_was_present="$(snapshot_file "$WORKTRUNK_CONFIG_DESTINATION" "$worktrunk_snapshot")" || return 1
+
   if [[ -e "$OPENDIR" || -L "$OPENDIR" ]]; then
     [[ ! -L "$OPENDIR" && -d "$OPENDIR" ]] || fail "OpenCode config path is not a regular directory"
     live_was_present=true
@@ -1581,12 +2195,6 @@ snapshot_live_configuration() {
     live_was_present=false
     live_snapshot="$STAGE_ROOT/live-snapshot-absent"
   fi
-  wt_orca_snapshot="$STAGE_ROOT/wt-orca-snapshot"
-  worktree_state_snapshot="$STAGE_ROOT/worktree-state-snapshot"
-  worktrunk_snapshot="$STAGE_ROOT/worktrunk-snapshot"
-  wt_orca_was_present="$(snapshot_file "$WT_ORCA_DESTINATION" "$wt_orca_snapshot")" || return 1
-  worktree_state_was_present="$(snapshot_file "$WORKTREE_STATE_DESTINATION" "$worktree_state_snapshot")" || return 1
-  worktrunk_was_present="$(snapshot_file "$WORKTRUNK_CONFIG_DESTINATION" "$worktrunk_snapshot")" || return 1
 
   LIVE_SNAPSHOT="$live_snapshot"
   LIVE_WAS_PRESENT="$live_was_present"
@@ -1745,15 +2353,24 @@ recover_pending_opencode_transaction() {
   "$PYTHON_BIN" - "$OPENCODE_TRANSACTION_MARKER" <<'PY'
 import json
 import os
+import re
 import shutil
+import stat
 import sys
 
 marker = os.path.abspath(sys.argv[1])
 try:
+    marker_stat = os.stat(marker)
     with open(marker, encoding="utf-8") as handle:
         payload = json.load(handle)
 except (OSError, ValueError) as error:
     raise SystemExit(f"unreadable OpenCode transaction marker: {error}")
+
+current_uid = os.getuid()
+if marker_stat.st_uid != current_uid or stat.S_IMODE(marker_stat.st_mode) & 0o022:
+    raise SystemExit("OpenCode transaction marker has unsafe ownership or permissions")
+if not isinstance(payload, dict):
+    raise SystemExit("invalid OpenCode transaction marker")
 
 required = ("live", "incoming", "rollback")
 if any(not isinstance(payload.get(key), str) for key in required):
@@ -1761,11 +2378,31 @@ if any(not isinstance(payload.get(key), str) for key in required):
 
 marker_parent = os.path.dirname(marker)
 paths = {key: os.path.abspath(payload[key]) for key in required}
-phase = payload.get("phase", "prepared")
-if phase not in ("prepared", "old_moved", "committed"):
+phase = payload.get("phase")
+if not isinstance(phase, str) or phase not in ("prepared", "old_moved", "committed"):
     raise SystemExit("invalid OpenCode transaction phase")
+marker_name = os.path.basename(marker)
+if not marker_name.endswith(".transaction"):
+    raise SystemExit("OpenCode transaction marker has an unexpected name")
+live = marker[:-len(".transaction")]
+if paths["live"] != live or os.path.basename(live) == "":
+    raise SystemExit("OpenCode transaction marker live path is not the exact configured path")
+if os.path.dirname(live) != marker_parent:
+    raise SystemExit("OpenCode transaction live path escaped its config directory")
+
+incoming_match = re.fullmatch(r"\.opencode\.deploy\.(\d+)", os.path.basename(paths["incoming"]))
+rollback_match = re.fullmatch(r"\.opencode\.previous\.(\d+)", os.path.basename(paths["rollback"]))
+if not incoming_match or not rollback_match or incoming_match.group(1) != rollback_match.group(1):
+    raise SystemExit("OpenCode transaction generated paths do not match the expected deployment names")
 if any(os.path.dirname(value) != marker_parent for value in paths.values()):
-    raise SystemExit("OpenCode transaction marker path escaped its config directory")
+    raise SystemExit("OpenCode transaction generated path escaped its config directory")
+
+try:
+    parent_stat = os.stat(marker_parent)
+except OSError as error:
+    raise SystemExit(f"cannot stat OpenCode transaction directory: {error}")
+if not stat.S_ISDIR(parent_stat.st_mode) or parent_stat.st_uid != current_uid or stat.S_IMODE(parent_stat.st_mode) & 0o022:
+    raise SystemExit("OpenCode transaction directory has unsafe ownership or permissions")
 
 # Reject colliding or aliased recovery layouts before any mutation so a
 # corrupt marker is preserved untouched for manual inspection.
@@ -1787,38 +2424,92 @@ rollback = paths["rollback"]
 def present(path):
     return os.path.lexists(path)
 
-def remove_staged(path):
-    if os.path.islink(path) or not os.path.isdir(path):
-        os.unlink(path)
-    else:
-        shutil.rmtree(path)
+def validate_staged_directory(path):
+    if not present(path) or os.path.islink(path) or not os.path.isdir(path):
+        raise SystemExit(f"OpenCode transaction staged path is not a regular directory: {path}")
+    path_stat = os.stat(path)
+    if path_stat.st_uid != current_uid or stat.S_IMODE(path_stat.st_mode) & 0o022:
+        raise SystemExit(f"OpenCode transaction staged path has unsafe ownership or permissions: {path}")
 
-if present(live):
-    if present(incoming) and present(rollback):
-        raise SystemExit("ambiguous OpenCode transaction; refusing recovery")
-    if present(incoming):
+def validate_live_directory(path):
+    if not present(path) or os.path.islink(path) or not os.path.isdir(path):
+        raise SystemExit(f"OpenCode live path is not a regular directory: {path}")
+    path_stat = os.stat(path)
+    if path_stat.st_uid != current_uid or stat.S_IMODE(path_stat.st_mode) & 0o022:
+        raise SystemExit("OpenCode live path has unsafe ownership or permissions")
+
+def remove_staged(path):
+    validate_staged_directory(path)
+    shutil.rmtree(path)
+
+live_present = present(live)
+incoming_present = present(incoming)
+rollback_present = present(rollback)
+if phase == "prepared":
+    if not incoming_present:
+        if rollback_present:
+            if live_present:
+                raise SystemExit("prepared OpenCode transaction has an ambiguous live and rollback layout")
+            validate_staged_directory(rollback)
+            os.replace(rollback, live)
+        elif live_present:
+            validate_live_directory(live)
+        else:
+            raise SystemExit("prepared OpenCode transaction has no surviving deployment directory")
+    else:
+        if live_present:
+            if rollback_present:
+                raise SystemExit("prepared OpenCode transaction has an ambiguous live and rollback layout")
+            validate_live_directory(live)
+            remove_staged(incoming)
+        elif rollback_present:
+            validate_staged_directory(rollback)
+            os.replace(rollback, live)
+            remove_staged(incoming)
+        else:
+            # No live path means the deployment was for a previously absent
+            # configuration. Complete that reachable transition instead of
+            # deleting the only surviving incoming tree.
+            validate_staged_directory(incoming)
+            os.replace(incoming, live)
+elif phase == "old_moved":
+    if not live_present and incoming_present and rollback_present:
+        validate_staged_directory(incoming)
+        validate_staged_directory(rollback)
+        os.replace(rollback, live)
         remove_staged(incoming)
-    elif present(rollback):
+    elif live_present and incoming_present and not rollback_present:
+        # Recovery may have restored the old tree before its incoming cleanup
+        # completed. The live tree is the only valid survivor in this layout.
+        validate_live_directory(live)
+        remove_staged(incoming)
+    elif live_present and not incoming_present and rollback_present:
+        # The live tree may be either the committed replacement or an
+        # unrelated/manual survivor. Without the incoming tree there is no
+        # proof that the replacement reached the committed phase, so never
+        # discard the rollback path automatically.
+        raise SystemExit(
+            "old_moved OpenCode transaction has live and rollback paths without "
+            "incoming; preserving all recovery artifacts for manual recovery"
+        )
+    elif live_present and not incoming_present and not rollback_present:
+        # All generated residue was already cleaned; only marker removal remains.
+        validate_live_directory(live)
+    else:
+        raise SystemExit("old_moved OpenCode transaction has an ambiguous generated path state")
+elif phase == "committed":
+    if not live_present or incoming_present:
+        raise SystemExit("committed OpenCode transaction has an unexpected generated path state")
+    validate_live_directory(live)
+    if rollback_present:
         remove_staged(rollback)
-elif present(rollback):
-    os.replace(rollback, live)
-    if present(incoming):
-        remove_staged(incoming)
-elif present(incoming):
-    remove_staged(incoming)
-else:
-    raise SystemExit("OpenCode transaction has no recoverable paths")
 
 os.unlink(marker)
+directory_fd = os.open(marker_parent, os.O_RDONLY)
 try:
-    directory_fd = os.open(marker_parent, os.O_RDONLY)
-except OSError:
-    directory_fd = None
-if directory_fd is not None:
-    try:
-        os.fsync(directory_fd)
-    finally:
-        os.close(directory_fd)
+    os.fsync(directory_fd)
+finally:
+    os.close(directory_fd)
 PY
 }
 
@@ -1854,12 +2545,16 @@ replace_live_configuration_force() {
       fi
       return 1
     fi
+    FORCE_MUTATION_STARTED=true
+    force_recovery_warning
     rm -rf "$displaced"
   else
     if ! "$MV_BIN" "$incoming" "$OPENDIR"; then
       red "  ❌ OpenCode replacement failed; no automatic rollback is available; recover manually"
       return 1
     fi
+    FORCE_MUTATION_STARTED=true
+    force_recovery_warning
   fi
 }
 
@@ -1950,29 +2645,60 @@ commit_opencode_configuration() {
     red "  ❌ OpenCode transaction marker cleanup failed; preserving marker and rollback for startup recovery"
     return 1
   fi
-  rm -rf "$rollback_path"
+  if ! rm -rf "$rollback_path"; then
+    red "  ❌ could not remove the committed OpenCode rollback path; preserving it for recovery"
+    return 1
+  fi
 }
 
 install_wt_orca() {
   local destination_dir="$(dirname "$WT_ORCA_DESTINATION")"
   local staged="$destination_dir/.wt-orca.stage.$$"
   local state_staged="$destination_dir/.worktree-state.stage.$$"
-  mkdir -p "$destination_dir"
+
+  if ! mkdir -p "$destination_dir"; then
+    rm -f "$staged" "$state_staged"
+    return 1
+  fi
   if [[ -L "$WT_ORCA_DESTINATION" || ( -e "$WT_ORCA_DESTINATION" && ! -f "$WT_ORCA_DESTINATION" ) ]]; then
     fail "wt-orca destination is not a regular file"
+    rm -f "$staged" "$state_staged"
+    return 1
   fi
-  cp "$WT_ORCA_SOURCE" "$staged"
-  chmod 0755 "$staged"
-  cmp -s "$WT_ORCA_SOURCE" "$staged" || fail "staged wt-orca does not match the tracked adapter"
-  cp "$WORKTREE_STATE_SOURCE" "$state_staged"
-  chmod 0755 "$state_staged"
-  cmp -s "$WORKTREE_STATE_SOURCE" "$state_staged" || fail "staged worktree-state helper does not match the tracked helper"
-  "$MV_BIN" -f "$staged" "$WT_ORCA_DESTINATION"
-  "$MV_BIN" -f "$state_staged" "$WORKTREE_STATE_DESTINATION"
-  [[ -x "$WT_ORCA_DESTINATION" ]] || fail "installed wt-orca is not executable"
-  [[ -x "$WORKTREE_STATE_DESTINATION" ]] || fail "installed worktree-state helper is not executable"
-  cmp -s "$WT_ORCA_SOURCE" "$WT_ORCA_DESTINATION" || fail "installed wt-orca differs from the tracked adapter"
-  cmp -s "$WORKTREE_STATE_SOURCE" "$WORKTREE_STATE_DESTINATION" || fail "installed worktree-state helper differs from the tracked helper"
+
+  if ! cp "$WT_ORCA_SOURCE" "$staged" || ! chmod 0755 "$staged" ||
+    ! cmp -s "$WT_ORCA_SOURCE" "$staged"; then
+    red "  ❌ failed to stage the tracked wt-orca adapter"
+    rm -f "$staged" "$state_staged"
+    return 1
+  fi
+  if ! cp "$WORKTREE_STATE_SOURCE" "$state_staged" || ! chmod 0755 "$state_staged" ||
+    ! cmp -s "$WORKTREE_STATE_SOURCE" "$state_staged"; then
+    red "  ❌ failed to stage the tracked worktree-state helper"
+    rm -f "$staged" "$state_staged"
+    return 1
+  fi
+  if ! "$MV_BIN" -f "$staged" "$WT_ORCA_DESTINATION"; then
+    red "  ❌ could not install wt-orca"
+    rm -f "$staged" "$state_staged"
+    return 1
+  fi
+  if ! "$MV_BIN" -f "$state_staged" "$WORKTREE_STATE_DESTINATION"; then
+    red "  ❌ could not install worktree-state helper; existing deployment rollback will restore replaced destinations"
+    rm -f "$staged" "$state_staged"
+    return 1
+  fi
+  if [[ ! -x "$WT_ORCA_DESTINATION" || ! -x "$WORKTREE_STATE_DESTINATION" ]] ||
+    ! cmp -s "$WT_ORCA_SOURCE" "$WT_ORCA_DESTINATION" ||
+    ! cmp -s "$WORKTREE_STATE_SOURCE" "$WORKTREE_STATE_DESTINATION"; then
+    red "  ❌ installed wt-orca or worktree-state helper differs from the tracked source"
+    rm -f "$staged" "$state_staged"
+    return 1
+  fi
+  if ! rm -f "$staged" "$state_staged"; then
+    red "  ❌ could not remove wt-orca staging files"
+    return 1
+  fi
   green "  ✅ installed exact wt-orca adapter and worktree-state helper in $destination_dir"
 }
 
@@ -2029,7 +2755,7 @@ run_check() {
   echo "🔍 Building temporary global deployment to check for drift..."
   echo ""
   DRIFT=0
-  if [[ -e "$OPENCODE_TRANSACTION_MARKER" ]]; then
+  if [[ -e "$OPENCODE_TRANSACTION_MARKER" || -L "$OPENCODE_TRANSACTION_MARKER" ]]; then
     DRIFT=1
     red "  ⚠️  pending OpenCode deployment transaction requires recovery"
   fi
@@ -2082,11 +2808,17 @@ run_deploy() {
 
   deployment_lock_acquire || fail "could not acquire shared deployment lock"
 
+  # Recovery validation needs Python before the broader dependency preflight;
+  # resolving this executable is read-only and happens before recovery or any
+  # dependency/configuration mutation.
+  resolve_command PYTHON_BIN "Python 3" python3 || fail "Python 3 is required for transaction recovery"
+
   # Recover a transaction left by an interrupted process before any new
   # dependency or configuration mutation.
   recover_pending_opencode_transaction
 
   # All executable checks happen before any generated configuration mutation.
+  yellow "  ⚠️  Preflight/package side effects are outside deployment rollback: GitNexus npm state, Serena uv state and global config, RTK/Homebrew state, and OMO package/cache state."
   preflight_dependencies false || fail "dependency preflight failed"
   # Host/package compatibility probing is intentionally not part of normal
   # deployment: probing unrelated package metadata on every deploy is wasteful.

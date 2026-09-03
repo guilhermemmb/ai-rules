@@ -37,7 +37,7 @@ nodes:
       dependency_policy: "Overlapping, ambiguous, shared, generated, lockfile, and ordered work serializes"
       failure_policy: "NEEDS_CONTEXT, BLOCKED, timeout, failure, or malformed results hold dependents and are surfaced"
       ownership_policy: "Fixer Files are hard write allowlists; unowned changes fail closed"
-    mcp_access: codebase-memory-mcp, github
+    mcp_access: gitnexus, github
     review_ownership: "OpenCode: orchestrator is the sole coordinator and directly dispatches all ten reviewer-* read-only lanes; no functions.skill call, nested reviewer coordinator, or implicit partial-lane fallback."
     constraints:
       "Hard-enforced at tool/config level: no sentry/rootly MCP access (unavailable in Detective),
@@ -72,7 +72,7 @@ nodes:
     parent: orchestrator
     model: GPT-5.6 Terra
     skills: simplify
-    mcp_access: codebase-memory-mcp
+    mcp_access: gitnexus
     trigger: Architecture review, hard debugging, trade-offs, code review
     constraints: Read-heavy analysis. No sentry/datadog/cortex MCPs.
     responsibilities: "• Architecture review & trade-off analysis
@@ -91,7 +91,7 @@ nodes:
     color: "#38bdf8"
     parent: orchestrator
     model: DeepSeek V4 Flash (low)
-    mcp_access: codebase-memory-mcp
+    mcp_access: gitnexus
     trigger: Broad codebase searches, pattern discovery, unfamiliar repos
     constraints: Read-only exploration. Follows code-exploration rule.
     responsibilities: "• Broad codebase scouting & pattern discovery
@@ -100,8 +100,8 @@ nodes:
 
       • Map unfamiliar repos quickly
 
-      • Follow code-exploration rule: RTK for exact/local discovery, Graph MCP for structural
-      analysis
+      • Follow code-exploration rule: RTK/native for exact/local discovery and GitNexus for
+      structural analysis
 
       "
   - id: librarian
@@ -139,7 +139,7 @@ nodes:
     color: "#f59e0b"
     parent: orchestrator
     model: GLM 5.2 (medium)
-    mcp_access: codebase-memory-mcp, figma-mcp
+    mcp_access: serena, figma-mcp
     trigger: UI/UX implementation, visual components, frontend polish
     constraints: UI/UX focused. No backend/production tooling.
     responsibilities: "• Implement UI components & layouts
@@ -148,7 +148,7 @@ nodes:
 
       • Front-end patterns and animations
 
-      • Read design system conventions via codebase-memory-mcp
+      • Read design system conventions via Serena's read-only semantic tools
 
       • Collect and interpret Figma design specs via figma-design-to-code workflow
 
@@ -163,7 +163,7 @@ nodes:
     parent: orchestrator
     model: GPT-5.6 Luna (high)
     skills: fixer
-    mcp_access: codebase-memory-mcp
+    mcp_access: serena
     trigger: Scoped implementation tasks, bug fixes, code changes
     constraints:
       Receives concrete plan from Orchestrator with required handoff fields
@@ -251,6 +251,7 @@ nodes:
     color: "#f87171"
     parent: orchestrator
     model: GPT-5.6 Luna (medium)
+    mcp_access: gitnexus
     tools: pup CLI, gcloud CLI via Bash
     trigger: Production errors, logs, metrics, traces, incidents, root cause analysis
     constraints:
@@ -284,7 +285,7 @@ nodes:
     color: "#60a5fa"
     parent: orchestrator
     model: GPT-5.6 Terra
-    mcp_access: cortex, codebase-memory-mcp
+    mcp_access: cortex
     skills: cortex
     trigger:
       Gorgias metrics, table schemas, business rules, data definitions, Notion/internal
@@ -292,7 +293,7 @@ nodes:
     constraints:
       "Always call get_instruction first. Cortex read-only — never mutate.
 
-      Map metrics to code via codebase-memory-mcp only. Cortex is source of truth.
+      Map metrics to code with native tools. Cortex is source of truth.
 
       "
     responsibilities:
@@ -316,7 +317,7 @@ nodes:
     color: "#f59e0b"
     parent: orchestrator
     model: DeepSeek V4 Flash (medium)
-    mcp_access: codebase-memory-mcp
+    mcp_access: ""
     skills: reviewer
     trigger: Retained compatibility alias; OpenCode review requests run through the orchestrator
     dispatches:
@@ -365,7 +366,7 @@ nodes:
     parent: orchestrator
     claude_parent: reviewer
     model: GPT-5.6 Luna (medium)
-    mcp_access: codebase-memory-mcp
+    mcp_access: serena
     trigger: Always dispatched by the OpenCode orchestrator
   - id: reviewer-comments
     label: reviewer-comments
@@ -375,7 +376,7 @@ nodes:
     parent: orchestrator
     claude_parent: reviewer
     model: DeepSeek V4 Flash (low)
-    mcp_access: codebase-memory-mcp
+    mcp_access: ""
     trigger: Comments/docs changes in diff; dispatched by the active coordinator
   - id: reviewer-test
     label: reviewer-test
@@ -385,7 +386,7 @@ nodes:
     parent: orchestrator
     claude_parent: reviewer
     model: GPT-5.6 Luna (medium)
-    mcp_access: codebase-memory-mcp
+    mcp_access: ""
     trigger: Test file changes in diff or production behavior changed without matching behavioral coverage; dispatched by the active coordinator
   - id: reviewer-errors
     label: reviewer-errors
@@ -395,7 +396,7 @@ nodes:
     parent: orchestrator
     claude_parent: reviewer
     model: GPT-5.6 Luna (medium)
-    mcp_access: codebase-memory-mcp
+    mcp_access: ""
     trigger: Error handling changes in diff; dispatched by the active coordinator
   - id: reviewer-types
     label: reviewer-types
@@ -405,7 +406,7 @@ nodes:
     parent: orchestrator
     claude_parent: reviewer
     model: GPT-5.6 Luna (medium)
-    mcp_access: codebase-memory-mcp
+    mcp_access: serena
     trigger: New types/interfaces in diff; dispatched by the active coordinator
   - id: reviewer-security
     label: reviewer-security
@@ -415,7 +416,7 @@ nodes:
     parent: orchestrator
     claude_parent: reviewer
     model: GPT-5.6 Terra (medium)
-    mcp_access: codebase-memory-mcp
+    mcp_access: ""
     trigger:
       Auth, secrets, validation, injection, permissions, crypto, network, dependency,
       or sensitive-data changes; dispatched by the active coordinator
@@ -427,7 +428,7 @@ nodes:
     parent: orchestrator
     claude_parent: reviewer
     model: GPT-5.6 Luna (medium)
-    mcp_access: codebase-memory-mcp
+    mcp_access: ""
     trigger:
       Algorithm, loop, query, cache, concurrency, I/O, rendering, allocation,
       hot-path, or large-data changes; dispatched by the active coordinator
@@ -439,7 +440,7 @@ nodes:
     parent: orchestrator
     claude_parent: reviewer
     model: GPT-5.6 Terra (medium)
-    mcp_access: codebase-memory-mcp
+    mcp_access: ""
     trigger:
       Persistence, migration, transaction, serialization, idempotency, event,
       state, synchronization, or invariant changes; dispatched by the active coordinator
@@ -451,7 +452,7 @@ nodes:
     parent: orchestrator
     claude_parent: reviewer
     model: DeepSeek V4 Flash (low)
-    mcp_access: codebase-memory-mcp
+    mcp_access: ""
     trigger: Non-empty executable/source/config diff; clarity pass after Phase A; dispatched by the active coordinator
   - id: reviewer-accessibility
     label: reviewer-accessibility
@@ -461,14 +462,22 @@ nodes:
     parent: orchestrator
     claude_parent: reviewer
     model: Gemini 3 Flash Preview (medium)
-    mcp_access: codebase-memory-mcp
+    mcp_access: ""
     trigger: UI files changed in diff (html, jsx, tsx, js, ts, css, scss, vue, svelte) or rendering behavior changed; dispatched by the active coordinator
-  - id: codebase-memory
-    label: codebase-memory-mcp
+  - id: gitnexus-mcp
+    label: gitnexus
     type: mcp
-    role: Code Intelligence
+    role: Managed-OpenCode Read-Only Indexed Code Intelligence
     color: "#a78bfa"
     parent: null
+    config: "GitNexus 1.6.5 exposes server-side rename; managed OpenCode denies normalized gitnexus_rename; direct processes are not covered; GITNEXUS_MCP_READ_ONLY=1; explicit --index-only analysis required"
+  - id: serena-mcp
+    label: serena
+    type: mcp
+    role: Read-Only Live Semantic Code Intelligence
+    color: "#a78bfa"
+    parent: null
+    config: "Pinned commit e771adedb5657c07ab890177d2f17df6ce436026; --context ide --project-from-cwd"
   - id: context7-mcp
     label: context7
     type: mcp
@@ -882,8 +891,8 @@ links:
     target: reviewer-simplifier
     label: dispatches sequentially (OpenCode Phase B)
   - source: orchestrator
-    target: codebase-memory
-    label: uses
+    target: gitnexus-mcp
+    label: uses (managed-OpenCode read-only)
   - source: orchestrator
     target: github-mcp
     label: uses
@@ -903,8 +912,8 @@ links:
     target: cortex-mcp
     label: uses
   - source: designer
-    target: codebase-memory
-    label: uses
+    target: serena-mcp
+    label: uses (read-only)
   - source: designer
     target: figma-mcp
     label: uses
@@ -944,24 +953,27 @@ links:
   - source: reviewer
     target: reviewer-accessibility
     label: dispatches (compatibility alias, if UI files)
-  - source: reviewer
-    target: codebase-memory
-    label: uses
   - source: sage
     target: cortex-mcp
     label: uses
-  - source: sage
-    target: codebase-memory
-    label: uses
   - source: oracle
-    target: codebase-memory
-    label: uses
+    target: gitnexus-mcp
+    label: uses (managed-OpenCode read-only)
   - source: explorer
-    target: codebase-memory
-    label: uses
+    target: gitnexus-mcp
+    label: uses (managed-OpenCode read-only)
+  - source: detective
+    target: gitnexus-mcp
+    label: uses (managed-OpenCode read-only)
   - source: fixer
-    target: codebase-memory
-    label: uses
+    target: serena-mcp
+    label: uses (read-only)
+  - source: reviewer-code
+    target: serena-mcp
+    label: uses (read-only)
+  - source: reviewer-types
+    target: serena-mcp
+    label: uses (read-only)
   - source: fixer
     target: skill-fixer
     label: invokes

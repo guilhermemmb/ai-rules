@@ -21,7 +21,7 @@ as global prompt overrides.
 | :--- | :--- | :--- |
 | overview | Global instructions: branch naming, git safety, forbidden commands, PR routing | [`overview.md`](../.rulesync/rules/overview.md) |
 | custom-rules | T-shirt sizing, SDD, review routing, parallel specialist decomposition, commits, packages, delegation | [`custom-rules.md`](../.rulesync/rules/custom-rules.md) |
-| code-exploration | RTK vs Graph MCP discovery routing | [`code-exploration.md`](../.rulesync/rules/code-exploration.md) |
+| code-exploration | RTK/native, Serena, and GitNexus discovery routing | [`code-exploration.md`](../.rulesync/rules/code-exploration.md) |
 | git-safety | Git/GitHub safety (no push, commit approval, PR generate-only, API read-only) | [`git-safety.md`](../.rulesync/rules/git-safety.md) |
 | pr-workflow | PR creation/update format and command format | [`pr-workflow.md`](../.rulesync/rules/pr-workflow.md) |
 | security-scan | On-demand commit/push safety checklist | [`security-scan.md`](../.rulesync/rules/security-scan.md) |
@@ -118,12 +118,9 @@ not assigned to Detective.
 
 The OMO orchestrator preset in
 [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) also references
-`codebase-memory` and `orca-cli`, which have **no tracked**
-`.rulesync/skills/` directory in this repository. These are `installed (not
-tracked)` — defined outside the repo (e.g. under `~/.agents/skills/` /
-`~/.claude/skills/`). See
-[`review-and-improvements.md`](./review-and-improvements.md) for the skill
-provenance finding.
+`orca-cli`, which has **no tracked** `.rulesync/skills/` directory in this
+repository. It is `installed (not tracked)` — defined outside the repo (e.g.
+under `~/.agents/skills/` / `~/.claude/skills/`).
 
 ---
 
@@ -209,7 +206,8 @@ Agent assignments: [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json).
 
 | MCP | Enabled (source) | Assigned to (source) |
 | :--- | :--- | :--- |
-| codebase-memory-mcp | ✓ | Orchestrator, Oracle, Explorer, Fixer, Sage, Designer |
+| gitnexus | ✓ | Orchestrator, Oracle, Explorer, Detective |
+| serena | ✓ | Designer, Fixer, reviewer-code, reviewer-types |
 | context7 | ✓ | Librarian |
 | github | ✓ | Orchestrator |
 | sentry | ✗ | — (Detective reports it unavailable) |
@@ -228,6 +226,44 @@ Agent assignments: [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json).
 
 Datadog and GCP Logs are accessed via `pup` and `gcloud` CLIs (Bash), not MCP.
 `pup` must always be called with `--agent --read-only`.
+
+### Code intelligence lifecycle
+
+`deploy.sh` persistently installs GitNexus `1.6.5` and Serena from commit
+`e771adedb5657c07ab890177d2f17df6ce436026`. The GitNexus source MCP command
+retains `GITNEXUS_MCP_READ_ONLY=1` for forward compatibility, but GitNexus 1.6.5
+does not enforce it as a universal process-level boundary. GitNexus 1.6.5 still
+exposes server-side rename; OpenCode denies the normalized `gitnexus_rename`
+tool, so agents cannot invoke it through this managed OpenCode configuration.
+This is an OpenCode-side control, not a universal process-level boundary.
+Serena uses
+`start-mcp-server --context ide --project-from-cwd` with global
+`read_only: true` and excluded mutation tools.
+
+GitNexus requires explicit, repository-targeted indexing before its MCP server
+can serve that repository:
+
+```bash
+gitnexus analyze --index-only /absolute/path/to/repository
+gitnexus status
+gitnexus list
+```
+
+The pinned `--index-only` mode does not generate agent files, and `gitnexus mcp`
+serves existing registered indexes without building one. Use the sequence
+context/freshness → query/context → process → impact → detect_changes. Inspect
+schema before Cypher. Stale, empty, partial, truncated, ambiguous, degraded, or
+`UNKNOWN` results are inconclusive. The canonical operation table is in
+[`docs/workflows.md`](./workflows.md#gitnexus-sequence-and-tool-selection).
+Serena starts with
+project/onboarding status, then `get_symbols_overview`, `find_symbol`, and
+`find_referencing_symbols`; read only minimal symbol bodies and use its 0-based
+line numbers. Native OpenCode tools are authoritative for shell, files, and
+edits.
+
+The destructive cleanup procedure is deferred to the manual uninstall runbook
+in the [README](../README.md#code-intelligence-and-mcp-lifecycle); deployment
+does not remove prior binaries, caches, registrations, or state.
 
 ---
 

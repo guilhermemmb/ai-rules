@@ -12,4 +12,20 @@
 
 ## Code Exploration
 
-Follow the `code-exploration` rule: RTK CLI for exact/local discovery, Graph MCP for structural analysis (call hierarchies, implementations, blast radius, architecture). Fall back to RTK immediately if Graph MCP returns empty/incomplete.
+Follow the `code-exploration` rule and use GitNexus only for its indexed
+architecture surface. GitNexus is snapshot-based. GitNexus 1.6.5 exposes rename;
+this managed OpenCode configuration denies the normalized `gitnexus_rename` tool.
+Agents must not invoke mutation tools. Direct GitNexus processes outside managed
+OpenCode are not covered. Start with `gitnexus://repo/{name}/context` and verify
+freshness. Follow this sequence: context/freshness -> query/context -> affected process resources -> impact -> detect_changes -> exact symbol verification. Use
+`query` for unfamiliar concepts, `context` for relationships, and affected
+process resources for workflow semantics. Use `impact` before dependency claims
+or edits, inspect schema before Cypher, and verify exact symbols with native
+tools before making a recommendation. Treat stale, empty, partial, truncated,
+ambiguous, degraded, or `UNKNOWN` results as inconclusive.
+
+## Oracle Sequence
+
+Use: context/freshness -> query/context -> affected process resources -> impact -> detect_changes -> exact symbol verification. Native RTK/OpenCode reads remain
+authoritative. GitNexus is snapshot-based, so do not claim more than its current
+evidence.

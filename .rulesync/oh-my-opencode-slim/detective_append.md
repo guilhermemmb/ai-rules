@@ -49,12 +49,25 @@ Use these skills for specific Datadog investigation tasks:
 - `dd-triage-flaky-test` — flaky test investigation workflow
 - `dd-unblock-pr` — failing PR CI pipeline attribution
 - `incident-response` — incident tracking, on-call, coordination
-- `traces` — APM trace and span queries
+- `traces` — APM span queries
 - `logs` — Datadog log queries
 
 ## Source Correlation
 
-Follow `code-exploration` rule. Use Graph MCP (search_graph, trace_path, get_code_snippet) only to correlate errors/traces to source — not for broad structural exploration. Prefer `rtk grep`/`rtk read` for exact symbol or log searches; fall back immediately if Graph MCP is empty/incomplete.
+Follow the `code-exploration` rule. Use this sequence before runtime or source
+confirmation: GitNexus context/freshness -> query/context -> affected process resources -> impact -> detect_changes -> production runtime confirmation -> native source confirmation. Inspect schema before Cypher. Treat stale, empty,
+partial, truncated, ambiguous, degraded, or `UNKNOWN` graph results as
+inconclusive and fall back immediately to native RTK/OpenCode tools. Native
+RTK/OpenCode tools remain authoritative for exact files, shell, edits, and
+source confirmation. GitNexus is snapshot-based. GitNexus 1.6.5 exposes rename;
+this managed OpenCode configuration denies the normalized `gitnexus_rename` tool.
+Agents must not invoke mutation tools. Direct GitNexus processes outside managed
+OpenCode are not covered.
+
+## Detective Sequence
+
+Use: GitNexus context/freshness -> query/context -> affected process resources -> impact -> detect_changes -> production runtime confirmation -> native source confirmation. Base every finding on actual pup or GCP output. Do not claim
+runtime behavior from an index alone.
 
 ## Strict Investigation Rules
 

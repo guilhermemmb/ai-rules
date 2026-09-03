@@ -1,10 +1,25 @@
 {
   "$schema": "https://github.com/dyoshikawa/rulesync/releases/latest/download/mcp-schema.json",
   "mcpServers": {
-    "codebase-memory-mcp": {
+    "gitnexus": {
       "enabled": true,
       "type": "local",
-      "command": ["/Users/guilhermebomfim/.local/bin/codebase-memory-mcp"],
+      "command": [
+        "/usr/bin/env",
+        "GITNEXUS_MCP_READ_ONLY=1",
+        "/Users/guilhermebomfim/.local/bin/gitnexus",
+        "mcp",
+      ],
+    },
+    "serena": {
+      "enabled": true,
+      "type": "local",
+      "command": [
+        "/Users/guilhermebomfim/.local/bin/serena",
+        "start-mcp-server",
+        "--context", "ide",
+        "--project-from-cwd",
+      ],
     },
     "context7": {
       "type": "http",

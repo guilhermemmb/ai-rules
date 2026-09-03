@@ -11,7 +11,26 @@
 
 ## Code Exploration
 
-Follow this routing: RTK CLI for exact/local discovery, Graph MCP for call hierarchies and structural analysis. Fall back to RTK immediately if Graph MCP returns empty/incomplete. See the loaded `fixer` skill for full discovery and bounded-work rules.
+Follow the loaded `fixer` skill and use native RTK/OpenCode tools for exact
+files, shell, tests, and edits. Fixer has Serena for read-only semantic
+inspection only: check the configured project's onboarding status, then use
+`get_symbols_overview`, `find_symbol`, and `find_referencing_symbols` to read
+only the required symbol bodies. Serena line numbers are 0-based; do not
+duplicate native file, grep, shell, or patch tools. Never invoke
+`prepare_for_new_conversation` unless explicitly requested.
+
+Before edits or dependency claims, review orchestrator-supplied GitNexus
+read-only impact and depth-one caller/process evidence. Fixer has Serena only;
+if that GitNexus evidence is absent, stale, empty, partial, truncated,
+ambiguous, degraded, or `UNKNOWN`, escalate to the orchestrator rather than
+trying to obtain GitNexus evidence. The orchestrator must run `detect_changes`
+before the handoff. Native editing remains authoritative.
+
+## Fixer Sequence
+
+Use: orchestrator-supplied impact/depth-one callers and processes → Serena
+onboarding and exact symbols/references → smallest native edit → orchestrator
+`detect_changes` handoff.
 
 ## Commit Messages
 

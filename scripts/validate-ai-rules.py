@@ -30,8 +30,67 @@ CONTEXT7_TOKEN_REFERENCE = "{env:CONTEXT7_API_TOKEN}"
 CONTEXT7_AGENT = "librarian"
 # These are built into the OMO runtime rather than declared in mcp.jsonc.
 BUILTIN_MCP_REFERENCES = frozenset({"gh_grep", "websearch"})
+SUPPORTED_MCP_TRANSPORTS = frozenset({"local", "http", "sse"})
+GITNEXUS_EXECUTABLE = "/Users/guilhermebomfim/.local/bin/gitnexus"
+GITNEXUS_ENV_EXECUTABLE = "/usr/bin/env"
+GITNEXUS_ENV_ASSIGNMENT = "GITNEXUS_MCP_READ_ONLY=1"
+GITNEXUS_COMMAND = "mcp"
 # Supplied by the user's OpenCode installation, not vendored into this repo.
-EXTERNAL_SKILL_REFERENCES = frozenset({"codebase-memory", "orca-cli"})
+EXTERNAL_SKILL_REFERENCES = frozenset({"orca-cli"})
+AGENT_CONTRACT_FIELDS = (
+    "name",
+    "description",
+    "model",
+    "tools",
+    "mcps",
+    "skills",
+    "variant",
+    "prompt",
+    "orchestratorPrompt",
+    "routing",
+    "mode",
+    "permission",
+    "permissions",
+)
+REQUIRED_GENERATED_AGENT_FIELDS = frozenset({"name", "description"})
+AGENT_CONTRACT_FIELD_SHAPES = {
+    "name": "non_empty_string",
+    "description": "non_empty_string",
+    "model": "non_empty_string",
+    "tools": "string_list",
+    "mcps": "string_list",
+    "skills": "string_list",
+    "variant": "non_empty_string",
+    "prompt": "non_empty_string",
+    "orchestratorPrompt": "non_empty_string",
+    "routing": "mapping",
+    "mode": "non_empty_string",
+    "permission": "mapping",
+    "permissions": "mapping",
+}
+EXPECTED_MCP_ASSIGNMENTS = {
+    "orchestrator": ("gitnexus", "github"),
+    "oracle": ("gitnexus",),
+    "explorer": ("gitnexus",),
+    "detective": ("gitnexus",),
+    "designer": ("serena", "figma-mcp"),
+    "fixer": ("serena",),
+    "reviewer-code": ("serena",),
+    "reviewer-types": ("serena",),
+    "sage": ("cortex",),
+    "navigator": (),
+    "observer": (),
+    "reviewer": (),
+    "reviewer-comments": (),
+    "reviewer-test": (),
+    "reviewer-errors": (),
+    "reviewer-security": (),
+    "reviewer-performance": (),
+    "reviewer-data-integrity": (),
+    "reviewer-simplifier": (),
+    "reviewer-accessibility": (),
+    "librarian": ("websearch", "context7", "gh_grep", "linear", "cortex"),
+}
 NON_MCP_OVERVIEW_ACCESS = frozenset({"agent-browser CLI", "pup CLI"})
 REVIEWER_PREFIX = "reviewer-"
 PROFILE_SCHEMA_VERSION = 1
@@ -371,6 +430,123 @@ class Validator:
             )
         return names - disabled_names, disabled_names
 
+    def validate_mcp_transports(self, artifact: Artifact | None) -> None:
+        """Validate generic MCP transport fields and GitNexus safety wiring."""
+
+        if artifact is None:
+            return
+        mcp = self.require_mapping(artifact, "mcp.jsonc")
+        if mcp is None:
+            return
+        servers = mcp.get("mcpServers")
+        if not isinstance(servers, dict):
+            return
+
+        for name, specification in servers.items():
+            if not isinstance(specification, dict):
+                self.add_error(
+                    artifact.path,
+                    f"mcpServers.{name} must be a mapping",
+                    key=str(name),
+                    text=artifact.text,
+                )
+                continue
+            transport = specification.get("type")
+            if not isinstance(transport, str) or not transport:
+                self.add_error(
+                    artifact.path,
+                    f"mcpServers.{name}.type must be a non-empty string",
+                    key=str(name),
+                    text=artifact.text,
+                )
+                continue
+            if transport not in SUPPORTED_MCP_TRANSPORTS:
+                self.add_error(
+                    artifact.path,
+                    f"mcpServers.{name}.type uses unsupported MCP transport {transport!r}",
+                    key="type",
+                    text=artifact.text,
+                )
+                continue
+            if transport == "local":
+                command = specification.get("command")
+                if (
+                    not isinstance(command, list)
+                    or not command
+                    or any(not isinstance(argument, str) or not argument for argument in command)
+                ):
+                    self.add_error(
+                        artifact.path,
+                        f"mcpServers.{name}.command must be a non-empty argv list of strings for local MCP servers",
+                        key="command",
+                        text=artifact.text,
+                    )
+            elif transport in {"http", "sse"}:
+                url = specification.get("url")
+                if not isinstance(url, str) or not url:
+                    self.add_error(
+                        artifact.path,
+                        f"mcpServers.{name}.url must be a non-empty string for remote MCP servers",
+                        key="url",
+                        text=artifact.text,
+                    )
+
+        gitnexus = servers.get("gitnexus")
+        if not isinstance(gitnexus, dict):
+            self.add_error(
+                artifact.path,
+                "mcpServers.gitnexus must be declared as an enabled local server",
+                key="gitnexus",
+                text=artifact.text,
+            )
+            return
+        if gitnexus.get("enabled") is not True:
+            self.add_error(
+                artifact.path,
+                "mcpServers.gitnexus must be enabled",
+                key="gitnexus",
+                text=artifact.text,
+            )
+        if gitnexus.get("type") != "local":
+            self.add_error(
+                artifact.path,
+                "mcpServers.gitnexus must use the local transport",
+                key="gitnexus",
+                text=artifact.text,
+            )
+        command = gitnexus.get("command")
+        if isinstance(command, list) and all(isinstance(argument, str) for argument in command):
+            if len(command) != 4:
+                self.add_error(
+                    artifact.path,
+                    "mcpServers.gitnexus.command must contain exactly env, one read-only assignment, the pinned executable, and mcp",
+                    key="command",
+                    text=artifact.text,
+                )
+            else:
+                expected_parts = (
+                    (0, GITNEXUS_ENV_EXECUTABLE, "must invoke /usr/bin/env"),
+                    (1, GITNEXUS_ENV_ASSIGNMENT, "must set exactly GITNEXUS_MCP_READ_ONLY=1"),
+                    (2, GITNEXUS_EXECUTABLE, f"must use the pinned executable {GITNEXUS_EXECUTABLE!r}"),
+                    (3, GITNEXUS_COMMAND, "must end with the mcp command"),
+                )
+                for index, expected, message in expected_parts:
+                    if command[index] != expected:
+                        self.add_error(
+                            artifact.path,
+                            f"mcpServers.gitnexus.command {message}",
+                            key="command",
+                            text=artifact.text,
+                        )
+        environment = gitnexus.get("environment")
+        if environment is not None:
+            self.add_error(
+                artifact.path,
+                "mcpServers.gitnexus must encode read-only mode in its command argv, not environment",
+                key="environment",
+                text=artifact.text,
+            )
+
     def validate_context7_mcp(self, artifact: Artifact | None) -> None:
         """Validate the source Context7 server's transport and credentials."""
 
@@ -563,6 +739,75 @@ class Validator:
                         key=value,
                         text=text,
                     )
+
+    def validate_mcp_assignments(
+        self, artifact: Artifact, agents: dict[str, dict[str, Any]]
+    ) -> None:
+        """Enforce the approved GitNexus/Serena ownership matrix."""
+
+        unexpected_agents = sorted(set(agents) - set(EXPECTED_MCP_ASSIGNMENTS))
+        if unexpected_agents:
+            self.add_error(
+                artifact.path,
+                "configured agents are outside the expected MCP assignment allowlist: "
+                + ", ".join(unexpected_agents),
+                key="agents",
+                text=artifact.text,
+            )
+
+        for agent_id, expected in EXPECTED_MCP_ASSIGNMENTS.items():
+            specification = agents.get(agent_id)
+            if not isinstance(specification, dict):
+                self.add_error(
+                    artifact.path,
+                    f"agent {agent_id!r} required by the MCP assignment matrix is missing",
+                    key=agent_id,
+                    text=artifact.text,
+                )
+                continue
+            if "mcps" not in specification:
+                self.add_error(
+                    artifact.path,
+                    f"agents.{agent_id}.mcps must be present as a list",
+                    key=agent_id,
+                    text=artifact.text,
+                )
+                continue
+            actual = specification["mcps"]
+            if not isinstance(actual, list):
+                self.add_error(
+                    artifact.path,
+                    f"agents.{agent_id}.mcps must be a list",
+                    key="mcps",
+                    text=artifact.text,
+                )
+                continue
+            actual_names = tuple(actual)
+            if actual_names != expected:
+                self.add_error(
+                    artifact.path,
+                    f"agents.{agent_id}.mcps must be exactly {list(expected)!r}, got {list(actual_names)!r}",
+                    key="mcps",
+                    text=artifact.text,
+                )
+
+        assigned_agents = set(EXPECTED_MCP_ASSIGNMENTS)
+        for agent_id, specification in agents.items():
+            actual = specification.get("mcps", [])
+            if not isinstance(actual, list):
+                continue
+            forbidden = [
+                value
+                for value in actual
+                if value in {"gitnexus", "serena"} and agent_id not in assigned_agents
+            ]
+            if forbidden:
+                self.add_error(
+                    artifact.path,
+                    f"agents.{agent_id}.mcps grants GitNexus/Serena outside the approved assignment matrix: {forbidden!r}",
+                    key="mcps",
+                    text=artifact.text,
+                )
 
     def collect_omo_agents(
         self,
@@ -1012,10 +1257,10 @@ class Validator:
                         key="skills",
                         text=omo_artifact.text,
                     )
-                if fixer.get("mcps") != ["codebase-memory-mcp"]:
+                if fixer.get("mcps") != ["serena"]:
                     self.add_error(
                         omo_artifact.path,
-                        "presets.bifrost.fixer.mcps must remain exactly ['codebase-memory-mcp']",
+                        "presets.bifrost.fixer.mcps must remain exactly ['serena']",
                         key="mcps",
                         text=omo_artifact.text,
                     )
@@ -1411,6 +1656,7 @@ class Validator:
     ) -> None:
         source_dir = self.root / ".rulesync" / "subagents"
         source_names: set[str] = set()
+        source_contracts: dict[str, dict[str, Any]] = {}
         source_paths = sorted(source_dir.glob("*.md")) if source_dir.is_dir() else []
         for path in source_paths:
             artifact = self._load_frontmatter(path)
@@ -1419,6 +1665,7 @@ class Validator:
             metadata = self.require_mapping(artifact, "agent frontmatter")
             if metadata is None:
                 continue
+            self.validate_agent_contract_fields(path, artifact, metadata)
             name = metadata.get("name")
             if not isinstance(name, str) or not name:
                 self.add_error(
@@ -1436,6 +1683,7 @@ class Validator:
                     text=artifact.text,
                 )
             source_names.add(name)
+            source_contracts[name] = self.agent_contract(metadata)
             if path.stem != name:
                 self.add_error(
                     path,
@@ -1471,6 +1719,7 @@ class Validator:
             return
         generated_dir = self.payload / "agents"
         generated_names: set[str] = set()
+        generated_contracts: dict[str, dict[str, Any]] = {}
         for path in (
             sorted(generated_dir.glob("*.md")) if generated_dir.is_dir() else []
         ):
@@ -1480,14 +1729,9 @@ class Validator:
             metadata = self.require_mapping(artifact, "generated agent frontmatter")
             if metadata is None:
                 continue
+            self.validate_generated_agent_contract(path, artifact, metadata)
             name = metadata.get("name")
             if not isinstance(name, str) or not name:
-                self.add_error(
-                    path,
-                    "generated agent name must be a non-empty string",
-                    key="name",
-                    text=artifact.text,
-                )
                 continue
             if name in generated_names:
                 self.add_error(
@@ -1497,6 +1741,7 @@ class Validator:
                     text=artifact.text,
                 )
             generated_names.add(name)
+            generated_contracts[name] = self.agent_contract(metadata)
             if path.stem != name:
                 self.add_error(
                     path,
@@ -1534,6 +1779,72 @@ class Validator:
                 source_names,
                 generated_names,
             )
+        for name in sorted(source_names & generated_names):
+            source_contract = source_contracts[name]
+            generated_contract = generated_contracts[name]
+            for field, expected in source_contract.items():
+                # Rulesync may normalize or omit optional source metadata in
+                # generated frontmatter. Compare only fields represented by
+                # both contracts; generated-only fields remain allowed.
+                if field in generated_contract and generated_contract[field] != expected:
+                    self.add_error(
+                        self.payload / "agents" / f"{name}.md",
+                        f"generated agent {name!r}.{field} does not match source contract",
+                        key=field,
+                    )
+
+    @staticmethod
+    def agent_contract(metadata: dict[str, Any]) -> dict[str, Any]:
+        """Select source-owned fields while allowing Rulesync output additions."""
+
+        return {
+            field: metadata[field]
+            for field in AGENT_CONTRACT_FIELDS
+            if field in metadata
+        }
+
+    def validate_generated_agent_contract(
+        self, path: Path, artifact: Artifact, metadata: dict[str, Any]
+    ) -> None:
+        """Validate required generated identity and present contract field shapes."""
+
+        for field in REQUIRED_GENERATED_AGENT_FIELDS:
+            if field not in metadata:
+                self.add_error(
+                    path,
+                    f"generated agent frontmatter {field!r} is required",
+                    key=field,
+                    text=artifact.text,
+                )
+        self.validate_agent_contract_fields(path, artifact, metadata)
+
+    def validate_agent_contract_fields(
+        self, path: Path, artifact: Artifact, metadata: dict[str, Any]
+    ) -> None:
+        """Validate the type and shape of every present contract field."""
+
+        for field in AGENT_CONTRACT_FIELDS:
+            if field not in metadata:
+                continue
+            value = metadata[field]
+            shape = AGENT_CONTRACT_FIELD_SHAPES[field]
+            valid = (
+                isinstance(value, str) and bool(value)
+                if shape == "non_empty_string"
+                else isinstance(value, list)
+                and all(isinstance(item, str) and bool(item) for item in value)
+                if shape == "string_list"
+                else isinstance(value, dict)
+                if shape == "mapping"
+                else False
+            )
+            if not valid:
+                self.add_error(
+                    path,
+                    f"agent contract field {field!r} has invalid shape; expected {shape}",
+                    key=field,
+                    text=artifact.text,
+                )
 
     def _load_frontmatter(self, path: Path, *, kind: str = "agent") -> Artifact | None:
         text = self.read_text(path)
@@ -2787,6 +3098,7 @@ class Validator:
     def run(self, profile_name: str | None) -> None:
         mcp_artifact = self.load_json(self.root / ".rulesync" / "mcp.jsonc", jsonc=True)
         server_names, disabled_server_names = self.validate_mcp_names(mcp_artifact)
+        self.validate_mcp_transports(mcp_artifact)
         self.validate_context7_mcp(mcp_artifact)
         self.validate_context7_rule()
 
@@ -2810,6 +3122,7 @@ class Validator:
             self.validate_agent_output_permissions(source_omo_artifact)
         agents, omo_mcp_refs, omo_skill_refs = self.collect_omo_agents(omo_artifact)
         self.validate_mcp_references(omo_mcp_refs, server_names, disabled_server_names)
+        self.validate_mcp_assignments(omo_artifact, agents)
 
         source_skill_dir = self.root / ".rulesync" / "skills"
         source_skill_names = (
@@ -2835,6 +3148,10 @@ class Validator:
             else self.root / "opencode.json"
         )
         opencode_artifact = self.load_json(opencode_path)
+        self.validate_gitnexus_rename_permission(opencode_artifact)
+        if self.payload:
+            source_opencode_artifact = self.load_json(self.root / "opencode.json")
+            self.validate_gitnexus_rename_permission(source_opencode_artifact)
         model_catalog = self.model_catalog(opencode_artifact)
 
         opencode_jsonc_artifact = (
@@ -2915,6 +3232,7 @@ class Validator:
         self.validate_fixer_scheduler_contract(overview_artifact)
         if self.payload and source_omo_artifact is not None:
             source_agents, _, _ = self.collect_omo_agents(source_omo_artifact)
+            self.validate_mcp_assignments(source_omo_artifact, source_agents)
             source_reviewer_lanes = sorted(
                 agent_id
                 for agent_id in source_agents
@@ -3060,6 +3378,31 @@ class Validator:
             actual - BUILTIN_MCP_REFERENCES - {"context-layer"},
             text=artifact.text,
         )
+
+    def validate_gitnexus_rename_permission(self, artifact: Artifact | None) -> None:
+        """Require OpenCode to deny GitNexus' exposed rename tool explicitly."""
+
+        if artifact is None:
+            return
+        config = self.require_mapping(artifact, "opencode.json")
+        if config is None:
+            return
+        permission = config.get("permission")
+        if not isinstance(permission, dict):
+            self.add_error(
+                artifact.path,
+                "permission must be a mapping denying gitnexus_rename",
+                key="permission",
+                text=artifact.text,
+            )
+            return
+        if permission.get("gitnexus_rename") != "deny":
+            self.add_error(
+                artifact.path,
+                "permission.gitnexus_rename must be exactly 'deny'",
+                key="gitnexus_rename",
+                text=artifact.text,
+            )
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:

@@ -7,7 +7,7 @@ Interactive visualization of agents, MCPs, tools, skills, and infrastructure in 
 ## Files
 
 - `index.html` — Interactive visualization engine (loads data dynamically from YAML)
-- `data.yaml` — All node and configuration data (edit this to change the graph)
+- `data.yaml` — Generated node and configuration data for the graph
 - `README.md` — This file
 
 ## Quick Start
@@ -20,6 +20,41 @@ The page uses `fetch()` to load `data.yaml`, so it must be served over HTTP (not
 ```
 
 Click any card to expand and see detailed information — constraints, responsibilities, tools, and configuration.
+
+## Code intelligence boundary
+
+The visualization follows the final three-tier architecture:
+
+- **RTK/native OpenCode tools** — default and authoritative for exact text/files,
+  shell, tests, Git, configuration, documentation, and edits.
+- **GitNexus** — indexed architecture/process/API-impact graph for Orchestrator,
+  Oracle, Explorer, and Detective only. GitNexus 1.6.5 still exposes
+  server-side rename; OpenCode denies the normalized `gitnexus_rename` tool, so
+  agents cannot invoke it through this managed OpenCode configuration. This is
+  an OpenCode-side control, not a universal process-level boundary.
+- **Serena** — read-only live semantic inspection for Designer, Fixer,
+  `reviewer-code`, and `reviewer-types` only.
+
+GitNexus `1.6.5` is persistently installed by `deploy.sh`. Its source MCP
+command retains `GITNEXUS_MCP_READ_ONLY=1` for forward compatibility, but
+GitNexus 1.6.5 does not enforce it as a universal process-level boundary. It
+requires an explicit operator-targeted
+`gitnexus analyze --index-only /absolute/path/to/repository` before
+`gitnexus mcp` can serve that repository; `mcp` does not build indexes. Use
+context/freshness → query/context → process → impact → detect_changes; inspect
+schema before Cypher. Stale, empty, partial, truncated, ambiguous, degraded, or
+`UNKNOWN` results are inconclusive. The canonical GitNexus operation table is
+in [`docs/workflows.md`](../docs/workflows.md#gitnexus-sequence-and-tool-selection).
+Serena uses
+`start-mcp-server --context ide --project-from-cwd`, starts with
+project/onboarding status, then `get_symbols_overview`, `find_symbol`, and
+`find_referencing_symbols`; read minimal symbol bodies and treat lines as
+0-based. Native tools remain authoritative for shell, files, and edits.
+
+The generated inventory preserves unrelated access: Orchestrator has `github`,
+Designer has `figma-mcp`, Librarian has `context7`, `websearch`, `gh_grep`,
+`linear`, and `cortex`, Sage has `cortex`, and all other agents have neither
+GitNexus nor Serena.
 
 ## Dispatch Graph
 
@@ -120,7 +155,14 @@ percentage-savings claim. Both profiles keep Fixer on Novita DeepSeek V4 Pro
 
 ## Updating the Architecture
 
-Edit `data.yaml` to keep the visualization in sync with your system. No code changes needed.
+The source configuration is authoritative; `data.yaml` is generated output.
+After changing agents, MCP assignments, or model profiles, regenerate it with:
+
+```sh
+python3 scripts/update-agents-overview-data.py
+```
+
+No code changes are needed for visualization updates.
 
 ### Node Fields
 
@@ -237,9 +279,10 @@ Changes are immediately reflected in the visualization at `agents-overview/index
 
 After any agent/MCP/tool changes:
 
-1. Edit `agents-overview/data.yaml`
-2. Refresh `index.html` in browser
-3. Verify visualization matches actual system
+1. Update the tracked source configuration
+2. Run `python3 scripts/update-agents-overview-data.py`
+3. Refresh `index.html` in browser
+4. Verify visualization matches actual system
 
 No code needed—YAML drives everything.
 
@@ -278,8 +321,23 @@ No code needed—YAML drives everything.
 
 **orchestrator:**
 
-- **codebase-memory-mcp** — Code search, graph-based exploration (shared by oracle, explorer, fixer, designer, sage)
+- **GitNexus** — Indexed architecture, processes, API impact, and blast radius;
+  OpenCode denies `gitnexus_rename` in the managed configuration
 - **github** — GitHub CLI integration (PRs, issues, checks)
+
+**oracle / explorer / detective:**
+
+- **GitNexus** — Indexed architecture and impact analysis; OpenCode denies
+  `gitnexus_rename` in the managed configuration
+
+**designer:**
+
+- **Serena** — Read-only live definitions, references, implementations, and diagnostics
+- **figma-mcp** — Design files (local Figma Desktop app, http://127.0.0.1:3845/mcp)
+
+**fixer / reviewer-code / reviewer-types:**
+
+- **Serena** — Read-only live semantic inspection; native OpenCode tools remain authoritative for edits
 
 **librarian:**
 
@@ -289,10 +347,6 @@ No code needed—YAML drives everything.
 - **linear** — Issues, epics, cycles (read-only)
 - **cortex** — Gorgias internal docs, specs, runbooks (read-only)
 
-**designer:**
-
-- **figma-mcp** — Design files (local Figma Desktop app, http://127.0.0.1:3845/mcp)
-
 **detective:**
 
 - **pup CLI** — Datadog CLI (--agent --ro): logs, metrics, APM, monitors
@@ -301,6 +355,15 @@ No code needed—YAML drives everything.
 **sage:**
 
 - **cortex** — Gorgias domain knowledge, metrics, BigQuery
+
+**librarian:**
+
+- **context7**, **websearch**, **gh_grep**, **linear**, **cortex** — Knowledge retrieval and internal documentation
+
+All agents use RTK/native tools as applicable for exact text/files, shell, tests,
+Git, configuration, documentation, and edits. Navigator, Observer, the retained
+`reviewer` alias, and the remaining reviewer lanes have neither GitNexus nor
+Serena.
 
 ### Tools
 

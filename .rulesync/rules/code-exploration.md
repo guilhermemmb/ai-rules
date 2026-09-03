@@ -1,12 +1,26 @@
 ---
 name: code-exploration
-description: Centralized routing protocol for code discovery — RTK CLI for exact/local searches, Graph MCP for structural analysis
+description: Centralized routing protocol for code discovery — RTK/native tools, GitNexus, and Serena
 root: true
 ---
 
 # Code Exploration Strategy
 
-Use **RTK CLI tools** for exact/local discovery and **Graph MCP (codebase-memory-mcp)** for structural analysis. Choose the right tool for the task.
+Use the narrowest available inspection layer. RTK/native OpenCode tools remain
+authoritative for exact/local work, shell, tests, Git, configuration,
+documentation, and edits. GitNexus provides indexed, snapshot-based structural
+analysis for Orchestrator, Oracle, Explorer, and Detective. Serena provides
+live semantic inspection for Designer, Fixer, Reviewer-code, and Reviewer-types.
+These integrations are not API-compatible substitutes for another tool; use
+their documented operations and do not claim compatibility.
+
+GitNexus is snapshot-based. GitNexus 1.6.5 exposes rename; this managed OpenCode
+configuration denies the normalized `gitnexus_rename` tool. Agents must not
+invoke mutation tools. Direct GitNexus processes outside managed OpenCode are not covered. Serena is read-only in its permanent grants. Native OpenCode tools
+remain authoritative for files, shell, and edits. If an assigned index or
+semantic service is unavailable, stale, empty, partial, truncated, ambiguous,
+degraded, or returns `UNKNOWN`, treat the result as inconclusive and fall back
+immediately to RTK/native tools.
 
 ## Routing Decision Table
 
@@ -16,7 +30,8 @@ Use **RTK CLI tools** for exact/local discovery and **Graph MCP (codebase-memory
 | Known-path localized read or signature inspection | `rtk read` |
 | File discovery by pattern | `rtk find` |
 | Dynamic templates, macros, or non-AST-friendly text | `rtk grep` / `rtk read` |
-| Call hierarchy, implementations, inheritance, blast radius, architecture | Graph MCP |
+| Definitions, references, implementations, diagnostics (assigned semantic agents) | Serena |
+| Indexed architecture, processes, cross-repo/API impact, blast radius (assigned graph agents) | GitNexus |
 
 ## RTK Plugin
 
@@ -26,29 +41,43 @@ For **discovery**, use explicit RTK subcommands: `rtk grep`, `rtk read`, `rtk fi
 
 Meta commands: `rtk gain` (savings), `rtk gain --history`, `rtk discover`, `rtk proxy <cmd>` (debug), `rtk --version`.
 
-## Graph MCP (codebase-memory-mcp)
+## GitNexus
 
-Use Graph MCP for multi-file structural questions: call hierarchies, implementations/inheritance, blast-radius impact analysis, architecture overviews. Targeted known-file reads do **not** require complex graph queries — use `rtk read` or direct Read for those.
+Before graph work, inspect `gitnexus://repo/{name}/context` and confirm
+freshness. Use `query` for unfamiliar concepts and flows, `context` for known
+symbol relationships and known paths. Read affected process resources, inspect
+schema before Cypher, and use `impact` before edits or dependency claims. Use
+`detect_changes` before review or handoff. GitNexus 1.6.5 exposes rename; this
+managed OpenCode configuration denies the normalized `gitnexus_rename` tool.
+Agents must not invoke mutation tools. Direct GitNexus processes outside managed OpenCode are not covered.
 
-Call `list_projects` first when the project identifier is unknown. Use the `display_name` or exact `name` returned.
+GitNexus users follow: context/freshness → query/context → affected process
+resources → impact → detect_changes. GitNexus indexing is explicit;
+`gitnexus mcp` serves an existing registered index and does not build one.
 
-Project name = absolute `root_path` slugified: replace `/` with `-`, drop leading `-`. e.g. `/Users/foo/developer/gorgias-chat` → `Users-foo-developer-gorgias-chat`.
+## Serena
 
-### Tool selection by question
+Serena users use the configured single project and check project/onboarding
+status before substantive work. Prefer `get_symbols_overview`, `find_symbol`,
+and `find_referencing_symbols`; read only the required symbol bodies. Serena
+line numbers are 0-based. Do not duplicate native shell, file, grep, or patch
+tools, and never invoke `prepare_for_new_conversation` unless explicitly
+requested.
 
-| Question shape | Graph MCP tool |
+### GitNexus tool selection by question
+
+| Question shape | GitNexus operation |
 | :--- | :--- |
-| High-level layout, unfamiliar codebase | `get_architecture` |
-| Find symbol by name, concept, or regex | `search_graph` |
-| Who calls this? What does it call? | `trace_path` |
-| Read source for a specific symbol | `get_code_snippet` |
-| Multi-hop patterns, aggregations, complexity | `query_graph` |
-| Text search enriched with graph ranking | `search_code` |
-| Map git diff to affected symbols | `detect_changes` |
-| Project not indexed | `index_repository` |
+| Unfamiliar concept or flow | `query` |
+| Known symbol relationships | `context` |
+| Known symbol/data relationship | `context` |
+| Dependency or edit blast radius | `impact` |
+| Review or handoff changes | `detect_changes` |
+| Complex graph query | `query` after schema inspection |
 
 ## Fallback & Output Rules
 
-- **Fall back immediately** to `rtk grep` / `rtk read` when Graph MCP results are empty or incomplete.
+- Fall back immediately to `rtk grep` / `rtk read` / `rtk find` when GitNexus
+  or Serena results are unavailable or inconclusive.
 - **Do not use** unproxied `cat`, plain `grep`, or `ls` for discovery output. RTK-wrapped equivalents (`rtk grep`, `rtk read`, `rtk find`) produce token-efficient output.
 - Plain `grep` / `cat` are allowed only when a dedicated diagnostic or shell pipeline genuinely requires raw output.

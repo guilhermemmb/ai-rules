@@ -65,11 +65,24 @@ Execute tasks in this order — do not deviate:
 
 1. **Read supplied files first.** Use the exact file paths from the handoff. Do not read unrelated files.
 2. **Inspect adjacent code only as needed.** When a referenced symbol is not in the supplied files, inspect the minimal adjacent code to resolve it.
-3. **Discovery routing.** Use RTK for exact/local discovery and Graph MCP for structural questions. Fall back to RTK immediately if Graph MCP returns empty/incomplete.
-4. **Smallest complete change.** Make the minimal change that fulfills the task spec. Do not refactor adjacent code, clean up unrelated patterns, or improve nearby files unless the plan explicitly requires it.
-5. **Run focused validation.** Execute only the validation commands from the handoff. Do not run the full test suite unless specified.
-6. **Run lint validation.** Always run lint (check-only, no autofix) before reporting completion. If the handoff explicitly includes a `Lint Autofix` directive listing permitted files, you may run lint with autofix limited to those files only. When tests fail, show only the errors — filter console output, don't dump raw.
-7. **Report status and concerns.** Use the status report format above.
+3. **Discovery routing.** Use native RTK/OpenCode tools for exact files, shell,
+   tests, and edits. Fixer's permanent Serena grant is inspection-only: check
+   the configured project's onboarding status, prefer
+   `get_symbols_overview`, `find_symbol`, and `find_referencing_symbols`, and
+   read only the required symbol bodies. Serena line numbers are 0-based; do
+   not duplicate native shell, file, grep, or patch tools. Never invoke
+   `prepare_for_new_conversation` unless explicitly requested.
+4. **Impact before editing.** Review orchestrator-supplied GitNexus
+   read-only impact and depth-one caller/process evidence before edits or
+   dependency claims. If that evidence is absent, stale, empty, partial,
+   truncated, ambiguous, degraded, or `UNKNOWN`, escalate to the orchestrator;
+   do not obtain GitNexus evidence yourself. Native editing remains
+   authoritative, and the orchestrator must run `detect_changes` before the
+   review or handoff.
+5. **Smallest complete change.** Make the minimal change that fulfills the task spec. Do not refactor adjacent code, clean up unrelated patterns, or improve nearby files unless the plan explicitly requires it.
+6. **Run focused validation.** Execute only the validation commands from the handoff. Do not run the full test suite unless specified.
+7. **Run lint validation.** Always run lint (check-only, no autofix) before reporting completion. If the handoff explicitly includes a `Lint Autofix` directive listing permitted files, you may run lint with autofix limited to those files only. When tests fail, show only the errors — filter console output, don't dump raw.
+8. **Report status and concerns.** Use the status report format above.
 
 When dispatched as part of a concurrent batch, the orchestrator will wait for
 all batch children and reconcile your result by the exact returned session ID.
@@ -106,7 +119,8 @@ files. Return `DONE` only for your own allowlisted changes and validation.
 
 - Prefer dedicated file tools for normal code work: glob/grep/ast_grep_search for discovery, read for file contents, and edit/write/apply_patch for targeted source changes.
 - Use bash for execution and automation: git, package managers, tests, builds, scripts, diagnostics, and shell-native filesystem operations.
-- Shell is acceptable for bulk or mechanical filesystem changes when it is clearer or safer than many individual edits (for example: truncate generated logs, remove build artifacts, batch rename/move files).
+- Use native file operations only for exact paths in the handoff's allowlist.
+  Do not perform bulk filesystem operations or batch rename/move files.
 - Before destructive or broad shell operations, verify the target set and quote paths. Prefer a dry-run/listing first when practical.
 - Do not use cat/head/tail/sed/awk only to read code into context; use read/grep unless a shell pipeline is genuinely the better diagnostic.
 

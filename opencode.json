@@ -3,6 +3,9 @@
   "shell": "zsh",
   "default_agent": "orchestrator",
   "lsp": true,
+  "permission": {
+    "gitnexus_rename": "deny"
+  },
   "plugin": ["oh-my-opencode-slim"],
   "agent": {
     "explore": {
