@@ -23,7 +23,7 @@ Click any card to expand and see detailed information — constraints, responsib
 
 ## Code intelligence boundary
 
-The visualization follows the final three-tier architecture:
+The visualization follows the final two-tier architecture:
 
 - **RTK/native OpenCode tools** — default and authoritative for exact text/files,
   shell, tests, Git, configuration, documentation, and edits.
@@ -32,8 +32,9 @@ The visualization follows the final three-tier architecture:
   server-side rename; OpenCode denies the normalized `gitnexus_rename` tool, so
   agents cannot invoke it through this managed OpenCode configuration. This is
   an OpenCode-side control, not a universal process-level boundary.
-- **Serena** — read-only live semantic inspection for Designer, Fixer,
-  `reviewer-code`, and `reviewer-types` only.
+- **Former Serena users** — Designer, Fixer, `reviewer-code`, and
+  `reviewer-types` have no code-intelligence MCP and use native RTK/OpenCode
+  tools.
 
 GitNexus `1.6.5` is persistently installed by `deploy.sh`. Its source MCP
 command retains `GITNEXUS_MCP_READ_ONLY=1` for forward compatibility, but
@@ -41,20 +42,36 @@ GitNexus 1.6.5 does not enforce it as a universal process-level boundary. It
 requires an explicit operator-targeted
 `gitnexus analyze --index-only /absolute/path/to/repository` before
 `gitnexus mcp` can serve that repository; `mcp` does not build indexes. Use
-context/freshness → query/context → process → impact → detect_changes; inspect
-schema before Cypher. Stale, empty, partial, truncated, ambiguous, degraded, or
-`UNKNOWN` results are inconclusive. The canonical GitNexus operation table is
+context/freshness → query/context → affected process resources → impact →
+detect_changes; inspect schema before Cypher. Stale, empty, partial, truncated,
+ambiguous, degraded, or `UNKNOWN` results are inconclusive. The canonical GitNexus operation table is
 in [`docs/workflows.md`](../docs/workflows.md#gitnexus-sequence-and-tool-selection).
-Serena uses
-`start-mcp-server --context ide --project-from-cwd`, starts with
-project/onboarding status, then `get_symbols_overview`, `find_symbol`, and
-`find_referencing_symbols`; read minimal symbol bodies and treat lines as
-0-based. Native tools remain authoritative for shell, files, and edits.
+GitNexus users follow context/freshness → query/context → affected process
+resources → impact → detect_changes and inspect schema before Cypher. Stale,
+empty, partial, truncated, ambiguous, degraded, or `UNKNOWN` results are
+inconclusive and require immediate native fallback.
 
 The generated inventory preserves unrelated access: Orchestrator has `github`,
 Designer has `figma-mcp`, Librarian has `context7`, `websearch`, `gh_grep`,
 `linear`, and `cortex`, Sage has `cortex`, and all other agents have neither
-GitNexus nor Serena.
+GitNexus nor a code-intelligence MCP.
+
+Rulesync owns GitNexus skill source under `.rulesync/skills/gitnexus-*/` and
+projects it to `~/.config/opencode/skills/gitnexus-*/`. Copies under
+`~/.agents/skills/` and `~/.claude/skills/` remain until generation and global
+output are content-verified; cleanup is deferred to Task 5. Unmanaged unrelated
+vendor skills are preserved.
+
+## Serena removal and deferred Codebase Memory retirement
+
+Serena's active MCP/agent policy removal is complete. Deploy-time installation
+and runtime removal are deferred until deployment and live-output verification,
+then remove only the verified launcher/global/repository state after
+uninstalling `serena-agent`; broad uv-cache deletion is not part of the
+lifecycle. Retirement of legacy
+`codebase-memory-mcp` state waits for sibling Worktrunk scripts to be decoupled
+from it in Task 4. This inventory does not claim either runtime cleanup has
+already occurred.
 
 ## Dispatch Graph
 
@@ -332,12 +349,11 @@ No code needed—YAML drives everything.
 
 **designer:**
 
-- **Serena** — Read-only live definitions, references, implementations, and diagnostics
 - **figma-mcp** — Design files (local Figma Desktop app, http://127.0.0.1:3845/mcp)
 
 **fixer / reviewer-code / reviewer-types:**
 
-- **Serena** — Read-only live semantic inspection; native OpenCode tools remain authoritative for edits
+- No code-intelligence MCP — native OpenCode tools remain authoritative
 
 **librarian:**
 
@@ -362,8 +378,8 @@ No code needed—YAML drives everything.
 
 All agents use RTK/native tools as applicable for exact text/files, shell, tests,
 Git, configuration, documentation, and edits. Navigator, Observer, the retained
-`reviewer` alias, and the remaining reviewer lanes have neither GitNexus nor
-Serena.
+`reviewer` alias, and the remaining reviewer lanes have neither GitNexus nor a
+code-intelligence MCP.
 
 ### Tools
 

@@ -69,6 +69,25 @@
 - For workspace/monorepo commands, path is relative to the package, not the repo
   root. e.g. `pnpm --filter @gorgias-chat/client test:unit src/foo/Bar.spec.tsx`
 
+## Code Exploration
+
+- GitNexus is assigned only to Orchestrator, Oracle, Explorer, and Detective.
+- Before graph work, inspect `gitnexus://repo/{name}/context` and confirm
+  freshness. Follow: `context/freshness → query/context → affected process
+  resources → impact → detect_changes`.
+- Use `query` for unfamiliar concepts, `context` for known relationships, and
+  read affected process resources before making workflow claims. Inspect the
+  schema before Cypher; use `impact` before edits or dependency claims and
+  `detect_changes` before review or handoff.
+- Treat stale, empty, partial, truncated, ambiguous, degraded, or `UNKNOWN`
+  results as inconclusive and fall back immediately to native RTK/OpenCode
+  tools, which remain authoritative for exact files, shell, tests,
+  configuration, documentation, and edits.
+- GitNexus 1.6.5 exposes server-side `rename`; this managed OpenCode
+  configuration denies the normalized `gitnexus_rename` tool. Agents must not
+  invoke mutation tools. Direct GitNexus processes outside managed OpenCode
+  are not covered.
+
 ## Commit Messages
 
 - Conventional commits: `type(scope): description`. Types: `feat`, `fix`,

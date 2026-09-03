@@ -139,7 +139,7 @@ nodes:
     color: "#f59e0b"
     parent: orchestrator
     model: GLM 5.2 (medium)
-    mcp_access: serena, figma-mcp
+    mcp_access: figma-mcp
     trigger: UI/UX implementation, visual components, frontend polish
     constraints: UI/UX focused. No backend/production tooling.
     responsibilities: "• Implement UI components & layouts
@@ -148,7 +148,7 @@ nodes:
 
       • Front-end patterns and animations
 
-      • Read design system conventions via Serena's read-only semantic tools
+      • Read design system conventions via native RTK/OpenCode tools
 
       • Collect and interpret Figma design specs via figma-design-to-code workflow
 
@@ -163,7 +163,7 @@ nodes:
     parent: orchestrator
     model: GPT-5.6 Luna (high)
     skills: fixer
-    mcp_access: serena
+    mcp_access: ""
     trigger: Scoped implementation tasks, bug fixes, code changes
     constraints:
       Receives concrete plan from Orchestrator with required handoff fields
@@ -366,7 +366,7 @@ nodes:
     parent: orchestrator
     claude_parent: reviewer
     model: GPT-5.6 Luna (medium)
-    mcp_access: serena
+    mcp_access: ""
     trigger: Always dispatched by the OpenCode orchestrator
   - id: reviewer-comments
     label: reviewer-comments
@@ -406,7 +406,7 @@ nodes:
     parent: orchestrator
     claude_parent: reviewer
     model: GPT-5.6 Luna (medium)
-    mcp_access: serena
+    mcp_access: ""
     trigger: New types/interfaces in diff; dispatched by the active coordinator
   - id: reviewer-security
     label: reviewer-security
@@ -471,13 +471,6 @@ nodes:
     color: "#a78bfa"
     parent: null
     config: "GitNexus 1.6.5 exposes server-side rename; managed OpenCode denies normalized gitnexus_rename; direct processes are not covered; GITNEXUS_MCP_READ_ONLY=1; explicit --index-only analysis required"
-  - id: serena-mcp
-    label: serena
-    type: mcp
-    role: Read-Only Live Semantic Code Intelligence
-    color: "#a78bfa"
-    parent: null
-    config: "Pinned commit e771adedb5657c07ab890177d2f17df6ce436026; --context ide --project-from-cwd"
   - id: context7-mcp
     label: context7
     type: mcp
@@ -912,9 +905,6 @@ links:
     target: cortex-mcp
     label: uses
   - source: designer
-    target: serena-mcp
-    label: uses (read-only)
-  - source: designer
     target: figma-mcp
     label: uses
   - source: navigator
@@ -965,15 +955,6 @@ links:
   - source: detective
     target: gitnexus-mcp
     label: uses (managed-OpenCode read-only)
-  - source: fixer
-    target: serena-mcp
-    label: uses (read-only)
-  - source: reviewer-code
-    target: serena-mcp
-    label: uses (read-only)
-  - source: reviewer-types
-    target: serena-mcp
-    label: uses (read-only)
   - source: fixer
     target: skill-fixer
     label: invokes

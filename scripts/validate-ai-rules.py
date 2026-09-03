@@ -73,10 +73,10 @@ EXPECTED_MCP_ASSIGNMENTS = {
     "oracle": ("gitnexus",),
     "explorer": ("gitnexus",),
     "detective": ("gitnexus",),
-    "designer": ("serena", "figma-mcp"),
-    "fixer": ("serena",),
-    "reviewer-code": ("serena",),
-    "reviewer-types": ("serena",),
+    "designer": ("figma-mcp",),
+    "fixer": (),
+    "reviewer-code": (),
+    "reviewer-types": (),
     "sage": ("cortex",),
     "navigator": (),
     "observer": (),
@@ -743,7 +743,7 @@ class Validator:
     def validate_mcp_assignments(
         self, artifact: Artifact, agents: dict[str, dict[str, Any]]
     ) -> None:
-        """Enforce the approved GitNexus/Serena ownership matrix."""
+        """Enforce the approved GitNexus ownership matrix."""
 
         unexpected_agents = sorted(set(agents) - set(EXPECTED_MCP_ASSIGNMENTS))
         if unexpected_agents:
@@ -799,12 +799,12 @@ class Validator:
             forbidden = [
                 value
                 for value in actual
-                if value in {"gitnexus", "serena"} and agent_id not in assigned_agents
+                if value == "gitnexus" and agent_id not in assigned_agents
             ]
             if forbidden:
                 self.add_error(
                     artifact.path,
-                    f"agents.{agent_id}.mcps grants GitNexus/Serena outside the approved assignment matrix: {forbidden!r}",
+                    f"agents.{agent_id}.mcps grants GitNexus outside the approved assignment matrix: {forbidden!r}",
                     key="mcps",
                     text=artifact.text,
                 )
@@ -1257,10 +1257,10 @@ class Validator:
                         key="skills",
                         text=omo_artifact.text,
                     )
-                if fixer.get("mcps") != ["serena"]:
+                if fixer.get("mcps") != []:
                     self.add_error(
                         omo_artifact.path,
-                        "presets.bifrost.fixer.mcps must remain exactly ['serena']",
+                        "presets.bifrost.fixer.mcps must remain exactly []",
                         key="mcps",
                         text=omo_artifact.text,
                     )

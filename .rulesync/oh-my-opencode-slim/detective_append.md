@@ -54,19 +54,24 @@ Use these skills for specific Datadog investigation tasks:
 
 ## Source Correlation
 
-Follow the `code-exploration` rule. Use this sequence before runtime or source
-confirmation: GitNexus context/freshness -> query/context -> affected process resources -> impact -> detect_changes -> production runtime confirmation -> native source confirmation. Inspect schema before Cypher. Treat stale, empty,
-partial, truncated, ambiguous, degraded, or `UNKNOWN` graph results as
-inconclusive and fall back immediately to native RTK/OpenCode tools. Native
-RTK/OpenCode tools remain authoritative for exact files, shell, edits, and
-source confirmation. GitNexus is snapshot-based. GitNexus 1.6.5 exposes rename;
-this managed OpenCode configuration denies the normalized `gitnexus_rename` tool.
-Agents must not invoke mutation tools. Direct GitNexus processes outside managed
-OpenCode are not covered.
+Follow the `code-exploration` rule. Before runtime or source confirmation,
+inspect `gitnexus://repo/{name}/context` and verify freshness, then follow:
+GitNexus context/freshness -> query/context -> affected process resources ->
+impact -> detect_changes -> production runtime confirmation -> native source
+confirmation. Inspect schema before Cypher. Treat stale, empty, partial,
+truncated, ambiguous, degraded, or `UNKNOWN` graph results as inconclusive and
+fall back immediately to native RTK/OpenCode tools. Native RTK/OpenCode tools
+remain authoritative for exact files, shell, edits, and source confirmation.
+GitNexus is snapshot-based. GitNexus 1.6.5 exposes server-side `rename`; this
+managed OpenCode configuration denies the normalized `gitnexus_rename` tool.
+Agents must not invoke mutation tools. Direct GitNexus processes outside
+managed OpenCode are not covered.
 
 ## Detective Sequence
 
-Use: GitNexus context/freshness -> query/context -> affected process resources -> impact -> detect_changes -> production runtime confirmation -> native source confirmation. Base every finding on actual pup or GCP output. Do not claim
+Use: GitNexus context/freshness -> query/context -> affected process resources
+-> impact -> detect_changes -> production runtime confirmation -> native source
+confirmation. Base every finding on actual pup or GCP output. Do not claim
 runtime behavior from an index alone.
 
 ## Strict Investigation Rules

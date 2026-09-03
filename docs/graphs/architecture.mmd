@@ -48,7 +48,7 @@ flowchart LR
 
   subgraph PRECHANGE["Pre-snapshot state changes"]
     RECOVER["recover pending\ntransaction"]
-    PREDEP["install GitNexus 1.6.5 + Serena\n+ RTK / Homebrew"]
+    PREDEP["install GitNexus 1.6.5\n+ RTK / Homebrew"]
   end
 
   subgraph PHASES["Deployment phases"]
@@ -72,12 +72,11 @@ flowchart LR
     CC["~/.claude/ (Claude Code)"]
   end
 
-  subgraph INTEL["Code intelligence (read-only)"]
-    GITNEXUS["GitNexus 1.6.5\nGITNEXUS_MCP_READ_ONLY=1"]
-    SERENA["Serena pinned commit\nread_only: true"]
+  subgraph INTEL["Code intelligence (managed OpenCode boundary)"]
+    GITNEXUS["GitNexus 1.6.5\nOpenCode denies gitnexus_rename"]
     INDEX["gitnexus analyze --index-only\nexplicit repository target"]
     MCP["gitnexus mcp\nserves registered indexes"]
-    MATRIX["GitNexus: Orchestrator / Oracle / Explorer / Detective\nSerena: Designer / Fixer / reviewer-code / reviewer-types"]
+    MATRIX["GitNexus: Orchestrator / Oracle / Explorer / Detective\nNo code-intelligence MCP: Designer / Fixer / reviewer-code / reviewer-types"]
   end
 
   subgraph EVID["Read-only evidence"]
@@ -143,13 +142,10 @@ flowchart LR
 
   %% ---- code intelligence lifecycle and access boundary ----
   PREP -->|installs| GITNEXUS
-  PREP -->|installs| SERENA
   GITNEXUS -->|explicit operator action| INDEX
   INDEX -->|registers| MCP
   GITNEXUS -->|serves| MCP
-  SERENA -->|start-mcp-server --context ide --project-from-cwd| OCDIR
   GITNEXUS -->|assigned only| MATRIX
-  SERENA -->|assigned only| MATRIX
 
   %% ---- rollback / restore (circle) ----
   %% RTK is contained in OCDIR (see above); restoring OCDIR covers it.

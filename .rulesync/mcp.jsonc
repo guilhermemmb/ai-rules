@@ -11,16 +11,6 @@
         "mcp",
       ],
     },
-    "serena": {
-      "enabled": true,
-      "type": "local",
-      "command": [
-        "/Users/guilhermebomfim/.local/bin/serena",
-        "start-mcp-server",
-        "--context", "ide",
-        "--project-from-cwd",
-      ],
-    },
     "context7": {
       "type": "http",
       "url": "https://mcp.context7.com/mcp",

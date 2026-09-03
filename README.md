@@ -242,7 +242,7 @@ ai-rules/
 │   │   ├── custom-rules.md         # Workflow, packages, commits, dispatch rules
 │   │   ├── pr-workflow.md          # PR creation workflow
 │   │   ├── security-scan.md        # On-demand commit/push safety checklist
-│   │   └── code-exploration.md     # RTK/native, Serena, and GitNexus routing
+│   │   └── code-exploration.md     # RTK/native and GitNexus routing
 │   ├── subagents/              # Custom agent prompt definitions
 │   │   ├── navigator.md        # Browser automation
 │   │   ├── detective.md        # Production diagnostics
@@ -322,7 +322,7 @@ rtk init -g --opencode --auto-patch
 
 Restart OpenCode after the plugin is installed.
 
-For **code discovery**, use explicit RTK subcommands: `rtk grep`, `rtk read`, `rtk find`. See the `code-exploration` rule for the full routing protocol between RTK/native tools, Serena, and GitNexus.
+For **code discovery**, use explicit RTK subcommands: `rtk grep`, `rtk read`, `rtk find`. See the `code-exploration` rule for the full routing protocol between RTK/native tools and GitNexus.
 
 ```bash
 # Check for missing RTK/plugin or deployment drift without installing or mutating
@@ -336,55 +336,49 @@ Homebrew is required only when RTK is absent. Test with `git status` — RTK rew
 
 ## Code intelligence and MCP lifecycle
 
-The system has three explicit discovery tiers:
+The system has two explicit discovery tiers:
 
 1. **RTK/native OpenCode tools** are authoritative for exact text and file
    discovery, shell commands, tests, Git, configuration, documentation, and
    edits.
-2. **Serena** is a read-only live semantic layer for Designer, Fixer,
-   `reviewer-code`, and `reviewer-types`. Start with project/onboarding status,
-   then use `get_symbols_overview`, `find_symbol`, and
-   `find_referencing_symbols`; read only the minimal symbol bodies needed.
-   Serena reports 0-based line numbers. Native OpenCode tools remain the
-   authority for files, shell, and edits.
-3. **GitNexus** is an indexed macro graph for Orchestrator, Oracle, Explorer,
+2. **GitNexus** is an indexed macro graph for Orchestrator, Oracle, Explorer,
    and Detective. Confirm context and freshness, then use the documented
-   `query`/`context` sequence, read the affected `process` resource, gather
-   `impact` before edits or dependency claims, and run `detect_changes` before
-   review or handoff. Inspect the schema before using Cypher; do not invent
-   query syntax. GitNexus 1.6.5 still exposes server-side
-   rename, but OpenCode denies the normalized `gitnexus_rename` tool in this
-   managed configuration, so agents cannot invoke it here. This is an
-   OpenCode-side control, not a universal process-level boundary. The
-   canonical operation table is in
+   `context/freshness -> query/context -> affected process resources -> impact ->
+   detect_changes` sequence. Inspect the schema before using Cypher; do not
+   invent query syntax. GitNexus 1.6.5 exposes server-side rename, but OpenCode
+   denies the normalized `gitnexus_rename` tool in this managed configuration.
+   This is an OpenCode-side control, not a universal process-level boundary;
+   direct GitNexus processes are outside that control. The canonical operation
+   table is in
    [`docs/workflows.md`](docs/workflows.md#gitnexus-sequence-and-tool-selection).
+
+   Only Orchestrator, Oracle, Explorer, and Detective have GitNexus access.
+   Designer, Fixer, `reviewer-code`, and `reviewer-types` have no
+   code-intelligence MCP; they use native OpenCode tools for exact definitions,
+   references, diagnostics, files, shell, tests, and edits.
 
 ### MCP access matrix
 
-| Agent | GitNexus | Serena | Other assigned access |
-| :--- | :--- | :--- | :--- |
-| Orchestrator | ✓ | — | `github` |
-| Oracle | ✓ | — | — |
-| Explorer | ✓ | — | — |
-| Detective | ✓ | — | `pup`/`gcloud` via Bash |
-| Designer | — | ✓ | `figma-mcp` |
-| Fixer | — | ✓ | — |
-| `reviewer-code` | — | ✓ | — |
-| `reviewer-types` | — | ✓ | — |
-| Librarian | — | — | `context7`, `websearch`, `gh_grep`, `linear`, `cortex` |
-| Sage | — | — | `cortex` |
-| Navigator, Observer, `reviewer`, and remaining reviewer lanes | — | — | None |
+| Agent | GitNexus | Other assigned access |
+| :--- | :--- | :--- |
+| Orchestrator | ✓ | `github` |
+| Oracle | ✓ | — |
+| Explorer | ✓ | — |
+| Detective | ✓ | `pup`/`gcloud` via Bash |
+| Designer | — | `figma-mcp`; no code-intelligence MCP |
+| Fixer | — | no code-intelligence MCP |
+| `reviewer-code` | — | no code-intelligence MCP |
+| `reviewer-types` | — | no code-intelligence MCP |
+| Librarian | — | `context7`, `websearch`, `gh_grep`, `linear`, `cortex` |
+| Sage | — | `cortex` |
+| Navigator, Observer, `reviewer`, and remaining reviewer lanes | — | None |
 
-`deploy.sh` persistently installs GitNexus `1.6.5` and Serena from commit
-`e771adedb5657c07ab890177d2f17df6ce436026`. The GitNexus source MCP command
-retains `GITNEXUS_MCP_READ_ONLY=1` for forward compatibility, but GitNexus 1.6.5
-does not enforce it as a universal process-level boundary. OpenCode denies the
-normalized `gitnexus_rename` tool, so agents cannot invoke server-side rename
-through this managed OpenCode configuration; this is an OpenCode-side control.
-Serena uses `start-mcp-server --context ide --project-from-cwd` and its global
-configuration sets `read_only: true` while excluding mutation tools. Serena
-remains a global OpenCode semantic-agent integration; Worktrunk lifecycle setup
-uses GitNexus only:
+GitNexus `1.6.5` is persistently installed by `deploy.sh`. Its source MCP
+command retains `GITNEXUS_MCP_READ_ONLY=1` for forward compatibility, but this
+environment does not treat that variable as a universal process-level boundary.
+OpenCode denies the normalized `gitnexus_rename` tool; direct GitNexus processes
+are outside that managed OpenCode control. Worktrunk lifecycle setup uses
+GitNexus only:
 
 ```bash
 gitnexus analyze --index-only "$WORKSPACE_PATH"
@@ -392,24 +386,33 @@ gitnexus analyze --index-only "$WORKSPACE_PATH"
 
 GitNexus setup is path-scoped and does not inject `AGENTS.md`, `CLAUDE.md`, or
 skills. A failed GitNexus command publishes `failed` rather than silently
-publishing `ready`. Worktrunk does not create, index, health-check, or remove
-Serena projects.
+publishing `ready`.
 
 Cleanup runs `gitnexus remove --force "$WORKSPACE_PATH"`, accepts an absent
 index as idempotent, and targets only GitNexus state. Cleanup failures use the
-durable retry queue; cleanup never runs `gitnexus clean --all`, touches global
-Serena state, `wt remove`, or `git worktree remove`.
+durable retry queue; cleanup never runs `gitnexus clean --all`, `wt remove`, or
+`git worktree remove`.
 
-### Deferred/manual uninstall runbook — legacy Codebase Memory state
+### Serena removal and deferred/manual uninstall runbook — legacy Codebase Memory state
 
-This migration deliberately does **not** delete the old `codebase-memory-mcp`
-binary, caches, registrations, repository state, or sibling-worktree state.
-The repository-local `.codebase-memory/status.json` active marker was removed;
-the remaining legacy state stays deferred until the affected paths are verified.
-Removal is deferred until an operator has verified every affected path:
+Serena's active MCP/agent policy removal is complete. Deploy-time installation
+and runtime removal are later verified lifecycle steps; this task does not
+claim that the launcher, global state, or repository state has already been
+deleted. The required sequence is:
+
+1. Remove source/configuration grants and deploy the GitNexus-only configuration.
+2. Verify the live output and the four-agent matrix.
+3. Uninstall `serena-agent` with `uv tool uninstall serena-agent`.
+4. Remove only the verified Serena launcher, global state, and repository state.
+5. Avoid broad uv-cache deletion.
+
+The legacy `codebase-memory-mcp` binary, caches, registrations, repository
+state, and sibling-worktree state remain deferred until sibling Worktrunk setup,
+index, and cleanup scripts no longer depend on them (Task 4). Removal is
+deferred until an operator has verified every affected path:
 
 1. Stop OpenCode and other clients that may hold the old process or state.
-2. Deploy the migrated configuration and verify the GitNexus/Serena matrix.
+2. Deploy the migrated configuration and verify the GitNexus-only matrix.
 3. Migrate sibling worktree setup, index, and cleanup scripts away from the old
    integration; do not assume this repository owns those files.
 4. Review old registrations and state locations, preserving anything still
@@ -418,6 +421,14 @@ Removal is deferred until an operator has verified every affected path:
    no client or cleanup hook still references them.
 
 No automatic deployment or validation step performs these destructive actions.
+
+### GitNexus skill ownership
+
+Rulesync owns the GitNexus skill source at `.rulesync/skills/gitnexus-*/`.
+Deployment projects those skills to `~/.config/opencode/skills/gitnexus-*/`.
+Copies under `~/.agents/skills/` and `~/.claude/skills/` are removed only after
+Rulesync generation and global output content have been verified. Unmanaged,
+unrelated vendor skills are preserved.
 
 ## Worktrunk → Orca → OpenCode workflow
 
@@ -586,7 +597,6 @@ Repository MCP definitions live in `.rulesync/mcp.jsonc`; agent assignments live
 | MCP                 | Enabled     | Assigned to                                            |
 | ------------------- | ----------- | ------------------------------------------------------ |
 | gitnexus            | ✓           | Orchestrator, Oracle, Explorer, Detective               |
-| serena              | ✓           | Designer, Fixer, reviewer-code, reviewer-types         |
 | context7            | ✓           | Librarian                                              |
 | github              | ✓           | Orchestrator                                           |
 | sentry              | ❌ disabled | —                                                      |

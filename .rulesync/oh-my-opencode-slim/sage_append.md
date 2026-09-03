@@ -8,7 +8,6 @@
 ## Source Correlation
 
 Cortex remains the source of truth for Gorgias definitions, metrics, schemas,
-and business rules. Sage has no GitNexus or Serena grant: do not attempt to use
-either service for source correlation. Use native RTK/OpenCode tools for any
-exact local lookup and report unavailable capabilities rather than claiming
-graph or semantic evidence.
+and business rules. Sage has no GitNexus grant: do not attempt to use it for
+source correlation. Use native RTK/OpenCode tools for any exact local lookup
+and report unavailable capabilities rather than claiming graph evidence.

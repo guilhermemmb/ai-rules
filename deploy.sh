@@ -44,10 +44,6 @@ GITNEXUS_INSTALL_PREFIX="${GITNEXUS_INSTALL_PREFIX:-${HOME}/.local}"
 GITNEXUS_BIN="${GITNEXUS_BIN:-${GITNEXUS_INSTALL_PREFIX}/bin/gitnexus}"
 GITNEXUS_ARTIFACT_ROOT=""
 GITNEXUS_ARTIFACT=""
-SERENA_GIT_SHA="e771adedb5657c07ab890177d2f17df6ce436026"
-SERENA_BIN="${SERENA_BIN:-${HOME}/.local/bin/serena}"
-SERENA_CONFIG_DIR="${SERENA_CONFIG_DIR:-${HOME}/.serena}"
-SERENA_CONFIG_PATH="$SERENA_CONFIG_DIR/serena_config.yml"
 RTK_BIN="${RTK_BIN:-}"
 RTK_HOMEBREW_FORMULA="rtk-ai/tap/rtk"
 RTK_PLUGIN_PATH="${OPENDIR}/plugins/rtk.ts"
@@ -493,401 +489,17 @@ install_gitnexus() {
   green "  ✅ GitNexus ${GITNEXUS_VERSION} installed at $GITNEXUS_BIN"
 }
 
-serena_source_matches() {
-  local tool_dir=""
-  tool_dir="$($UV_BIN tool dir 2>/dev/null)" || return 1
-  [[ -n "$tool_dir" && -d "$tool_dir/serena-agent" ]] || return 1
-  "$PYTHON_BIN" - "$tool_dir/serena-agent" "$SERENA_GIT_SHA" <<'PY'
-import json
-import re
-import sys
-from pathlib import Path
-
-tool_root = Path(sys.argv[1]).resolve()
-expected_sha = sys.argv[2]
-
-def normalized_name(value):
-    return re.sub(r"[-_.]+", "-", value).lower()
-
-candidates = []
-for dist_info in tool_root.rglob("*.dist-info"):
-    if dist_info.is_symlink() or not dist_info.is_dir():
-        continue
-    metadata_path = dist_info / "METADATA"
-    if metadata_path.is_symlink() or not metadata_path.is_file():
-        continue
-    try:
-        metadata_lines = metadata_path.read_text(encoding="utf-8").splitlines()
-    except (OSError, UnicodeError):
-        continue
-    names = [
-        line.split(":", 1)[1].strip()
-        for line in metadata_lines
-        if line.lower().startswith("name:")
-    ]
-    if len(names) == 1 and normalized_name(names[0]) == "serena-agent":
-        candidates.append(dist_info)
-
-if len(candidates) != 1:
-    raise SystemExit("Serena source metadata is missing or ambiguous")
-
-direct_url_path = candidates[0] / "direct_url.json"
-if direct_url_path.is_symlink() or not direct_url_path.is_file():
-    raise SystemExit("Serena distribution has no regular direct_url.json")
-try:
-    with direct_url_path.open(encoding="utf-8") as handle:
-        direct_url = json.load(handle)
-except (OSError, ValueError) as error:
-    raise SystemExit(f"cannot read Serena distribution direct_url.json: {error}")
-
-vcs_info = direct_url.get("vcs_info") if isinstance(direct_url, dict) else None
-if not isinstance(vcs_info, dict):
-    raise SystemExit("Serena distribution direct_url.json has no VCS metadata")
-if vcs_info.get("vcs") != "git" or vcs_info.get("commit_id") != expected_sha:
-    raise SystemExit("Serena distribution source commit does not match the pinned commit")
-url = direct_url.get("url")
-if not isinstance(url, str):
-    raise SystemExit("Serena distribution direct_url.json has no source URL")
-normalized_url = url.rstrip("/")
-if normalized_url.endswith(".git"):
-    normalized_url = normalized_url[:-4]
-if normalized_url != "https://github.com/oraios/serena":
-    raise SystemExit("Serena distribution source URL does not match the pinned repository")
-PY
-}
-
-serena_dependency_integrity_matches() {
-  local tool_dir=""
-  tool_dir="$($UV_BIN tool dir 2>/dev/null)" || return 1
-  [[ -n "$tool_dir" && -d "$tool_dir/serena-agent" ]] || return 1
-  "$PYTHON_BIN" - "$tool_dir/serena-agent" <<'PY'
-import base64
-import csv
-import hashlib
-import sys
-from pathlib import Path
-
-tool_root = Path(sys.argv[1]).resolve()
-record_paths = list(tool_root.rglob("*.dist-info/RECORD"))
-if not record_paths:
-    raise SystemExit("Serena tool has no wheel RECORD metadata for dependency integrity verification")
-
-for record_path in record_paths:
-    site_packages = record_path.parent.parent
-    try:
-        with record_path.open(newline="", encoding="utf-8") as handle:
-            rows = list(csv.reader(handle))
-    except (OSError, UnicodeError, csv.Error) as error:
-        raise SystemExit(f"cannot read Serena wheel RECORD: {error}")
-    for row in rows:
-        if len(row) != 3:
-            raise SystemExit(f"malformed Serena wheel RECORD entry: {record_path}")
-        relative_name, hash_spec, size = row
-        if not hash_spec:
-            continue
-        try:
-            algorithm, encoded_digest = hash_spec.split("=", 1)
-            digest = base64.urlsafe_b64decode(encoded_digest + "=" * (-len(encoded_digest) % 4))
-            hasher = hashlib.new(algorithm)
-        except (ValueError, TypeError):
-            raise SystemExit(f"unsupported Serena wheel RECORD hash: {hash_spec}")
-        raw_candidate = site_packages / relative_name
-        if raw_candidate.is_symlink():
-            raise SystemExit(f"Serena wheel RECORD path is a symlink: {relative_name}")
-        candidate = raw_candidate.resolve(strict=True)
-        try:
-            candidate.relative_to(tool_root)
-        except ValueError:
-            raise SystemExit(f"Serena wheel RECORD path escapes its tool environment: {relative_name}")
-        if not candidate.is_file():
-            raise SystemExit(f"Serena wheel RECORD path is not a regular file: {relative_name}")
-        with candidate.open("rb") as handle:
-            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-                hasher.update(chunk)
-        if hasher.digest() != digest:
-            raise SystemExit(f"Serena wheel RECORD hash mismatch: {relative_name}")
-PY
-}
-
-resolve_serena_executable() {
-  local bin_dir=""
-  local candidate=""
-  local tool_dir=""
-  bin_dir="$($UV_BIN tool dir --bin 2>/dev/null)" || {
-    red "  ❌ uv could not resolve its tool binary directory"
-    return 1
-  }
-  bin_dir="${bin_dir//$'\n'/}"
-  [[ -n "$bin_dir" && -d "$bin_dir" ]] || {
-    red "  ❌ uv returned an invalid tool binary directory: $bin_dir"
-    return 1
-  }
-  tool_dir="$($UV_BIN tool dir 2>/dev/null)" || {
-    red "  ❌ uv could not resolve its tool directory"
-    return 1
-  }
-  [[ -n "$tool_dir" && -d "$tool_dir/serena-agent" ]] || {
-    red "  ❌ uv returned an invalid Serena tool directory: $tool_dir"
-    return 1
-  }
-  for candidate in "$bin_dir/serena" "$bin_dir/serena-agent"; do
-    if [[ -x "$candidate" ]] && "$PYTHON_BIN" - "$candidate" "$tool_dir/serena-agent" <<'PY'
-import os
-import sys
-from pathlib import Path
-
-candidate = Path(sys.argv[1])
-tool_root = Path(sys.argv[2]).resolve()
-try:
-    resolved = candidate.resolve(strict=True)
-except OSError:
-    raise SystemExit(1)
-if not resolved.is_file() or not os.access(resolved, os.X_OK):
-    raise SystemExit(1)
-try:
-    resolved.relative_to(tool_root)
-except ValueError:
-    raise SystemExit(1)
-PY
-    then
-      SERENA_RESOLVED_BIN="$candidate"
-      return 0
-    fi
-  done
-  red "  ❌ uv tool bin-dir does not contain a Serena executable inside the uv-managed tool"
-  return 1
-}
-
-serena_paths_are_trusted() {
-  local tool_dir=""
-  local bin_dir=""
-  tool_dir="$($UV_BIN tool dir 2>/dev/null)" || return 1
-  bin_dir="$($UV_BIN tool dir --bin 2>/dev/null)" || return 1
-  "$PYTHON_BIN" - "$tool_dir/serena-agent" "$bin_dir" "$SERENA_RESOLVED_BIN" <<'PY'
-import os
-import stat
-import sys
-from pathlib import Path
-
-tool_root = Path(sys.argv[1])
-bin_dir = Path(sys.argv[2])
-resolved_executable = Path(sys.argv[3]).resolve(strict=True)
-current_uid = os.getuid()
-
-def check_path(path, label, *, regular=False):
-    info = os.lstat(path)
-    if info.st_uid != current_uid or stat.S_IMODE(info.st_mode) & 0o022:
-        raise SystemExit(f"{label} has unsafe ownership or permissions: {path}")
-    if regular and not stat.S_ISREG(info.st_mode):
-        raise SystemExit(f"{label} is not a regular file: {path}")
-    if not regular and not stat.S_ISDIR(info.st_mode):
-        raise SystemExit(f"{label} is not a directory: {path}")
-
-check_path(tool_root, "Serena uv tool root")
-check_path(bin_dir, "Serena uv tool binary directory")
-check_path(resolved_executable, "Serena uv executable", regular=True)
-try:
-    resolved_executable.relative_to(tool_root.resolve())
-except ValueError:
-    raise SystemExit("Serena uv executable resolves outside its tool root")
-
-for path in tool_root.rglob("*"):
-    if path.name == "direct_url.json" or (path.parent.name.endswith(".dist-info") and path.name == "RECORD"):
-        if path.is_symlink():
-            raise SystemExit(f"Serena installation metadata is a symlink: {path}")
-        check_path(path, "Serena installation metadata", regular=True)
-        check_path(path.parent, "Serena installation metadata directory")
-PY
-}
-
-serena_install_matches() {
-  validate_serena_config || return 1
-  [[ -x "$SERENA_BIN" ]] || return 1
-  resolve_serena_executable || return 1
-  serena_paths_are_trusted || return 1
-  serena_source_matches || return 1
-  serena_dependency_integrity_matches || return 1
-  serena_launcher_matches_resolved || return 1
-  "$SERENA_BIN" --version >/dev/null 2>&1
-}
-
-serena_launcher_matches_resolved() {
-  [[ -x "$SERENA_BIN" && -x "$SERENA_RESOLVED_BIN" ]] || return 1
-  "$PYTHON_BIN" - "$SERENA_BIN" "$SERENA_RESOLVED_BIN" <<'PY'
-import os
-import stat
-import sys
-from pathlib import Path
-
-launcher = Path(sys.argv[1])
-expected = Path(sys.argv[2])
-current_uid = os.getuid()
-launcher_stat = os.lstat(launcher)
-if launcher_stat.st_uid != current_uid:
-    raise SystemExit("Serena stable launcher is not owned by the current user")
-if not launcher.is_symlink() and stat.S_IMODE(launcher_stat.st_mode) & 0o022:
-    raise SystemExit("Serena stable launcher is group- or world-writable")
-parent_stat = os.stat(launcher.parent)
-if parent_stat.st_uid != current_uid or stat.S_IMODE(parent_stat.st_mode) & 0o022:
-    raise SystemExit("Serena stable launcher directory has unsafe ownership or permissions")
-try:
-    resolved_launcher = launcher.resolve(strict=True)
-    resolved_expected = expected.resolve(strict=True)
-except OSError:
-    raise SystemExit("Serena launcher or uv-managed executable cannot be resolved")
-if resolved_launcher != resolved_expected:
-    raise SystemExit("Serena stable launcher does not resolve to the uv-managed executable")
-PY
-}
-
-refresh_serena_launcher() {
-  local launcher_dir
-  launcher_dir="$(dirname "$SERENA_BIN")"
-  mkdir -p "$launcher_dir"
-  if [[ "$SERENA_BIN" = "$SERENA_RESOLVED_BIN" ]]; then
-    return 0
-  fi
-  if [[ -L "$SERENA_BIN" ]] && [[ "$(readlink "$SERENA_BIN")" = "$SERENA_RESOLVED_BIN" ]]; then
-    return 0
-  fi
-  if [[ -e "$SERENA_BIN" && ! -L "$SERENA_BIN" ]]; then
-    red "  ❌ stable Serena path is occupied by a regular file: $SERENA_BIN"
-    return 1
-  fi
-  ln -sfn "$SERENA_RESOLVED_BIN" "$SERENA_BIN"
-}
-
-install_serena() {
-  # The mandatory policy must exist before any Serena executable, --version,
-  # or uv installation path that may invoke Serena can run.
-  ensure_serena_config || return 1
-  if serena_install_matches && resolve_serena_executable && refresh_serena_launcher; then
-    green "  ✅ Serena pinned source already installed at $SERENA_BIN — skipping"
-    return 0
-  fi
-
-  cyan "  ⚡ installing Serena from pinned source ${SERENA_GIT_SHA}..."
-  if ! "$UV_BIN" tool install --force --python 3.13 \
-    --from "git+https://github.com/oraios/serena@${SERENA_GIT_SHA}" \
-    serena-agent; then
-    red "  ❌ Serena installation failed"
-    return 1
-  fi
-  resolve_serena_executable || return 1
-  refresh_serena_launcher || return 1
-  serena_install_matches || {
-    red "  ❌ installed Serena does not match source ${SERENA_GIT_SHA} or does not respond to --version"
-    return 1
-  }
-  green "  ✅ Serena installed from pinned source at $SERENA_BIN"
-}
-
-validate_serena_config() {
-  [[ ! -L "$SERENA_CONFIG_PATH" && -f "$SERENA_CONFIG_PATH" ]] || {
-    red "  ❌ Serena global configuration is missing or not a regular file: $SERENA_CONFIG_PATH"
-    return 1
-  }
-  "$PYTHON_BIN" - "$SERENA_CONFIG_PATH" <<'PY'
-import os
-import stat
-import sys
-import yaml
-
-path = sys.argv[1]
-config_path = os.path.abspath(path)
-try:
-    config_stat = os.stat(config_path)
-    parent_stat = os.stat(os.path.dirname(config_path))
-except OSError as error:
-    raise SystemExit(f"cannot stat Serena global configuration: {error}")
-if config_stat.st_uid != os.getuid():
-    raise SystemExit("Serena global configuration is not owned by the current user")
-if stat.S_IMODE(config_stat.st_mode) != 0o400:
-    raise SystemExit("Serena global configuration must be owner-only and read-only")
-if parent_stat.st_uid != os.getuid():
-    raise SystemExit("Serena config directory is not owned by the current user")
-if stat.S_IMODE(parent_stat.st_mode) & 0o022:
-    raise SystemExit("Serena config directory is group- or world-writable")
-try:
-    with open(path, encoding="utf-8") as handle:
-        config = yaml.safe_load(handle)
-except (OSError, yaml.YAMLError) as error:
-    raise SystemExit(f"invalid Serena global configuration: {error}")
-
-required_tools = {
-    "execute_shell_command",
-    "create_text_file",
-    "replace_string_in_file",
-    "apply_patch",
-}
-if not isinstance(config, dict):
-    raise SystemExit("invalid Serena global configuration: top level must be a mapping")
-if config.get("read_only") is not True:
-    raise SystemExit("Serena global configuration must set read_only: true")
-excluded_tools = config.get("excluded_tools")
-if not isinstance(excluded_tools, list) or not required_tools.issubset(excluded_tools):
-    raise SystemExit(
-        "Serena global configuration must exclude execute_shell_command, "
-        "create_text_file, replace_string_in_file, and apply_patch"
-    )
-PY
-}
-
-ensure_serena_config() {
-  if [[ -e "$SERENA_CONFIG_DIR" || -L "$SERENA_CONFIG_DIR" ]]; then
-    [[ ! -L "$SERENA_CONFIG_DIR" && -d "$SERENA_CONFIG_DIR" ]] || {
-      red "  ❌ Serena config directory is not a regular directory: $SERENA_CONFIG_DIR"
-      return 1
-    }
-  else
-    mkdir -p "$SERENA_CONFIG_DIR"
-  fi
-
-  if [[ -e "$SERENA_CONFIG_PATH" || -L "$SERENA_CONFIG_PATH" ]]; then
-    if ! validate_serena_config; then
-      red "  ❌ Serena global configuration conflicts with the mandatory read-only policy"
-      return 1
-    fi
-    green "  ✅ validated Serena read-only global configuration"
-    return 0
-  fi
-
-  cat > "$SERENA_CONFIG_PATH" <<'EOF'
-read_only: true
-excluded_tools:
-  - execute_shell_command
-  - create_text_file
-  - replace_string_in_file
-  - apply_patch
-EOF
-  chmod 0400 "$SERENA_CONFIG_PATH"
-  validate_serena_config || return 1
-  green "  ✅ created Serena read-only global configuration"
-}
-
-preflight_gitnexus_serena() {
+preflight_gitnexus() {
   local check_only="$1"
-  local gitnexus_ok=true
   if [[ "$check_only" = true ]]; then
     if ! prepare_gitnexus_artifact || ! gitnexus_version_matches; then
       red "  ❌ missing dependency: GitNexus ${GITNEXUS_VERSION} at $GITNEXUS_BIN"
-      gitnexus_ok=false
-    fi
-    if ! validate_serena_config; then
-      red "  ❌ missing or invalid Serena read-only global configuration: $SERENA_CONFIG_PATH"
       return 1
     fi
-    if ! serena_install_matches; then
-      red "  ❌ missing dependency: pinned Serena at $SERENA_BIN"
-    fi
-    [[ "$gitnexus_ok" = true ]] && serena_install_matches
-    return $?
+    return 0
   fi
 
   install_gitnexus || return 1
-  ensure_serena_config || return 1
-  install_serena || return 1
-  yellow "  ⚠️  Serena transitive dependencies are resolved by uv at install time; wheel RECORD hashes are checked, but no immutable dependency lock is supplied by this command."
 }
 
 verify_rtk() {
@@ -959,15 +571,14 @@ preflight_dependencies() {
   resolve_command BUNX_BIN "bunx" bunx || failed=1
   resolve_command PNPM_BIN "pnpm" pnpm || failed=1
   resolve_command NPM_BIN "npm" npm || failed=1
-  resolve_command UV_BIN "uv" uv || failed=1
   resolve_command PYTHON_BIN "Python 3" python3 || failed=1
   preflight_rtk "$check_only" || failed=1
   if [[ -n "${PYTHON_BIN:-}" && -x "${PYTHON_BIN:-}" ]]; then
     preflight_pyyaml || failed=1
   fi
 
-  if [[ -n "${NPM_BIN:-}" && -n "${UV_BIN:-}" && -n "${PYTHON_BIN:-}" ]]; then
-    preflight_gitnexus_serena "$check_only" || failed=1
+  if [[ -n "${NPM_BIN:-}" && -n "${PYTHON_BIN:-}" ]]; then
+    preflight_gitnexus "$check_only" || failed=1
   fi
 
   return "$failed"
@@ -1826,6 +1437,25 @@ stage_rulesync_output() {
   ); then
     return 1
   fi
+  # Global Rulesync output includes the OpenCode schema marker. Keep the
+  # private deployment payload byte-for-byte aligned with that live output so
+  # a global check cannot introduce manifest drift after deployment.
+  "$PYTHON_BIN" - "$output_root/opencode.jsonc" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+source = path.read_text(encoding="utf-8")
+if '"$schema"' not in source:
+    if not source.startswith("{\n"):
+        raise SystemExit("Rulesync OpenCode output has an unexpected shape")
+    source = source.replace(
+        "{\n",
+        '{\n  "$schema": "https://opencode.ai/config.json",\n',
+        1,
+    )
+    path.write_text(source, encoding="utf-8")
+PY
 }
 
 build_staged_payload() {
@@ -2074,10 +1704,14 @@ preflight_compatibility() {
 
 omo_installed() {
   local candidate
+  local installed_version
+  local pinned_version="${OH_MY_OPENCODE_SLIM_PACKAGE##*@}"
   for candidate in "$OPENDIR/opencode.json" "$OPENDIR/opencode.jsonc"; do
     if [[ -f "$candidate" ]] && jsonc_has_omo "$candidate"; then
-      omo_installed_version >/dev/null 2>&1
-      return $?
+      installed_version="$(omo_installed_version 2>/dev/null || true)"
+      if [[ -n "$installed_version" && "$installed_version" == "$pinned_version" ]]; then
+        return 0
+      fi
     fi
   done
   return 1
@@ -2085,6 +1719,7 @@ omo_installed() {
 
 install_omo() {
   local installed_version
+  local pinned_version="${OH_MY_OPENCODE_SLIM_PACKAGE##*@}"
   if [[ "$FORCE" = true ]]; then
     cyan "  ⚡ reinstalling oh-my-opencode-slim@2.2.17..."
   else
@@ -2099,7 +1734,11 @@ install_omo() {
     fail "could not identify a valid installed oh-my-opencode-slim package"
     return 1
   fi
-  green "  ✅ oh-my-opencode-slim ${installed_version} installed (pinned package: 2.2.17)"
+  if [[ "$installed_version" != "$pinned_version" ]]; then
+    fail "installed oh-my-opencode-slim version ${installed_version} does not match pinned version ${pinned_version}"
+    return 1
+  fi
+  green "  ✅ oh-my-opencode-slim ${installed_version} installed (pinned package: ${pinned_version})"
 }
 
 snapshot_file() {
@@ -2769,7 +2408,7 @@ run_check() {
   fi
   if [[ -z "${PYTHON_BIN:-}" ]] || ! omo_installed; then
     DRIFT=1
-    red "  ⚠️  oh-my-opencode-slim package metadata is missing or invalid"
+    red "  ⚠️  oh-my-opencode-slim package is missing, invalid, or does not match pinned version ${OH_MY_OPENCODE_SLIM_PACKAGE##*@}"
   fi
   if ! build_staged_payload; then
     red "  ⚠️  staged rulesync/OpenCode assets could not be validated"
@@ -2818,7 +2457,7 @@ run_deploy() {
   recover_pending_opencode_transaction
 
   # All executable checks happen before any generated configuration mutation.
-  yellow "  ⚠️  Preflight/package side effects are outside deployment rollback: GitNexus npm state, Serena uv state and global config, RTK/Homebrew state, and OMO package/cache state."
+  yellow "  ⚠️  Preflight/package side effects are outside deployment rollback: GitNexus npm state, RTK/Homebrew state, and OMO package/cache state."
   preflight_dependencies false || fail "dependency preflight failed"
   # Host/package compatibility probing is intentionally not part of normal
   # deployment: probing unrelated package metadata on every deploy is wasteful.

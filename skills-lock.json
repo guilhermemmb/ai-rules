@@ -133,7 +133,79 @@
       "sourceType": "local",
       "provenance": "unknown",
       "skillPath": ".rulesync/skills/fixer/SKILL.md",
-      "computedHash": "853be8ff8547dfbc45aa8e2662bc38b7d965f4e3f45e9c995fb36fb38ea6ad2b"
+      "computedHash": "8b8e13124932c32ca9e4f18af1b771288539611936032fffc0cebaa918443c48"
+    },
+    "gitnexus-cli": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/gitnexus-cli/SKILL.md",
+      "computedHash": "d4f450c0728512461900aed5d18f01a99832a5eec99de8cf7efb5d42554e46dd"
+    },
+    "gitnexus-debugging": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/gitnexus-debugging/SKILL.md",
+      "computedHash": "a5030fa0679e5c920c9a7acf4b4f8dea13e4b7a59b5093ec67f57f8499c42463"
+    },
+    "gitnexus-exploring": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/gitnexus-exploring/SKILL.md",
+      "computedHash": "705700da461fbe17f3955fcd0d5a2ab48b4cab2733afbc55f49bf7357da07b89"
+    },
+    "gitnexus-guide": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/gitnexus-guide/SKILL.md",
+      "computedHash": "2678c0a7c80390b97380c08a23ad05c720d9ff83b9d705431241805a89dbce41"
+    },
+    "gitnexus-impact-analysis": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/gitnexus-impact-analysis/SKILL.md",
+      "computedHash": "c3da7efa19ed6e3a87433345beafe1758bdcd8becfa26fca1fc07fe426f2f673"
+    },
+    "gitnexus-lfg": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/gitnexus-lfg/SKILL.md",
+      "computedHash": "24abb3f23a4bdbd163d08b02737388c707db448e9251e99d3d63f359a1eb9d7c"
+    },
+    "gitnexus-pdg-query": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/gitnexus-pdg-query/SKILL.md",
+      "computedHash": "2438b86dfbf8028ac264a88ae43d36891fd96e357f631240ab9bc1c0f77d6a84"
+    },
+    "gitnexus-plan": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/gitnexus-plan/SKILL.md",
+      "computedHash": "816a9effad19adfe3dfb65a86f52297546cd3df9027ce366ce626517b7e4f995"
+    },
+    "gitnexus-refactoring": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/gitnexus-refactoring/SKILL.md",
+      "computedHash": "00e74ff211554f84c488d8bc7e606571436e05bb40149bfd75ecb217d3463209"
+    },
+    "gitnexus-review": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/gitnexus-review/SKILL.md",
+      "computedHash": "65e718ff53433a2d408944ca764cbf938659399726a35fc7ed710fb298e4106c"
+    },
+    "gitnexus-taint-analysis": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/gitnexus-taint-analysis/SKILL.md",
+      "computedHash": "c47ca4642599e22162d80839f8bdc2311ff7c62950a2608364024486dcbb836a"
+    },
+    "gitnexus-work": {
+      "sourceType": "local",
+      "provenance": "unknown",
+      "skillPath": ".rulesync/skills/gitnexus-work/SKILL.md",
+      "computedHash": "95cd155c9d6cdc4d944bdb843cee2bf406a8d8a97f9d2a539a3ebf8a3aa157d9"
     },
     "incident-response": {
       "sourceType": "local",

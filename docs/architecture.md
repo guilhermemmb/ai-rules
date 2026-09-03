@@ -47,13 +47,13 @@ fourth is observed at runtime and cannot be proven from source alone.
 | [`.rulesync/subagents/`](../.rulesync/subagents/) | Custom subagent definitions (`detective`, `navigator`, `sage`) with YAML frontmatter declaring model/tools/mcps/skills. |
 | [`.rulesync/commands/`](../.rulesync/commands/) | Command definitions (`review-pr.md`). |
 | [`.rulesync/oh-my-opencode-slim/`](../.rulesync/oh-my-opencode-slim/) | Per-agent appended prompts (`{agent}_append.md`). |
-| [`.rulesync/skills/`](../.rulesync/skills/) | Vendored skills distributed by Rulesync. |
+| [`.rulesync/skills/`](../.rulesync/skills/) | Rulesync-owned skills distributed by Rulesync, including the complete `gitnexus-*` skill set. |
 | [`.rulesync/mcp.jsonc`](../.rulesync/mcp.jsonc) | MCP server declarations (endpoints, enable flags). |
 | [`profiles/models/`](../profiles/models/) | Model profiles (`default.yml`, `cost-efficient.yml`) — schema version 1 with a required per-agent `model` and an optional `variant`. |
 | [`scripts/`](../scripts/) | Cross-artifact validator, profile applier, and latency-reporting utilities. |
 | [`deploy.sh`](../deploy.sh) | Deployment/check/rollback entry point; source of truth for generated configuration. |
 | [`agents-overview/`](../agents-overview/) | Interactive visualization (`data.yaml` + `index.html`). |
-| [`skills-lock.json`](../skills-lock.json) | Pinned/locked external skills (`agent-browser` from `vercel-labs/agent-browser`). |
+| [`skills-lock.json`](../skills-lock.json) | Pinned/locked external skills, including the Rulesync-owned GitNexus skill set and `agent-browser` from `vercel-labs/agent-browser`. |
 
 ### Sibling-dotfiles inputs (outside this repo)
 
@@ -101,14 +101,13 @@ hashes). The payload is also validated by
 | `~/.config/opencode/oh-my-opencode-slim.json` | Installed after profile patch. |
 | `~/.config/opencode/AGENTS.md` | Rulesync-generated global instructions. |
 | `~/.config/opencode/agents/`, `skills/` | Installed from Rulesync-generated output. |
+| `~/.config/opencode/skills/gitnexus-*/` | Global projection of Rulesync-owned GitNexus skills; external duplicate copies remain until deployment verification. |
 | `~/.config/opencode/commands/` | **Directly copied** from [`.rulesync/commands/`](../.rulesync/commands/) (`copy_tree`), not Rulesync-generated. |
 | `~/.config/opencode/oh-my-opencode-slim/` | Appended prompts copied directly from `.rulesync/oh-my-opencode-slim/`. |
 | `~/.config/opencode/.ai-rules.manifest.json` | Deployment ownership manifest (built from payload). |
 | `~/.config/opencode/plugins/rtk.ts` | RTK plugin, initialized by `deploy.sh`. |
 | `~/.local/bin/gitnexus` | GitNexus `1.6.5`, persistently installed by `deploy.sh`; source argv retains the read-only env and OpenCode denies `gitnexus_rename`. |
-| `~/.local/bin/serena` | Serena pinned to `e771adedb5657c07ab890177d2f17df6ce436026`; launched in IDE context from the current project. |
 | `<repo>/.gitnexus/` | GitNexus repository index, created only by explicit operator-targeted analysis and excluded from source control. |
-| `~/.serena/serena_config.yml` | Global Serena read-only configuration with excluded mutation tools; registrations are not deleted by Worktrunk cleanup. |
 | `~/.cache/opencode/packages/oh-my-opencode-slim@latest/node_modules/…` | OMO, `@opencode-ai/plugin`, `@opencode-ai/sdk` packages. |
 | `~/.local/bin/wt-orca`, `~/.local/bin/worktree-state.sh` | Adapters installed from sibling dotfiles. |
 | `~/.config/worktrunk/config.toml` | Worktrunk config installed from sibling dotfiles. |
@@ -197,15 +196,16 @@ now refers to `figma-mcp` consistently.
 
 ### Code intelligence lifecycle
 
-The architecture has three discovery tiers. RTK/native OpenCode tools remain
-the default and are authoritative for exact text/files, shell, tests, Git,
-configuration, documentation, and edits. Serena is a read-only live semantic
-layer assigned only to Designer, Fixer, `reviewer-code`, and `reviewer-types`.
-GitNexus is a snapshot graph assigned only to Orchestrator, Oracle, Explorer,
-and Detective. GitNexus 1.6.5 still exposes server-side rename; OpenCode denies
-the normalized `gitnexus_rename` tool, so agents cannot invoke it through this
-managed OpenCode configuration. This is an OpenCode-side control, not a
-universal process-level boundary.
+The architecture has two discovery tiers. RTK/native OpenCode tools remain the
+default and are authoritative for exact text/files, shell, tests, Git,
+configuration, documentation, and edits. GitNexus is a snapshot graph assigned
+only to Orchestrator, Oracle, Explorer, and Detective. Designer, Fixer,
+`reviewer-code`, and `reviewer-types` have no code-intelligence MCP and use
+native tools for definitions, references, implementations, and diagnostics.
+GitNexus 1.6.5 exposes server-side rename; OpenCode denies the normalized
+`gitnexus_rename` tool, so agents cannot invoke it through this managed OpenCode
+configuration. This is an OpenCode-side control, not a universal process-level
+boundary; direct GitNexus processes are outside that control.
 
 GitNexus is installed persistently by `deploy.sh` at version `1.6.5`. Its source
 MCP command retains `GITNEXUS_MCP_READ_ONLY=1` for forward compatibility, but
@@ -220,18 +220,26 @@ gitnexus analyze --index-only "$WORKSPACE_PATH"
 The pinned `--index-only` mode does not generate agent files. Setup is
 synchronous; a failed GitNexus command publishes `failed`, never `ready`.
 Cleanup runs only `gitnexus remove --force "$WORKSPACE_PATH"` and treats an
-absent index as an idempotent success. It does not run `gitnexus clean --all`,
-touch Serena state, or remove the worktree.
+absent index as an idempotent success. It does not run `gitnexus clean --all` or
+remove the worktree.
 
-Serena is installed from commit `e771adedb5657c07ab890177d2f17df6ce436026`
-and starts with `start-mcp-server --context ide --project-from-cwd`. Its global
-configuration sets `read_only: true` and excludes mutation tools. Serena has no
-supported project-delete CLI, so global registrations are retained rather than
-claimed as removed. Serena users confirm project/onboarding status, then use
-`get_symbols_overview → find_symbol → find_referencing_symbols` and read only
-minimal symbol bodies; line numbers are 0-based. Native OpenCode tools remain
-authoritative for shell, files, and edits. Do not invoke
-`prepare_for_new_conversation` unless explicitly requested.
+GitNexus users follow context/freshness → query/context → affected process
+resources → impact → detect_changes; inspect schema before Cypher. Stale,
+empty, partial, truncated, ambiguous, degraded, or `UNKNOWN` results are
+inconclusive and require immediate RTK/native fallback.
+
+#### Serena removal and deferred Codebase Memory retirement
+
+Serena is fully removed from tracked source policy. Runtime removal is deferred
+until deployment and live-output verification, then follows: uninstall
+`serena-agent`; remove only verified launcher, global, and repository state; and
+avoid broad uv-cache deletion. This atlas does not claim runtime cleanup has
+already occurred.
+
+Retirement of the legacy `codebase-memory-mcp` binary, caches, registrations,
+repository state, and sibling-worktree state waits for sibling Worktrunk setup,
+index, and cleanup scripts to be decoupled in Task 4. No destructive cleanup is
+performed by deployment or validation.
 
 ### Model profile application
 
@@ -371,8 +379,7 @@ The blocking checks and compatibility diagnostics precede
 snapshot. Before snapshotting, `run_deploy` may:
 
 - recover a pending OpenCode transaction (`recover_pending_opencode_transaction`),
-- install or refresh the pinned GitNexus and Serena executables and the global
-  Serena safety configuration, and
+- install or refresh the pinned GitNexus executable, and
 - install RTK/Homebrew if the RTK binary is absent (`preflight_rtk` →
   `resolve_rtk_binary`).
 
@@ -429,8 +436,8 @@ directory, including the RTK plugin at `plugins/rtk.ts`) and
 `restore_managed_file` (the wt-orca, worktree-state, and Worktrunk config files). A transaction marker supports recovery of an interrupted
 deployment. Rollback restores the previous live configuration; it does not derive
 from or rewrite the ownership manifest, and it does not undo pre-snapshot actions
-such as a recovered pending transaction or newly installed GitNexus/Serena
-packages or RTK/Homebrew.
+such as a recovered pending transaction or newly installed GitNexus packages
+or RTK/Homebrew.
 
 ### Force mode: no snapshot or rollback backup
 
