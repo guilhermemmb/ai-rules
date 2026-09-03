@@ -7,9 +7,9 @@
 # deployment input or output.
 #
 # Usage:
-#   ./deploy.sh          — deploy (refresh OMO 2.2.17 and deploy)
+#   ./deploy.sh          — deploy (refresh the latest OMO release and deploy)
 #   ./deploy.sh --check  — dry-run: show what would change
-#   ./deploy.sh --force  — reinstall the OMO 2.2.17 package, override hash
+#   ./deploy.sh --force  — reinstall the latest OMO release, override hash
 #                           drift in opencode.json / opencode.jsonc (deploy-only,
 #                           no snapshot/rollback backup), + deploy
 set -euo pipefail
@@ -49,12 +49,12 @@ RTK_HOMEBREW_FORMULA="rtk-ai/tap/rtk"
 RTK_PLUGIN_PATH="${OPENDIR}/plugins/rtk.ts"
 
 # Rulesync is a repository-recorded convergence input.
-# OMO is pinned to the repository-recorded 2.2.17 release.
+# OMO always resolves the latest published release.
 RULESYNC_VERSION="16.2.0"
-OH_MY_OPENCODE_SLIM_PACKAGE="oh-my-opencode-slim@2.2.17"
+OH_MY_OPENCODE_SLIM_PACKAGE="oh-my-opencode-slim@latest"
 RULESYNC_PACKAGE="rulesync@${RULESYNC_VERSION}"
 OPENCODE_PACKAGE_CACHE_DIR="${OPENCODE_PACKAGE_CACHE_DIR:-${HOME}/.cache/opencode/packages}"
-OH_MY_OPENCODE_SLIM_PACKAGE_JSON="${OH_MY_OPENCODE_SLIM_PACKAGE_JSON:-$OPENCODE_PACKAGE_CACHE_DIR/oh-my-opencode-slim@latest/node_modules/oh-my-opencode-slim/package.json}"
+OH_MY_OPENCODE_SLIM_PACKAGE_JSON="${OH_MY_OPENCODE_SLIM_PACKAGE_JSON:-$OPENCODE_PACKAGE_CACHE_DIR/oh-my-opencode-slim/node_modules/oh-my-opencode-slim/package.json}"
 OH_MY_OPENCODE_SLIM_NODE_MODULES_DIR="$(dirname "$OH_MY_OPENCODE_SLIM_PACKAGE_JSON")/.."
 OPENCODE_SDK_PACKAGE_JSON="${OPENCODE_SDK_PACKAGE_JSON:-$OH_MY_OPENCODE_SLIM_NODE_MODULES_DIR/@opencode-ai/sdk/package.json}"
 OPENCODE_PLUGIN_PACKAGE_JSON="${OPENCODE_PLUGIN_PACKAGE_JSON:-$OH_MY_OPENCODE_SLIM_NODE_MODULES_DIR/@opencode-ai/plugin/package.json}"
@@ -99,7 +99,7 @@ while [[ $# -gt 0 ]]; do
       cat <<'EOF'
 Usage: ./deploy.sh [--check | --compatibility-check | --force | --model-profile=<name>]
 
-  --force  Reinstall the pinned OMO package, override ownership-manifest hash
+  --force  Reinstall the latest OMO package, override ownership-manifest hash
            drift in only opencode.json and opencode.jsonc, then deploy. Force
            is deploy-only (rejected with --check or --compatibility-check) and
            creates no snapshot or rollback backup, so a later failure may
@@ -1664,10 +1664,6 @@ preflight_compatibility() {
     yellow "  ⚠️  installed @opencode-ai/plugin metadata is unavailable: $OPENCODE_PLUGIN_PACKAGE_JSON"
   fi
 
-  if [[ -n "$installed_omo_version" && "$installed_omo_version" != "${OH_MY_OPENCODE_SLIM_PACKAGE##*@}" ]]; then
-    version_skew=true
-    yellow "  ⚠️  version skew: source requests OMO ${OH_MY_OPENCODE_SLIM_PACKAGE##*@}, installed OMO $installed_omo_version"
-  fi
   if [[ -n "$installed_plugin_version" && -n "$installed_sdk_version" && "$installed_plugin_version" != "$installed_sdk_version" ]]; then
     version_skew=true
     yellow "  ⚠️  plugin/SDK versions differ: plugin $installed_plugin_version, SDK $installed_sdk_version"
@@ -1705,11 +1701,10 @@ preflight_compatibility() {
 omo_installed() {
   local candidate
   local installed_version
-  local pinned_version="${OH_MY_OPENCODE_SLIM_PACKAGE##*@}"
   for candidate in "$OPENDIR/opencode.json" "$OPENDIR/opencode.jsonc"; do
     if [[ -f "$candidate" ]] && jsonc_has_omo "$candidate"; then
       installed_version="$(omo_installed_version 2>/dev/null || true)"
-      if [[ -n "$installed_version" && "$installed_version" == "$pinned_version" ]]; then
+      if [[ -n "$installed_version" ]]; then
         return 0
       fi
     fi
@@ -1719,14 +1714,13 @@ omo_installed() {
 
 install_omo() {
   local installed_version
-  local pinned_version="${OH_MY_OPENCODE_SLIM_PACKAGE##*@}"
   if [[ "$FORCE" = true ]]; then
-    cyan "  ⚡ reinstalling oh-my-opencode-slim@2.2.17..."
+    cyan "  ⚡ reinstalling ${OH_MY_OPENCODE_SLIM_PACKAGE}..."
   else
-    cyan "  ⚡ refreshing oh-my-opencode-slim@2.2.17..."
+    cyan "  ⚡ refreshing ${OH_MY_OPENCODE_SLIM_PACKAGE}..."
   fi
   if ! "$BUNX_BIN" "$OH_MY_OPENCODE_SLIM_PACKAGE" install; then
-    fail "could not install oh-my-opencode-slim@2.2.17"
+    fail "could not install ${OH_MY_OPENCODE_SLIM_PACKAGE}"
     return 1
   fi
   installed_version="$(omo_installed_version 2>/dev/null || true)"
@@ -1734,11 +1728,7 @@ install_omo() {
     fail "could not identify a valid installed oh-my-opencode-slim package"
     return 1
   fi
-  if [[ "$installed_version" != "$pinned_version" ]]; then
-    fail "installed oh-my-opencode-slim version ${installed_version} does not match pinned version ${pinned_version}"
-    return 1
-  fi
-  green "  ✅ oh-my-opencode-slim ${installed_version} installed (pinned package: ${pinned_version})"
+  green "  ✅ oh-my-opencode-slim ${installed_version} installed (latest package: ${OH_MY_OPENCODE_SLIM_PACKAGE})"
 }
 
 snapshot_file() {
@@ -2408,7 +2398,7 @@ run_check() {
   fi
   if [[ -z "${PYTHON_BIN:-}" ]] || ! omo_installed; then
     DRIFT=1
-    red "  ⚠️  oh-my-opencode-slim package is missing, invalid, or does not match pinned version ${OH_MY_OPENCODE_SLIM_PACKAGE##*@}"
+    red "  ⚠️  oh-my-opencode-slim package is missing or invalid"
   fi
   if ! build_staged_payload; then
     red "  ⚠️  staged rulesync/OpenCode assets could not be validated"
