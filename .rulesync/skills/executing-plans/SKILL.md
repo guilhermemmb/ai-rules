@@ -30,9 +30,9 @@ task, and continuing through all tasks without stopping.
 Do not use this skill for XS, S, or M work. S/M combined plans follow their own
 workflow: after one approval, dispatch implementation to `@fixer` for code or
 `@designer` for UI/UX as appropriate, then automatically dispatch one
-post-implementation `@reviewer` and run proportionate validation. S/M does not
+post-implementation `@reviewer-coordinator` and run proportionate validation. S/M does not
 use this skill, its ledger, or its per-task review loop, and does not ask for a
-review choice; the reviewer is required through the combined-plan workflow.
+review choice; `@reviewer-coordinator` is required through the combined-plan workflow.
 
 ## Agent Dispatch Rules
 
@@ -44,7 +44,7 @@ Assign the right agent per task type:
 | Code implementation (multi-file, integration) | @fixer | xhigh |
 | UI/UX implementation (components, styling, layouts) | @designer | medium |
 | Architecture decisions, complex debugging | @oracle | high |
-| Task review (after each task) | OpenCode orchestrator's preloaded reviewer workflow; Claude Code @reviewer | high |
+| Task review (after each task) | @reviewer-coordinator | high |
 | Escalation (stuck after 3 fix rounds) | @oracle | high |
 
 ## The Process
@@ -101,10 +101,10 @@ Run the following lifecycle for each batch:
    before advancing it. Record the exact returned session ID and job ID and
    reconcile each result with `task_result` using that session ID—not an alias,
    title, ordering assumption, or partial report.
-3. Send every `DONE` task to review, respecting the available reviewer cap.
-   Queue excess reviews until a reviewer slot is available. Parallel reviewer
-   dispatch is limited to this bounded batch review and is not permission for
-   arbitrary conversational tool-call parallelism.
+3. Send every `DONE` task to exactly one `@reviewer-coordinator` with its
+   complete review packet. The coordinator owns specialist-lane selection,
+   batching, and Phase B; the orchestrator must not dispatch lanes directly or
+   schedule reviewer lanes.
 4. Reconcile all implementer reports and reviews, including changed paths
    against each task's hard `Files` allowlist. A task is releasable only after
    a passing per-child review, or an explicit @oracle adjudication that
@@ -175,23 +175,17 @@ The implementer returns a structured status report:
 
 **3. Review the task**
 
-Review coordinator ownership is target-specific:
-
-- **OpenCode:** The orchestrator runs its preloaded `reviewer` workflow directly
-  and dispatches the applicable `reviewer-*` lanes. Do not call
-  `functions.skill`, dispatch a nested `@reviewer` coordinator, or silently
-  fall back to a partial direct-lane review. A coordination failure is
-  Degraded/inconclusive and must be reported rather than bypassed.
-- **Claude Code:** Preserve the existing `@reviewer` coordinator path, which
-  selects and dispatches the same reviewer lanes.
-
-For Claude Code, dispatch @reviewer with:
+Dispatch exactly one `@reviewer-coordinator` with:
 - The task brief file path
 - The implementer's report file path
 - The diff (git log --oneline + git diff from task start to HEAD)
 - Global Constraints
+- The target descriptor and review mode/aspect request (task/current diff
+  defaults to `auto`; branch or PR defaults to `full`, unless explicitly
+  overridden)
+- Changed paths and any available GitNexus evidence
 
-The reviewer returns: spec compliance (✅/❌), task quality (approved/needs work), issues by severity.
+The coordinator returns: spec compliance (✅/❌), task quality (approved/needs work), issues by severity, and Review Health. It selects and dispatches the reviewer lanes, including the conditional sequential simplifier pass; the orchestrator must not dispatch lanes directly or aggregate findings.
 
 **4. Fix loop (if review ❌)**
 
@@ -214,13 +208,11 @@ predecessors are complete and releasable.
 
 ### Handoff to Review
 
-After all tasks complete, commit the ledger file and ask the user whether to run the final comprehensive review. This is a mandatory user-choice gate. Do not load skill `reviewing-plans` or dispatch @reviewer unless the user explicitly chooses to run the review.
+After all tasks complete, commit the ledger file and ask the user whether to run the final comprehensive review. This is a mandatory user-choice gate. Do not load skill `reviewing-plans` or dispatch `@reviewer-coordinator` unless the user explicitly chooses to run the review.
 
-- If the user opts in, load skill `reviewing-plans`. In OpenCode, the
-  orchestrator runs the preloaded reviewer workflow directly with the plan file,
-  ledger, and full branch diff; it must not dispatch a nested @reviewer. In
-  Claude Code, `reviewing-plans` dispatches @reviewer with that context and then
-  presents the structured report to the user.
+- If the user opts in, load skill `reviewing-plans`, which dispatches exactly one
+  `@reviewer-coordinator` with the plan file, ledger, full branch diff, target
+  descriptor, review mode, and Global Constraints.
 - If the user skips it, append `Handoff: final review skipped by user` to the ledger and state that the merge-readiness review was not run.
 
 ## Ledger Format

@@ -30,8 +30,8 @@ rationale.
   `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, containing rationale, scope/files, concrete steps,
   and validation. Present it once and wait for one approval, then dispatch
   implementation to `@fixer` for code or `@designer` for UI/UX as appropriate,
-  followed automatically by one post-implementation review gate (OpenCode
-  orchestrator's preloaded reviewer workflow). Do not create
+  followed automatically by one post-implementation review gate through
+  `@reviewer-coordinator`. Do not create
   a separate spec, load `executing-plans`, create a ledger, run a per-task
   review loop, or ask for a review choice.
 - **L** — a multi-area or cross-system change, or material uncertainty.
@@ -47,12 +47,13 @@ or artifact requirements.
 
 ## Review routing
 
-- **OpenCode:** The orchestrator preloads the `reviewer` skill and is the sole
-  review coordinator. It directly selects, batches, and aggregates the ten
-  `reviewer-*` lanes. OpenCode review commands must not call `functions.skill`,
-  dispatch a nested `@reviewer` coordinator, or silently fall back to only a
-  subset of direct lanes. Coordination failures are reported as
-  Degraded/inconclusive rather than bypassed.
+- **OpenCode:** The orchestrator dispatches exactly one `@reviewer-coordinator`
+  with a complete review packet. The coordinator is the sole review owner: it
+  selects, batches, and aggregates the ten `reviewer-*` lanes, runs conditional
+  sequential Phase B, and computes the review report. The orchestrator must not
+  preload the coordinator skill, select or dispatch lanes directly, run Phase B,
+  aggregate findings, or compute the verdict. Coordination failures are
+  reported as Degraded/inconclusive rather than bypassed.
 
 ## Parallel Specialist Decomposition
 

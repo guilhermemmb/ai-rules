@@ -27,26 +27,21 @@ Collect these inputs:
 
 ### 2. Run the target-specific review workflow
 
-**OpenCode:** Run the preloaded `reviewer` workflow through the orchestrator.
-The orchestrator is the sole coordinator and directly selects and dispatches the
-applicable `reviewer-*` lanes. Do not call `functions.skill`, dispatch a nested
-`@reviewer` coordinator, or silently fall back to a partial direct-lane review.
-Pass it:
+Dispatch exactly one `@reviewer-coordinator` with a complete review packet. The
+orchestrator must not preload the coordinator skill, select or dispatch
+specialist lanes directly, run Phase B, aggregate findings, or compute the
+verdict. Pass it:
 
 - The implementation plan file path
 - The execution ledger file path (note parked items and adjudicated findings)
 - The full branch diff
+- The target descriptor and review mode (an entire branch defaults to `full`,
+  unless explicitly overridden)
 - Any Global Constraints from the plan
 
-The orchestrator returns the standard structured review report and owns
-selection, bounded execution, failure handling, and aggregation of the ten
-`reviewer-*` lanes. Do not dispatch specialist lanes directly or ask them to
-dispatch additional tasks.
-
-**Claude Code:** Dispatch `@reviewer` to review the full branch changes. Pass
-the same plan, ledger, diff, and Global Constraints context. The Claude
-`@reviewer` compatibility coordinator owns selection and bounded execution of
-the ten `reviewer-*` lanes; do not dispatch specialist lanes directly.
+The coordinator owns selection, bounded execution, failure handling, aggregation,
+and verdict reporting for the ten `reviewer-*` lanes. Do not dispatch specialist
+lanes directly or ask them to dispatch additional tasks.
 
 ### 3. Evaluate the Report
 
@@ -112,7 +107,7 @@ Return a concise summary to the orchestrator:
 
 ## Rules
 
-- **Explicit user opt-in is required**: Do not load this skill or start the final comprehensive review unless the user explicitly chooses to run it. On OpenCode, the orchestrator runs the preloaded workflow directly; on Claude Code, the compatibility path dispatches `@reviewer`.
+- **Explicit user opt-in is required**: Do not load this skill or start the final comprehensive review unless the user explicitly chooses to run it. Dispatch exactly one `@reviewer-coordinator` after opt-in.
 - **No code changes**: Reviewing-plans is advisory only. Never fix issues inline.
 - **Binary gate**: Critical = 0 → success. Any Critical > 0 → not passed.
 - **Trust the ledger**: Parked items with rulings from executing-plans are resolved. Do not re-litigate.

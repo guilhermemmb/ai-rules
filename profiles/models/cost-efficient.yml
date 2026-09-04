@@ -33,7 +33,7 @@ agents:
   detective:
     model: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
     variant: "high"
-  reviewer:
+  reviewer-coordinator:
     model: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
     variant: "medium"
   reviewer-code:
@@ -62,7 +62,7 @@ agents:
     variant: "medium"
   reviewer-simplifier:
     model: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
-    variant: "medium"
+    variant: "low"
   reviewer-accessibility:
     model: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
     variant: "medium"

@@ -71,7 +71,8 @@
 
 ## Code Exploration
 
-- GitNexus is assigned only to Orchestrator, Oracle, Explorer, and Detective.
+- GitNexus is assigned to Orchestrator, Oracle, Explorer, Detective, and
+  Reviewer Coordinator.
 - Before graph work, inspect `gitnexus://repo/{name}/context` and confirm
   freshness. Follow: `context/freshness → query/context → affected process
   resources → impact → detect_changes`.
@@ -138,10 +139,17 @@ For each eligible batch:
    The fixer may create, modify, or delete only those paths. The allowlist is a
    cooperative prompt contract because OpenCode does not provide a dynamic
    per-task path ACL; runtime smoke must detect violations and fail closed.
-5. Send every `DONE` child through the preloaded OpenCode reviewer workflow
-   individually. Do not release any dependent until that child's review passes
-   (or an explicit `@oracle` adjudication resolves the review). Review
-   concurrency remains governed separately by the reviewer workflow.
+5. Send every `DONE` child to exactly one `@reviewer-coordinator` individually
+   with a complete review packet. The packet must include the target descriptor
+   (current diff/task, branch, entire branch, or PR), explicit mode/aspect
+   request, full diff, changed paths, task/plan context, project guidelines,
+   implementer's report, and available GitNexus evidence. The coordinator owns
+   lane selection, bounded Phase A execution, conditional sequential Phase B,
+   aggregation, and the review verdict. The orchestrator must not preload the
+   coordinator skill, select or dispatch lanes directly, run Phase B, aggregate
+   findings, or compute the verdict. Do not release any dependent until the
+   coordinator's review passes (or an explicit `@oracle` adjudication resolves
+   the review).
 
 `NEEDS_CONTEXT`, `BLOCKED`, timeout or failure, failed, missing, or malformed implementer
 or review results hold all dependents and must be surfaced in the scheduler

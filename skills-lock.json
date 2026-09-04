@@ -97,7 +97,7 @@
       "sourceType": "local",
       "provenance": "unknown",
       "skillPath": ".rulesync/skills/executing-plans/SKILL.md",
-      "computedHash": "04251dcbb97adf6c8225310544f7d8d883791d1364f7abd5acb7b3fc931226ff"
+      "computedHash": "bdee088b7a62b1b00afac0b92c2065abb35520845550c3408f4bd1fcb43b21a5"
     },
     "figma-code-connect": {
       "sourceType": "local",
@@ -243,17 +243,17 @@
       "skillPath": ".rulesync/skills/reflect/SKILL.md",
       "computedHash": "2ac9432f2f2757a6af536ece80506969f54c19166a2abb7a6f39c2c9e1bcb1c6"
     },
-    "reviewer": {
+    "reviewer-coordinator": {
       "sourceType": "local",
       "provenance": "unknown",
-      "skillPath": ".rulesync/skills/reviewer/SKILL.md",
-      "computedHash": "fd7fe8079ee9d5642625d0954ac0a6bc6b4d9dc1eed80e7671832d774feea8d3"
+      "skillPath": ".rulesync/skills/reviewer-coordinator/SKILL.md",
+      "computedHash": "31b8100c5111a2506e8578f16858eb9e6907e5402fdb03c1c33e5864cbd68fd4"
     },
     "reviewing-plans": {
       "sourceType": "local",
       "provenance": "unknown",
       "skillPath": ".rulesync/skills/reviewing-plans/SKILL.md",
-      "computedHash": "bc0da73b0aa7aaed02640514929999965462129254ba3dec125d066c340c1d47"
+      "computedHash": "2032258faa663d8e2d4436cc653ff39c95f83358ad9362bed52dfc000d777efc"
     },
     "screenshot": {
       "sourceType": "local",

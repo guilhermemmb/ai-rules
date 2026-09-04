@@ -44,7 +44,7 @@
     "sage": {
       "color": "primary"
     },
-    "reviewer": {
+    "reviewer-coordinator": {
       "color": "warning"
     },
     "reviewer-code": {
