@@ -30,10 +30,12 @@ IDs are:
 
 Phase A contains the first nine concern lanes. `reviewer-simplifier` is only a
 sequential Phase B lane. The coordinator may use only the Task API for these
-exact lane IDs and read-only GitNexus inspection. It has read-only repository
-inspection, Bash denied, no GitHub access, and no write tools. Effective
-permission mismatch is a coordination failure and makes the report
-inconclusive; never broaden access to recover.
+exact lane IDs and read-only GitNexus inspection. Native repository read,
+search, list, and language-service tools are denied; inspect code only from
+the complete supplied packet/diff and GitNexus results. Bash is denied, there
+is no GitHub access, and there are no write tools. Effective permission
+mismatch is a coordination failure and makes the report inconclusive; never
+broaden access to recover.
 
 ## Trust boundary
 
@@ -159,8 +161,9 @@ follow this sequence:
    result or status of `stale`, `outdated`, `empty`, `partial`, `truncated`,
    `unknown`, `ambiguous`, `degraded`, `error`, `timeout`, or `unmapped`, immediately
    mark `final=unusable` and `fallback=native`, stop graph inspection, prohibit
-   graph claims, use native RTK/OpenCode fallback, and mark Review Health
-   Degraded/inconclusive whenever graph evidence is required. Only a usable
+   graph claims, use the complete supplied packet as the native fallback, and
+   mark Review Health Degraded/inconclusive whenever graph evidence is required.
+   Only a usable
    schema permits `query`/`context`, affected process resources, `impact`, and
    `detect_changes` in that order. Inspect the graph schema before Cypher.
 
@@ -169,8 +172,8 @@ After a fresh/usable initial status, any operation result/status of `stale`,
 `timeout`, or `unmapped` from `schema inspection`, `query`/`context`, affected
 process resources, `impact`, or `detect_changes` immediately sets
 `final=unusable` and `fallback=native`. Stop graph inspection, prohibit all
-graph claims, use native RTK/OpenCode fallback, and mark Review Health
-Degraded/inconclusive whenever graph evidence is required.
+graph claims, use the complete supplied packet as the native fallback, and mark
+Review Health Degraded/inconclusive whenever graph evidence is required.
 An `unmapped` result always requires Review Health Degraded/inconclusive.
 
 For `schema inspection` and every later GitNexus operation (`query`/`context`,
@@ -178,14 +181,14 @@ affected process resources, `impact`, and `detect_changes`), normalize any
 thrown exception, unavailable or no-response result, malformed payload, or
 missing or unclassifiable status to `raw operation status=error`. Immediately
 set `final=unusable` and `fallback=native`, stop graph inspection, prohibit
-graph claims, use native RTK/OpenCode fallback, and mark Review Health
-Degraded/inconclusive whenever graph evidence is required.
+graph claims, use the complete supplied packet as the native fallback, and mark
+Review Health Degraded/inconclusive whenever graph evidence is required.
 Do not treat a later successful operation as repairing the failed snapshot.
 
 If freshness is stale or unusable, mark GitNexus inconclusive with final status
-`unusable`, use native RTK/OpenCode reads as the authoritative fallback, mark
-Review Health Degraded/inconclusive whenever graph evidence is required, and
-never make graph claims from any unusable evidence. Do not execute or retry a
+`unusable`, use the complete supplied packet as the authoritative fallback,
+mark Review Health Degraded/inconclusive whenever graph evidence is required,
+and never make graph claims from any unusable evidence. Do not execute or retry a
 local analyzer or use an external refresh service.
 
 Normalize every unusable raw status (`stale`, `outdated`, `empty`, `partial`,
@@ -198,8 +201,8 @@ unusable initial status, use the same grammar with `final=unusable` and
 shown above.
 Record other durations only when actually observed; use `not observed` rather
 than inventing values. Unusable GitNexus evidence is a health failure when
-graph evidence was required, but native fallback must still be used for exact
-local inspection.
+graph evidence was required, but the supplied packet must still be used as the
+native fallback for exact review context.
 
 ## 4. Resolve concurrency and schedule Phase A
 

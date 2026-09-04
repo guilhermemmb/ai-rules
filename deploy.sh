@@ -47,6 +47,8 @@ GITNEXUS_ARTIFACT=""
 RTK_BIN="${RTK_BIN:-}"
 RTK_HOMEBREW_FORMULA="rtk-ai/tap/rtk"
 RTK_PLUGIN_PATH="${OPENDIR}/plugins/rtk.ts"
+REVIEWER_COORDINATOR="reviewer-coordinator"
+REVIEWER_COORDINATOR_SKILL="skills/${REVIEWER_COORDINATOR}/SKILL.md"
 
 # Rulesync is a repository-recorded convergence input.
 # OMO always resolves the latest published release.
@@ -1399,17 +1401,33 @@ capture_prior_manifest() {
 detect_reviewer_shadow() {
   local canonical="$1"
   local shadow
-  [[ -f "$canonical" ]] || return 0
+  if [[ -f "$canonical" ]]; then
+    for shadow in \
+      "$HOME/.agents/skills/${REVIEWER_COORDINATOR}/SKILL.md" \
+      "$HOME/.agents/skills/${REVIEWER_COORDINATOR}.md" \
+      "$HOME/.agents/skills/${REVIEWER_COORDINATOR}/SKILL.mdx"; do
+      if [[ -L "$shadow" || -e "$shadow" && ! -f "$shadow" ]]; then
+        red "  ❌ reviewer-coordinator shadow entry is not a regular file: $shadow"
+        return 1
+      fi
+      if [[ -f "$shadow" ]] && ! cmp -s "$canonical" "$shadow"; then
+        red "  ❌ reviewer-coordinator shadow skill differs from canonical OpenCode skill: $shadow"
+        red "     Reconcile or remove it manually; deploy.sh will not delete it."
+        return 1
+      fi
+    done
+  fi
   for shadow in \
     "$HOME/.agents/skills/reviewer/SKILL.md" \
     "$HOME/.agents/skills/reviewer.md" \
     "$HOME/.agents/skills/reviewer/SKILL.mdx"; do
     if [[ -L "$shadow" || -e "$shadow" && ! -f "$shadow" ]]; then
-      red "  ❌ reviewer shadow entry is not a regular file: $shadow"
+      red "  ❌ stale reviewer shadow entry is not a regular file: $shadow"
+      red "     Reconcile or remove it manually; deploy.sh will not delete it."
       return 1
     fi
-    if [[ -f "$shadow" ]] && ! cmp -s "$canonical" "$shadow"; then
-      red "  ❌ reviewer shadow skill differs from canonical OpenCode skill: $shadow"
+    if [[ -f "$shadow" ]]; then
+      red "  ❌ stale reviewer shadow entry found: $shadow"
       red "     Reconcile or remove it manually; deploy.sh will not delete it."
       return 1
     fi
@@ -2413,7 +2431,7 @@ run_check() {
       DRIFT=1
       red "  ⚠️  OpenCode ownership manifest is missing: $OPENCODE_MANIFEST_PATH"
     fi
-    if ! detect_reviewer_shadow "$payload/skills/reviewer/SKILL.md"; then
+    if ! detect_reviewer_shadow "$payload/$REVIEWER_COORDINATOR_SKILL"; then
       DRIFT=1
     fi
   fi
@@ -2464,7 +2482,7 @@ run_deploy() {
         fail "existing OpenCode ownership manifest is invalid; refusing deployment"
     fi
   fi
-  detect_reviewer_shadow "$STAGE_ROOT/payload/skills/reviewer/SKILL.md" ||
+  detect_reviewer_shadow "$STAGE_ROOT/payload/$REVIEWER_COORDINATOR_SKILL" ||
     fail "reviewer shadow configuration requires manual reconciliation"
   # Capture the prior ownership manifest before any snapshot or mutation so
   # force override validation runs against a stable, structurally-valid prior
