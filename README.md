@@ -46,12 +46,24 @@ Failed, timed-out, unavailable, malformed, or incomplete lane results populate
 `errors` and make Review Health Degraded/inconclusive. This is a runtime setting
 documented in the reviewer prompt/skill, not an OpenCode top-level configuration
 key.
-For OpenCode, review commands and review requests run the preloaded `reviewer`
-workflow through the orchestrator, which is the sole coordinator of the
-applicable reviewer-lane lifecycle. OpenCode never dynamically calls
-`functions.skill`, dispatches a nested `@reviewer`, or silently falls back to a
-partial direct-lane review. Specialist lanes are read-only leaves: they do not
-load the reviewer skill or dispatch additional tasks.
+For OpenCode, review commands and review requests flow from the orchestrator to
+the `reviewer-coordinator`. The orchestrator does not preload the coordinator
+skill, select or directly dispatch lanes, batch work, aggregate findings, or
+compute the verdict. The coordinator owns exactly ten read-only lanes:
+`reviewer-code`, `reviewer-test`, `reviewer-errors`, `reviewer-types`,
+`reviewer-security`, `reviewer-performance`, `reviewer-data-integrity`,
+`reviewer-accessibility`, `reviewer-comments`, and `reviewer-simplifier`.
+The first nine run in Phase A batches; `reviewer-simplifier` runs exactly once
+sequentially in Phase B. It returns one inline Markdown report with telemetry,
+lane and batch/session details, GitNexus status or native fallback, Review
+Health, verdict, prioritized findings, strengths, and recommended action.
+
+Review policy is target-aware: current diff/task defaults to `auto`; entire
+branch, branch, and PR default to `full`; explicit tagged `auto`, `full`, or
+`aspects` overrides the default. Textual `all` normalizes to `full`. Stale or
+otherwise unusable GitNexus evidence records `fallback=native` and
+`refresh=not permitted`; no graph claims are made and graph coverage is
+disclosed as unavailable.
 
 ### OpenCode multi-fixer scheduler
 
@@ -177,14 +189,15 @@ anywhere in this configuration.
 | **Fixer**        | DeepSeek V4 Pro via Novita (high) | DeepSeek V4 Pro via Novita (high) | Implementation specialist |
 | **Observer**     | Gemini 3 Flash    | Gemini 3 Flash         | Visual analysis                 |
 
-### Custom (13 + 1 compatibility alias)
+### Custom (14)
 
 | Agent                       | Model (Default profile)   | Model (Cost-efficient profile) | Dispatch when                                              |
 | :-------------------------- | :---------------- | :--------------------- | :--------------------------------------------------------- |
 | **Navigator**               | Gemini 3 Flash    | Gemini 3 Flash         | agent-browser CLI, snapshots/refs, screenshots, extraction |
 | **Detective**               | GPT-5.6 Luna      | DeepSeek V4 Flash      | Production errors, logs, metrics                           |
 | **Sage**                    | GPT-5.6 Terra     | GPT-5.6 Terra          | Gorgias metrics, schemas, rules                            |
-| **Reviewer lanes (10)**     | Mixed: Luna, Terra, DeepSeek V4 Flash, Gemini 3 Flash | Mixed: DeepSeek V4 Flash, DeepSeek V4 Pro, GPT-5.6 Terra | OpenCode orchestrator review workflow |
+| **reviewer-coordinator**    | DeepSeek V4 Flash (medium) | DeepSeek V4 Flash (medium) | Owns OpenCode review policy, batching, aggregation, and verdict |
+| **Reviewer lanes (10)**     | Mixed: Luna, Terra, DeepSeek V4 Flash, Gemini 3 Flash | Mixed: DeepSeek V4 Flash, DeepSeek V4 Pro, GPT-5.6 Terra | `reviewer-coordinator` review workflow |
 | **reviewer-code**           | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | CLAUDE.md compliance, bugs                                 |
 | **reviewer-test**           | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Behavioral test coverage                                   |
 | **reviewer-errors**         | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Silent failures, error handling                            |
@@ -197,9 +210,9 @@ anywhere in this configuration.
 | **reviewer-simplifier**     | DeepSeek V4 Flash | DeepSeek V4 Flash      | Post-Phase-A clarity and maintainability pass              |
 
 **Council** disabled. Observer auto-routes images from Orchestrator. The
-`reviewer` agent is a retained compatibility-coordinator alias (excluded from
-the 13 custom agents above); OpenCode review ownership runs through the
-orchestrator's preloaded reviewer workflow.
+`reviewer-coordinator` agent is the OpenCode review owner; its ten specialist
+lanes are read-only and it alone selects, batches, aggregates, and computes the
+review verdict. There is no active `@reviewer` compatibility coordinator.
 
 **Model Profiles Rationale:** routing is **neutral across speed, quality, and
 cost**. Both profiles use Novita DeepSeek V4 Pro for the Fixer with the preserved
@@ -279,7 +292,7 @@ or reviewer.
 S/M work uses one concise merged SDD + implementation plan, one approval, and
 implementation dispatched to `@fixer` for code or `@designer` for UI/UX as
 appropriate. It then always runs exactly one automatic post-implementation
-review gate through the OpenCode orchestrator's preloaded reviewer workflow;
+review gate through `reviewer-coordinator`;
 it does not use `executing-plans`, a ledger, or per-task reviews, and does not
 ask the user to choose whether to review.
 
@@ -292,8 +305,8 @@ S/M post-implementation reviewer gate.
 | ------------------------------------ | ----------------- | --------------------------------------------------------------------------------------- |
 | 1. Brainstorm                        | `brainstorming`   | @explorer, @librarian, @oracle, @designer                                               |
 | 2. Plan                              | `writing-plans`   | — (orchestrator writes the S/M combined plan or L/XL plan)                              |
-| 3. Execute                           | S/M combined-plan; `executing-plans` for L/XL | @fixer (code), @designer (UI/UX), OpenCode orchestrator (S/M post-implementation or L/XL per-task), @oracle (escalation) |
-| 4. Review (optional; user-confirmed) | `reviewing-plans` | OpenCode orchestrator (final gate — up to 10 applicable reviewer-* specialists, only after opt-in) |
+| 3. Execute                           | S/M combined-plan; `executing-plans` for L/XL | @fixer (code), @designer (UI/UX), OpenCode orchestrator (execution lead; delegates review gates), @oracle (escalation) |
+| 4. Review (optional; user-confirmed) | `reviewing-plans` | OpenCode `reviewer-coordinator` (final gate — up to 10 applicable reviewer-* specialists, only after opt-in) |
 
 See `docs/sdd-workflow.md` for the full flowchart and agent usage matrix.
 
@@ -341,8 +354,9 @@ The system has two explicit discovery tiers:
 1. **RTK/native OpenCode tools** are authoritative for exact text and file
    discovery, shell commands, tests, Git, configuration, documentation, and
    edits.
-2. **GitNexus** is an indexed macro graph for Orchestrator, Oracle, Explorer,
-   and Detective. Confirm context and freshness, then use the documented
+2. **GitNexus** is read-only indexed evidence for Orchestrator, Oracle,
+   Explorer, Detective, and `reviewer-coordinator`. Confirm context and
+   freshness, then use the documented
    `context/freshness -> query/context -> affected process resources -> impact ->
    detect_changes` sequence. Inspect the schema before using Cypher; do not
    invent query syntax. GitNexus 1.6.5 exposes server-side rename, but OpenCode
@@ -352,10 +366,14 @@ The system has two explicit discovery tiers:
    table is in
    [`docs/workflows.md`](docs/workflows.md#gitnexus-sequence-and-tool-selection).
 
-   Only Orchestrator, Oracle, Explorer, and Detective have GitNexus access.
-   Designer, Fixer, `reviewer-code`, and `reviewer-types` have no
-   code-intelligence MCP; they use native OpenCode tools for exact definitions,
-   references, diagnostics, files, shell, tests, and edits.
+   Only Orchestrator, Oracle, Explorer, Detective, and `reviewer-coordinator`
+   have the managed read-only GitNexus evidence grant. Designer, Fixer, and
+   all reviewer lanes otherwise use native OpenCode tools for exact
+   definitions, references, diagnostics, files, shell, tests, and edits.
+   Stale, outdated, empty, partial, truncated, unknown, ambiguous, degraded,
+   error, timeout, or unmapped evidence is unusable. Local refresh/analyze
+   commands and GitNexus Bash access are not part of this architecture; fall
+   back to native tools and disclose graph coverage as unavailable.
 
 ### MCP access matrix
 
@@ -367,31 +385,19 @@ The system has two explicit discovery tiers:
 | Detective | ✓ | `pup`/`gcloud` via Bash |
 | Designer | — | `figma-mcp`; no code-intelligence MCP |
 | Fixer | — | no code-intelligence MCP |
-| `reviewer-code` | — | no code-intelligence MCP |
-| `reviewer-types` | — | no code-intelligence MCP |
+| `reviewer-coordinator` | ✓ (read-only evidence) | Owns reviewer coordination; no direct lane access by Orchestrator |
+| `reviewer-*` lanes | — | no code-intelligence MCP |
 | Librarian | — | `context7`, `websearch`, `gh_grep`, `linear`, `cortex` |
 | Sage | — | `cortex` |
-| Navigator, Observer, `reviewer`, and remaining reviewer lanes | — | None |
+| Navigator, Observer, and reviewer lanes | — | None |
 
-GitNexus `1.6.5` is persistently installed by `deploy.sh`. Its source MCP
-command retains `GITNEXUS_MCP_READ_ONLY=1` for forward compatibility, but this
-environment does not treat that variable as a universal process-level boundary.
-OpenCode denies the normalized `gitnexus_rename` tool; direct GitNexus processes
-are outside that managed OpenCode control. Worktrunk lifecycle setup uses
-GitNexus only:
-
-```bash
-gitnexus analyze --index-only "$WORKSPACE_PATH"
-```
-
-GitNexus setup is path-scoped and does not inject `AGENTS.md`, `CLAUDE.md`, or
-skills. A failed GitNexus command publishes `failed` rather than silently
-publishing `ready`.
-
-Cleanup runs `gitnexus remove --force "$WORKSPACE_PATH"`, accepts an absent
-index as idempotent, and targets only GitNexus state. Cleanup failures use the
-durable retry queue; cleanup never runs `gitnexus clean --all`, `wt remove`, or
-`git worktree remove`.
+GitNexus is exposed to assigned agents only through the managed read-only MCP;
+OpenCode denies the normalized `gitnexus_rename` tool. There is no documented
+local refresh/analyze lifecycle, GitNexus Bash fallback, or Phase 0 receipt
+service. When evidence is stale, outdated, empty, partial, truncated, unknown,
+ambiguous, degraded, errored, timed out, or unmapped, the consumer records
+`fallback=native` and `refresh=not permitted`, stops graph claims, and
+discloses graph coverage as unavailable.
 
 ### Serena removal and deferred/manual uninstall runbook — legacy Codebase Memory state
 
@@ -401,7 +407,8 @@ claim that the launcher, global state, or repository state has already been
 deleted. The required sequence is:
 
 1. Remove source/configuration grants and deploy the GitNexus-only configuration.
-2. Verify the live output and the four-agent matrix.
+2. Verify the live output and the five-agent GitNexus access matrix (Orchestrator,
+   Oracle, Explorer, Detective, and reviewer-coordinator).
 3. Uninstall `serena-agent` with `uv tool uninstall serena-agent`.
 4. Remove only the verified Serena launcher, global state, and repository state.
 5. Avoid broad uv-cache deletion.

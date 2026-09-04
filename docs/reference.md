@@ -54,7 +54,7 @@ All under [`.rulesync/skills/`](../.rulesync/skills/), grouped by purpose.
 
 | Skill | Purpose | Path |
 | :--- | :--- | :--- |
-| reviewer | Ten-lane PR/branch/diff review workflow | [`reviewer/SKILL.md`](../.rulesync/skills/reviewer/SKILL.md) |
+| reviewer-coordinator | Ten-lane PR/branch/diff review coordination | [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) (`agents.reviewer-coordinator`) |
 | simplify | Clarity/readability without behavior change | [`simplify/SKILL.md`](../.rulesync/skills/simplify/SKILL.md) |
 
 ### Implementation specialist
@@ -161,15 +161,19 @@ Defined in [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) under
 | Navigator | [`.rulesync/subagents/navigator.md`](../.rulesync/subagents/navigator.md) | Gemini 3 Flash | Browser automation via `agent-browser` CLI |
 | Detective | [`.rulesync/subagents/detective.md`](../.rulesync/subagents/detective.md) | `bf-o/gpt-5.6-luna` | Production diagnostics via `pup`/`gcloud` (read-only) |
 | Sage | [`.rulesync/subagents/sage.md`](../.rulesync/subagents/sage.md) | `bf-o/gpt-5.6-terra` | Gorgias domain knowledge via Cortex |
-| reviewer | [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) | `bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash` | Retained compatibility-coordinator alias (not an OpenCode coordinator) |
-| reviewer-code … reviewer-accessibility (10 lanes) | [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) | Mixed: Luna/Terra/Flash/Gemini | Read-only review specialist lanes |
+| reviewer-coordinator | [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) | `bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash` | OpenCode review coordinator; read-only orchestration |
+| reviewer-code … reviewer-accessibility (10 lanes) | [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) | Mixed: Luna/Terra/Flash/Gemini | Read-only review specialist lanes owned by reviewer-coordinator |
 
 The ten reviewer lanes are: `reviewer-code`, `reviewer-test`,
 `reviewer-errors`, `reviewer-types`, `reviewer-security`,
 `reviewer-performance`, `reviewer-data-integrity`, `reviewer-accessibility`,
-`reviewer-comments`, `reviewer-simplifier`. The `reviewer` agent and the ten
-lanes are defined inline in `oh-my-opencode-slim.json` (not in
+`reviewer-comments`, `reviewer-simplifier`. The `reviewer-coordinator` agent and
+the ten lanes are defined inline in `oh-my-opencode-slim.json` (not in
 `.rulesync/subagents/`).
+
+The first nine lanes run in Phase A batches; `reviewer-simplifier` runs exactly
+once sequentially in Phase B. The orchestrator delegates the complete packet to
+`reviewer-coordinator` and does not select or directly dispatch lanes.
 
 Per-agent appended prompt instructions live in
 [`.rulesync/oh-my-opencode-slim/`](../.rulesync/oh-my-opencode-slim/)
@@ -219,7 +223,7 @@ Agent assignments: [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json).
 
 | MCP | Enabled (source) | Assigned to (source) |
 | :--- | :--- | :--- |
-| gitnexus | ✓ | Orchestrator, Oracle, Explorer, Detective |
+| gitnexus | ✓ | Orchestrator, Oracle, Explorer, Detective, reviewer-coordinator |
 | context7 | ✓ | Librarian |
 | github | ✓ | Orchestrator |
 | sentry | ✗ | — (Detective reports it unavailable) |
@@ -241,31 +245,19 @@ Datadog and GCP Logs are accessed via `pup` and `gcloud` CLIs (Bash), not MCP.
 
 ### Code intelligence lifecycle
 
-`deploy.sh` persistently installs GitNexus `1.6.5`. Its source MCP command
-retains `GITNEXUS_MCP_READ_ONLY=1` for forward compatibility, but that variable
-is not a universal process-level boundary. GitNexus 1.6.5 exposes server-side
-rename; OpenCode denies the normalized `gitnexus_rename` tool, so agents cannot
-invoke it through this managed OpenCode configuration. This is an OpenCode-side
-control; direct GitNexus processes are outside that control.
-
-GitNexus requires explicit, repository-targeted indexing before its MCP server
-can serve that repository:
-
-```bash
-gitnexus analyze --index-only /absolute/path/to/repository
-gitnexus status
-```
-
-The pinned `--index-only` mode does not generate agent files, and `gitnexus mcp`
-serves existing registered indexes without building one. Use the sequence
-context/freshness → query/context → affected process resources → impact →
-detect_changes. Inspect schema before Cypher. Stale, empty, partial, truncated,
-ambiguous, degraded, or `UNKNOWN` results are inconclusive. The canonical operation table is in
+GitNexus is read-only indexed evidence. No local refresh/analyze commands,
+GitNexus Bash access, or Phase 0 receipt service are part of this architecture.
+Use the sequence context/freshness → query/context → affected process resources
+→ impact → detect_changes and inspect schema before Cypher. Stale, outdated,
+empty, partial, truncated, unknown, ambiguous, degraded, error, timeout, or
+unmapped results are unusable: record `fallback=native` and
+`refresh=not permitted`, make no graph claims, and disclose graph coverage as
+unavailable. The canonical operation table is in
 [`docs/workflows.md`](./workflows.md#gitnexus-sequence-and-tool-selection).
 
-Only Orchestrator, Oracle, Explorer, and Detective have GitNexus access. Designer,
-Fixer, `reviewer-code`, and `reviewer-types` have no code-intelligence MCP and
-use native RTK/OpenCode tools for exact local work.
+Only Orchestrator, Oracle, Explorer, Detective, and `reviewer-coordinator` have
+the managed read-only GitNexus evidence grant. Designer, Fixer, and the
+reviewer lanes use native RTK/OpenCode tools for exact local work.
 
 #### Serena removal and deferred Codebase Memory retirement
 

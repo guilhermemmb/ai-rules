@@ -43,7 +43,7 @@ One concise **merged** SDD + implementation plan, written to
 `~/developer/planning-docs/{{repository-name}}/.planning/plans/`. Present it
 once, wait for one approval, then dispatch implementation to `@fixer` (code) or
 `@designer` (UI/UX). Exactly one post-implementation review gate runs
-automatically (OpenCode orchestrator; Claude Code `@reviewer`).
+automatically through the OpenCode `reviewer-coordinator`.
 
 S/M must **not** create a separate spec, load `executing-plans`, create a
 ledger, run a per-task review loop, or prompt the user to choose whether to
@@ -114,13 +114,15 @@ exact-file work. GitNexus 1.6.5 exposes server-side rename; OpenCode denies the
 normalized `gitnexus_rename` tool, so agents cannot invoke it through this
 managed OpenCode configuration. This is an OpenCode-side control, not a
 universal process-level boundary; direct GitNexus processes are outside that
-control. Stale, empty, partial, truncated, ambiguous, degraded, or `UNKNOWN`
-results are inconclusive, so fall back immediately to RTK/native tools. Only
-Orchestrator, Oracle, Explorer, and Detective have GitNexus access.
+control. Stale, outdated, empty, partial, truncated, ambiguous, degraded, or
+`UNKNOWN` results are inconclusive, so fall back immediately to RTK/native
+tools. Orchestrator, Oracle, Explorer, Detective, and reviewer-coordinator have
+GitNexus access.
 
-Designer, Fixer, `reviewer-code`, and `reviewer-types` have no code-intelligence
-MCP after Serena removal. They use native RTK/OpenCode tools for definitions,
-references, implementations, diagnostics, files, shell, tests, and edits.
+Designer, Fixer, and all reviewer lanes otherwise use native RTK/OpenCode tools
+for definitions, references, implementations, diagnostics, files, shell, tests,
+and edits; reviewer-coordinator additionally inspects its complete review packet
+and GitNexus evidence before coordinating lanes.
 
 **Fallback rule:** fall back immediately to `rtk grep` / `rtk read` when GitNexus
 is unavailable or returns empty/incomplete results. Do not use
@@ -138,7 +140,7 @@ Intent-to-agent routing. Models are `Current` as declared in
 
 | Intent | Agent | Notes |
 | :--- | :--- | :--- |
-| Master delegation & coordination | Orchestrator | Default agent; owns review coordination in OpenCode |
+| Master delegation & coordination | Orchestrator | Default agent; delegates complete review packets to `reviewer-coordinator` |
 | Strategic/architecture decisions, escalation | Oracle | Also adjudicates failed review loops |
 | Codebase reconnaissance | Explorer | RTK/native + GitNexus discovery |
 | External/public research, docs | Librarian | Context7, websearch, Linear, Cortex |
@@ -148,8 +150,7 @@ Intent-to-agent routing. Models are `Current` as declared in
 | Browser automation | Navigator | `agent-browser` CLI via Bash only |
 | Production diagnostics | Detective | GitNexus graph with the managed OpenCode rename denial + `pup`/`gcloud` via Bash, read-only |
 | Gorgias domain knowledge | Sage | Cortex MCP, read-only |
-| Review coordination (OpenCode) | Orchestrator (preloaded `reviewer`) | Directly dispatches 10 `reviewer-*` lanes |
-| Review coordination (Claude Code) | `@reviewer` compatibility alias | Same ten-lane workflow |
+| Review coordination (OpenCode) | `reviewer-coordinator` | Receives the orchestrator's complete packet; selects, batches, aggregates, and computes the verdict for 10 read-only lanes |
 
 See the [Agent Pantheon in the README](../README.md#agent-pantheon) and
 [`agents-overview/`](../agents-overview/README.md) for the interactive view.
@@ -219,17 +220,33 @@ autonomously (see [`git-safety.md`](../.rulesync/rules/git-safety.md)).
 ## 4. Reviewer pipeline
 
 Source:
-[`.rulesync/skills/reviewer/SKILL.md`](../.rulesync/skills/reviewer/SKILL.md)
+[`.rulesync/skills/reviewer-coordinator/SKILL.md`](../.rulesync/skills/reviewer-coordinator/SKILL.md)
 and the [`review-pr` command](../.rulesync/commands/review-pr.md).
 
 ### Coordinator ownership
 
-- **OpenCode:** the orchestrator preloads the `reviewer` skill and is the sole
-  coordinator. It directly selects, batches, and aggregates the ten
-  `reviewer-*` lanes. It must **never** call `functions.skill`, dispatch a
-  nested `@reviewer`, or silently fall back to a partial direct-lane review.
-- **Claude Code:** the `@reviewer` compatibility coordinator runs the same
-  ten-lane workflow.
+- **OpenCode:** the orchestrator delegates the complete review packet to
+  `reviewer-coordinator`. It does not preload the coordinator skill, select or
+  directly dispatch lanes, batch work, aggregate findings, or compute the
+  verdict. `reviewer-coordinator` owns exactly ten read-only lanes:
+  `reviewer-code`, `reviewer-test`, `reviewer-errors`, `reviewer-types`,
+  `reviewer-security`, `reviewer-performance`, `reviewer-data-integrity`,
+  `reviewer-accessibility`, `reviewer-comments`, and `reviewer-simplifier`.
+
+### Target-aware policy and result contract
+
+Current diff/task targets default to `auto`; entire branch, branch, and PR
+targets default to `full`. Explicit tagged `auto`, `full`, or `aspects` values
+override that default. Textual `all` normalizes to `full`. Auto follows the
+trigger table; full runs the nine Phase A lanes, then runs
+`reviewer-simplifier` exactly once sequentially in Phase B when executable,
+source, or config content is present. A docs-only full review does not run the
+simplifier.
+
+The coordinator returns one inline Markdown report containing telemetry,
+triggered/skipped lanes, batches and exact session IDs, timing, GitNexus
+status/fallback, Review Health, verdict, prioritized findings, strengths, and
+recommended action.
 
 ### Lanes and triggers
 
@@ -269,6 +286,13 @@ smoke evidence are all reported. Any of the following forces
 - runtime smoke evidence unavailable, failed, or unable to prove parent
   identity / tool execution;
 - effective-permission mismatch (a failed smoke test or permission mismatch).
+
+GitNexus evidence is read-only. Stale, outdated, empty, partial, truncated,
+unknown, ambiguous, degraded, error, timeout, or unmapped evidence is unusable;
+the coordinator records `fallback=native` and `refresh=not permitted`, makes no
+graph claims, and discloses graph coverage as unavailable. Local
+refresh/analyze commands, GitNexus Bash access, and a Phase 0 receipt service
+are not part of this workflow.
 
 Static validation alone is **never** runtime smoke evidence. A
 `Degraded`/inconclusive status describes coverage, not a code defect. Runtime
@@ -310,33 +334,18 @@ RTK is absent). Test with `git status` — RTK rewrites it transparently.
 
 ### GitNexus integration and Serena removal lifecycle
 
-Deployment persistently installs GitNexus `1.6.5`. The GitNexus source MCP
-command retains `GITNEXUS_MCP_READ_ONLY=1` for forward compatibility, but this
-does not enforce a universal process-level boundary. GitNexus 1.6.5 exposes
-server-side rename; OpenCode denies the normalized `gitnexus_rename` tool, so
-agents cannot invoke it through this managed OpenCode configuration. This is an
-OpenCode-side control; direct GitNexus processes are outside that control.
-
-Worktrunk owns setup for each canonical worktree path and runs GitNexus only,
-synchronously from its `post-start` hook:
-
-```bash
-gitnexus analyze --index-only "$WORKSPACE_PATH"
-```
-
-The `--index-only` mode does not generate agent files. A failed GitNexus
-command publishes `failed`, not `ready`. `pre-remove` runs only
-`gitnexus remove --force "$WORKSPACE_PATH"`; an absent index is an idempotent
-success. Cleanup failures remain in the durable retry queue, and cleanup never
-runs `gitnexus clean --all`, `wt remove`, or `git worktree remove`.
+Deployment records GitNexus as managed read-only evidence. There is no local
+refresh/analyze lifecycle, GitNexus Bash access, or Phase 0 receipt service in
+this architecture. Stale, outdated, empty, partial, truncated, unknown,
+ambiguous, degraded, error, timeout, or unmapped evidence is unusable; use
+native RTK/OpenCode fallback, record `fallback=native` and
+`refresh=not permitted`, and disclose graph coverage as unavailable.
 
 The GitNexus sequence for graph work through the managed OpenCode configuration
 remains context/freshness → query/context → affected process resources → impact
-→ detect_changes; schema inspection comes before Cypher. Stale, empty, partial,
-truncated, ambiguous, degraded, or `UNKNOWN` results are inconclusive and
-require immediate RTK/native fallback. Only Orchestrator, Oracle, Explorer, and
-Detective have GitNexus access; former Serena users have no code-intelligence
-MCP.
+→ detect_changes; schema inspection comes before Cypher. Only Orchestrator,
+Oracle, Explorer, Detective, and `reviewer-coordinator` have the managed
+read-only GitNexus grant; reviewer lanes use native tools for exact local work.
 
 Rulesync owns GitNexus skill source under `.rulesync/skills/gitnexus-*/` and
 projects it to `~/.config/opencode/skills/gitnexus-*/`. Copies under

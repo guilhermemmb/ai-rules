@@ -1,5 +1,5 @@
 %% Dispatch and review flow (current behavior)
-%% See docs/workflows.md for prose; source: .rulesync/rules/custom-rules.md
+%% See docs/workflows.md for prose and the reviewer-coordinator contract.
 
 flowchart TD
     START(["Task received"]) --> SIZE["Report: T-shirt size XS | S | M | L | XL"]
@@ -12,8 +12,8 @@ flowchart TD
     SM_PLAN --> SM_APPROVE{"Approve once?"}
     SM_APPROVE -->|"yes"| SM_IMPL["Dispatch @fixer / @designer"]
     SM_APPROVE -->|"no"| SM_REVISE["Revise / clarify / defer"]
-    SM_IMPL --> SM_REVIEW["One automatic post-implementation gate<br/>OpenCode orchestrator · Claude @reviewer"]
-    SM_REVIEW --> DONE
+    SM_IMPL --> SM_REVIEW["One automatic post-implementation gate<br/>Orchestrator delegates to reviewer-coordinator"]
+    SM_REVIEW --> COORD
 
     TRIAGE -->|"L / XL"| LX_SPEC["Full SDD: separate spec (specs/)<br/>then plan (plans/)"]
     LX_SPEC --> LX_PLAN["writing-plans → plan approved"]
@@ -27,23 +27,35 @@ flowchart TD
         B4["Reconcile via task_result<br/>exact session IDs"]
         B5{"Status?"}
         B6["NEEDS_CONTEXT / BLOCKED<br/>hold dependents · surface"]
-        B7["DONE → per-child review gate"]
+        B7["DONE → per-child review packet"]
     end
 
     LX_EXEC --> BATCH
     B1 --> B2 --> B3 --> B4 --> B5
     B5 -->|"NEEDS_CONTEXT / BLOCKED"| B6
     B5 -->|"DONE"| B7
+    B7 --> COORD
 
-    B7 --> REVIEW{"Per-child review<br/>spec ✅ / quality?"}
-    REVIEW -->|"no"| FIX["Fix loop (max 3 rounds)<br/>rounds 1-2 same agent · round 3 fresh"]
+    subgraph REVIEW["OpenCode review architecture"]
+        direction TB
+        COORD["reviewer-coordinator<br/>sole coordinator; read-only"]
+        POLICY["Target-aware policy:<br/>current diff/task → auto · entire branch/branch/PR → full<br/>explicit tagged auto/full/aspects overrides · textual all → full"]
+        PHASEA["Phase A: first nine lanes<br/>reviewer-code · reviewer-test · reviewer-errors · reviewer-types<br/>reviewer-security · reviewer-performance · reviewer-data-integrity<br/>reviewer-accessibility · reviewer-comments<br/>bounded independent batches"]
+        PHASEB["Phase B: reviewer-simplifier<br/>exactly once, sequentially when executable/source/config content applies"]
+        FALLBACK["Unusable GitNexus evidence<br/>fallback=native · refresh=not permitted<br/>no graph claims; disclose graph coverage unavailable"]
+        REPORT["One inline Markdown report<br/>telemetry · triggered/skipped lanes · batches/session IDs · timing<br/>GitNexus status/fallback · Review Health · verdict<br/>prioritized findings · strengths · recommended action"]
+        COORD --> POLICY --> PHASEA --> PHASEB --> REPORT
+        COORD -.-> FALLBACK
+    end
+
+    REPORT --> REVIEW_RESULT{"Review passed?"}
+    REVIEW_RESULT -->|"no"| FIX["Fix loop (max 3 rounds)<br/>rounds 1-2 same agent · round 3 fresh"]
     FIX -->|"still failing"| ORACLE["Escalate to @oracle<br/>adjust plan or defer"]
     ORACLE --> B7
-    REVIEW -->|"yes"| RELEASE["Release dependents<br/>append ledger"]
+    REVIEW_RESULT -->|"yes"| RELEASE["Release dependents<br/>append ledger"]
     RELEASE --> MORE{"More tasks?"}
     MORE -->|"yes"| BATCH
     MORE -->|"no"| OPT_IN{"User opt-in for<br/>final comprehensive review?"}
-    OPT_IN -->|"yes"| FINAL["reviewing-plans<br/>all 10 reviewer-* lanes"]
+    OPT_IN -->|"yes"| COORD
     OPT_IN -->|"no / skip"| SKIP["Skip final review (recorded)"]
-    FINAL --> DONE
     SKIP --> DONE

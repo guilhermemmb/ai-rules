@@ -27,34 +27,28 @@ The visualization follows the final two-tier architecture:
 
 - **RTK/native OpenCode tools** — default and authoritative for exact text/files,
   shell, tests, Git, configuration, documentation, and edits.
-- **GitNexus** — indexed architecture/process/API-impact graph for Orchestrator,
-  Oracle, Explorer, and Detective only. GitNexus 1.6.5 still exposes
-  server-side rename; OpenCode denies the normalized `gitnexus_rename` tool, so
-  agents cannot invoke it through this managed OpenCode configuration. This is
-  an OpenCode-side control, not a universal process-level boundary.
-- **Former Serena users** — Designer, Fixer, `reviewer-code`, and
-  `reviewer-types` have no code-intelligence MCP and use native RTK/OpenCode
-  tools.
+- **GitNexus** — read-only indexed evidence for Orchestrator, Oracle, Explorer,
+  Detective, and `reviewer-coordinator`. Stale, outdated, empty, partial,
+  truncated, unknown, ambiguous, degraded, error, timeout, or unmapped evidence
+  is unusable. Local refresh/analyze commands and GitNexus Bash access are not
+  part of this architecture; use native fallback and disclose graph coverage as
+  unavailable.
+- **Native OpenCode tools** — remain authoritative for exact local work for
+  every agent, including agents that consume GitNexus evidence; this overview
+  does not infer the absence of additional access from an unlisted grant.
 
-GitNexus `1.6.5` is persistently installed by `deploy.sh`. Its source MCP
-command retains `GITNEXUS_MCP_READ_ONLY=1` for forward compatibility, but
-GitNexus 1.6.5 does not enforce it as a universal process-level boundary. It
-requires an explicit operator-targeted
-`gitnexus analyze --index-only /absolute/path/to/repository` before
-`gitnexus mcp` can serve that repository; `mcp` does not build indexes. Use
-context/freshness → query/context → affected process resources → impact →
-detect_changes; inspect schema before Cypher. Stale, empty, partial, truncated,
-ambiguous, degraded, or `UNKNOWN` results are inconclusive. The canonical GitNexus operation table is
-in [`docs/workflows.md`](../docs/workflows.md#gitnexus-sequence-and-tool-selection).
-GitNexus users follow context/freshness → query/context → affected process
-resources → impact → detect_changes and inspect schema before Cypher. Stale,
-empty, partial, truncated, ambiguous, degraded, or `UNKNOWN` results are
-inconclusive and require immediate native fallback.
+Use context/freshness → query/context → affected process resources → impact →
+detect_changes; inspect schema before Cypher. GitNexus failures or stale,
+outdated, empty, partial, truncated, unknown, ambiguous, degraded, error,
+timeout, or unmapped evidence records `fallback=native` and
+`refresh=not permitted`, stops graph claims, and discloses graph coverage as
+unavailable. No Phase 0 receipt service is used. The canonical GitNexus
+operation table is in [`docs/workflows.md`](../docs/workflows.md#gitnexus-sequence-and-tool-selection).
 
 The generated inventory preserves unrelated access: Orchestrator has `github`,
 Designer has `figma-mcp`, Librarian has `context7`, `websearch`, `gh_grep`,
-`linear`, and `cortex`, Sage has `cortex`, and all other agents have neither
-GitNexus nor a code-intelligence MCP.
+`linear`, and `cortex`, and Sage has `cortex`. Access not listed in this
+summary remains governed by the authoritative runtime configuration.
 
 Rulesync owns GitNexus skill source under `.rulesync/skills/gitnexus-*/` and
 projects it to `~/.config/opencode/skills/gitnexus-*/`. Copies under
@@ -88,27 +82,17 @@ flowchart TD
     ORCH --> NAVIGATOR[Navigator]
     ORCH --> DETECTIVE[Detective]
     ORCH --> SAGE[Sage]
-    ORCH --> REVIEWERCODE["Reviewer Code (OpenCode direct)"]
-    ORCH --> REVIEWERCOMMENTS["Reviewer Comments (OpenCode direct, if docs)"]
-    ORCH --> REVIEWERTEST["Reviewer Test (OpenCode direct, if tests)"]
-    ORCH --> REVIEWERERRORS["Reviewer Errors (OpenCode direct, if errors)"]
-    ORCH --> REVIEWERTYPES["Reviewer Types (OpenCode direct, if types)"]
-    ORCH --> REVIEWERSECURITY["Reviewer Security (OpenCode direct, if security-sensitive)"]
-    ORCH --> REVIEWERPERFORMANCE["Reviewer Performance (OpenCode direct, if performance-sensitive)"]
-    ORCH --> REVIEWERDATA["Reviewer Data Integrity (OpenCode direct, if data-sensitive)"]
-    ORCH --> REVIEWERACCESSIBILITY["Reviewer Accessibility (OpenCode direct, if UI files)"]
-    ORCH --> REVIEWERSIMPLIFIER["Reviewer Simplifier (OpenCode direct, sequential Phase B)"]
-    ORCH --> REVIEWER["Reviewer (compatibility coordinator alias)"]
-    REVIEWER -.-> REVIEWERCODE
-    REVIEWER -.-> REVIEWERCOMMENTS
-    REVIEWER -.-> REVIEWERTEST
-    REVIEWER -.-> REVIEWERERRORS
-    REVIEWER -.-> REVIEWERTYPES
-    REVIEWER -.-> REVIEWERSECURITY
-    REVIEWER -.-> REVIEWERPERFORMANCE
-    REVIEWER -.-> REVIEWERDATA
-    REVIEWER -.-> REVIEWERACCESSIBILITY
-    REVIEWER -.-> REVIEWERSIMPLIFIER
+    ORCH --> COORD["reviewer-coordinator"]
+    COORD --> REVIEWERCODE["Reviewer Code (Phase A)"]
+    COORD --> REVIEWERTEST["Reviewer Test (Phase A, if tests/behavior)"]
+    COORD --> REVIEWERERRORS["Reviewer Errors (Phase A, if errors)"]
+    COORD --> REVIEWERTYPES["Reviewer Types (Phase A, if types)"]
+    COORD --> REVIEWERSECURITY["Reviewer Security (Phase A, if security)"]
+    COORD --> REVIEWERPERFORMANCE["Reviewer Performance (Phase A, if performance)"]
+    COORD --> REVIEWERDATA["Reviewer Data Integrity (Phase A, if data)"]
+    COORD --> REVIEWERACCESSIBILITY["Reviewer Accessibility (Phase A, if UI)"]
+    COORD --> REVIEWERCOMMENTS["Reviewer Comments (Phase A, if docs)"]
+    COORD --> REVIEWERSIMPLIFIER["Reviewer Simplifier (Phase B, once sequentially)"]
 ```
 
 OpenCode implementation scheduling is bounded separately from reviewer
@@ -122,22 +106,32 @@ does not expose dynamic per-task path ACLs, changed-path smoke evidence rejects
 unowned writes. Failed, timed-out, `NEEDS_CONTEXT`, `BLOCKED`, missing, or
 malformed results hold dependents and are surfaced.
 
-The OpenCode orchestrator dispatches applicable concern lanes in independent
-background batches. After Phase A completes, reviewer-simplifier runs exactly
-once sequentially only when selected/applicable—when the normalized diff
-contains a non-empty executable/source/config diff and the aspect filter permits
-it—and receives the consolidated Phase A findings. The runtime setting
+The OpenCode orchestrator delegates the complete review packet to
+`reviewer-coordinator`; it does not preload the coordinator skill, select or
+directly dispatch lanes, batch work, aggregate findings, or compute the verdict.
+The coordinator dispatches applicable concern lanes in independent background
+batches. After Phase A completes, reviewer-simplifier runs exactly once
+sequentially only when selected/applicable—when the normalized diff contains a
+non-empty executable/source/config diff and the aspect filter permits it—and
+receives the consolidated Phase A findings. The runtime setting
 `REVIEWER_MAX_PARALLEL` controls each concern batch; unset or invalid values
 default to `3`, values from `1` through `3` are used, and values above `3`
 are clamped to `3`. Any non-empty lane `errors` array makes Review Health
 Degraded/inconclusive.
-OpenCode review commands run the preloaded reviewer workflow through the
-orchestrator, which alone owns lane selection and aggregation. The `reviewer`
-agent is a retained compatibility-coordinator alias, not an OpenCode
-coordinator. The ten `reviewer-*` agents are read-only leaf lanes; they do not
-load the reviewer skill or dispatch further tasks. Failed, timed-out,
+OpenCode review commands run through `reviewer-coordinator`, which returns one
+inline Markdown report containing telemetry, triggered/skipped lanes,
+batches/session IDs, timing, GitNexus status/fallback, Review Health, verdict,
+prioritized findings, strengths, and recommended action. The ten `reviewer-*`
+agents are read-only leaf lanes; they do not load the coordinator skill or
+dispatch further tasks. Failed, timed-out,
 unavailable, malformed, or incomplete results remain lane errors, while valid
 findings from other lanes are retained without invented citations.
+
+Review policy defaults are target-aware: current diff/task uses `auto`; entire
+branch, branch, and PR uses `full`; explicit tagged `auto`, `full`, or `aspects`
+overrides the default, and textual `all` normalizes to `full`. Unusable GitNexus
+evidence records `fallback=native` and `refresh=not permitted`; graph coverage
+is disclosed as unavailable.
 
 ## Model Routing and Reasoning Variants
 
@@ -322,7 +316,7 @@ No code needed—YAML drives everything.
 - **navigator** — Browser automation via the agent-browser CLI; snapshots/refs, navigation, screenshots, forms, extraction
 - **detective** — Production diagnostics; Datadog (pup CLI), GCP logs (gcloud), root cause analysis (Sentry/Rootly/Notion reported unavailable)
 - **sage** — Domain knowledge; Gorgias metrics, table schemas, business rules (cortex)
-- **reviewer** — retained compatibility-coordinator alias; OpenCode uses the orchestrator directly
+- **reviewer-coordinator** — sole OpenCode review coordinator; owns target-aware policy, ten-lane scheduling, aggregation, and verdict
 - **reviewer-code** — Always-on general correctness and project-guideline review
 - **reviewer-test** — Behavioral test coverage (test files or uncovered production behavior)
 - **reviewer-errors** — Error, retry, fallback, and failure-propagation review
@@ -338,11 +332,11 @@ No code needed—YAML drives everything.
 
 **orchestrator:**
 
-- **GitNexus** — Indexed architecture, processes, API impact, and blast radius;
-  OpenCode denies `gitnexus_rename` in the managed configuration
+- **GitNexus** — Read-only indexed architecture, processes, API impact, and
+  blast radius; OpenCode denies `gitnexus_rename` in the managed configuration
 - **github** — GitHub CLI integration (PRs, issues, checks)
 
-**oracle / explorer / detective:**
+**oracle / explorer / detective / reviewer-coordinator:**
 
 - **GitNexus** — Indexed architecture and impact analysis; OpenCode denies
   `gitnexus_rename` in the managed configuration
@@ -351,9 +345,14 @@ No code needed—YAML drives everything.
 
 - **figma-mcp** — Design files (local Figma Desktop app, http://127.0.0.1:3845/mcp)
 
-**fixer / reviewer-code / reviewer-types:**
+**fixer:**
 
-- No code-intelligence MCP — native OpenCode tools remain authoritative
+- Native-only in the current OMO configuration; no MCP is assigned
+
+**reviewer-* lanes:**
+
+- Read-only specialist lanes; native OpenCode tools remain authoritative for
+  exact local work
 
 **librarian:**
 
@@ -377,9 +376,9 @@ No code needed—YAML drives everything.
 - **context7**, **websearch**, **gh_grep**, **linear**, **cortex** — Knowledge retrieval and internal documentation
 
 All agents use RTK/native tools as applicable for exact text/files, shell, tests,
-Git, configuration, documentation, and edits. Navigator, Observer, the retained
-`reviewer` alias, and the remaining reviewer lanes have neither GitNexus nor a
-code-intelligence MCP.
+Git, configuration, documentation, and edits. The GitNexus consumer list above
+is explicit; this overview makes no blanket claim about access not described by
+the selected visualization fields.
 
 ### Tools
 
@@ -401,7 +400,11 @@ code-intelligence MCP.
 - **oh-my-opencode-slim** — Plugin self-configuration
 - **project-context** — Project summaries
 - **brainstorming / writing-plans / executing-plans / reviewing-plans** — SDD workflow
-- **reviewer** — Ten-lane review workflow; OpenCode coordinator owns direct dispatch and aggregation
+- No reviewer skill — the orchestrator delegates review packets to `reviewer-coordinator`
+
+**reviewer-coordinator:**
+
+- **reviewer-coordinator** — Ten-lane workflow; owns policy, dispatch, aggregation, and verdict
 
 **Oracle:**
 
@@ -444,7 +447,7 @@ determines whether work is immediate, uses a merged plan, or follows full SDD.
   `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, show it once,
   and obtain one approval before dispatching implementation to `@fixer` for
   code or `@designer` for UI/UX as appropriate. Then run exactly one
-  post-implementation review gate (OpenCode orchestrator) and run proportionate
+  post-implementation review gate (`reviewer-coordinator`) and run proportionate
   validation.
   Do not create a separate spec, load `executing-plans`, create a ledger, run a
   per-task review, or prompt for a review choice.
@@ -477,7 +480,7 @@ flowchart TD
         SM3["Show plan once"]
         SM4{"Approve plan once?"}
         SM5["Dispatch implementation\n@fixer (code) / @designer (UI/UX)"]
-        SM6["Run exactly one review gate\nOpenCode: orchestrator\npost-implementation"]
+        SM6["Run exactly one review gate\nOpenCode: reviewer-coordinator\npost-implementation"]
         SM8["Proportionate validation\n(no separate spec, executing-plans, ledger,\nor per-task review or review-choice prompt)"]
         SM7["Revise, clarify, or defer"]
 
@@ -527,7 +530,7 @@ flowchart TD
         E2 -->|NEEDS_CONTEXT| E1
         E2 -->|BLOCKED, context issue| E1
         E2 -->|BLOCKED, too hard| E5[Escalate to @oracle]
-        E2 -->|DONE| E3[Run review gate\nOpenCode: orchestrator\nspec compliance + quality]
+        E2 -->|DONE| E3[Run review gate\nOpenCode: reviewer-coordinator\nspec compliance + quality]
         E3 --> E4{Review passed?}
         E4 -->|no, up to 3 rounds| E1
         E4 -->|yes| E6{More tasks\nin plan?}
@@ -541,7 +544,7 @@ flowchart TD
 
     subgraph P4["🔍 L/XL — Phase 4: Reviewing Plans"]
         direction TB
-        R1[Gather plan + ledger\n+ full branch diff] --> R2[Run review gate\nOpenCode: orchestrator\nfull comprehensive review]
+        R1[Gather plan + ledger\n+ full branch diff] --> R2[Run review gate\nOpenCode: reviewer-coordinator\nfull comprehensive review]
         R2 --> R3{Critical issues\n= 0?}
     end
 
@@ -560,7 +563,7 @@ flowchart TD
 - S/M work gets one concise merged plan in `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, shown once
   and approved once before dispatching implementation to `@fixer` for code or
   `@designer` for UI/UX as appropriate. It then runs exactly one
-  automatic post-implementation review gate (OpenCode orchestrator) and runs
+  automatic post-implementation review gate (`reviewer-coordinator`) and runs
   proportionate validation.
   It skips a separate spec, `executing-plans`, a ledger, per-task review, and
   the review-choice prompt.

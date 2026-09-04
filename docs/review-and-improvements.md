@@ -20,6 +20,16 @@ which describes the same system's layers and authority boundaries, and
 disagree in emphasis, this document is the one that carries severity, impact,
 and remediation ordering.
 
+### Current reviewer architecture (2026-09-04)
+
+The implemented OpenCode topology is `orchestrator -> reviewer-coordinator ->`
+the ten read-only `reviewer-*` lanes. The orchestrator delegates the complete
+packet and does not preload the coordinator skill, select/directly dispatch
+lanes, batch, aggregate, or compute the verdict. `reviewer-coordinator` owns
+target-aware policy, Phase A/Phase B scheduling, native fallback, and the single
+inline Markdown result. Any older `reviewer` or `@reviewer` coordinator wording
+below is historical evidence or a deferred proposal, not current ownership.
+
 - [Scope and method](#scope-and-method)
 - [Labels](#labels)
 - [Resolution status](#resolution-status)
@@ -122,7 +132,7 @@ discrepancy cited below is fixed (detective frontmatter is now `tools: [read, ba
 `mcps: []`, matching OMO's deny-write permission block). The broader single
 authority-per-agent model and validator drift check remain open.
 
-**Evidence**
+**Historical evidence (pre-OpenCode-only change; not current ownership)**
 
 - [`.rulesync/subagents/`](../.rulesync/subagents/) defines `detective`,
   `navigator`, `sage` with YAML frontmatter (`model`, `tools`, `mcps`, `skills`).
@@ -187,12 +197,11 @@ mutation behind a separate, approval-gated agent.
 **Status:** Resolved. `claudecode` was removed from [`rulesync.jsonc`](../rulesync.jsonc)
 targets; the repository is now OpenCode-only.
 
-**Evidence**
+**Historical evidence (pre-OpenCode-only change; not current ownership)**
 
-- [`rulesync.jsonc:2`](../rulesync.jsonc) declares `"targets": ["claudecode", "opencode"]`.
+- [`rulesync.jsonc:2`](../rulesync.jsonc) formerly declared `"targets": ["claudecode", "opencode"]`.
 - [`.rulesync/rules/custom-rules.md:56-58`](../.rulesync/rules/custom-rules.md)
-  references "Claude Code: Preserve the existing `@reviewer` compatibility
-  coordinator".
+  references the former Claude Code `@reviewer` compatibility coordinator.
 - [`deploy.sh`](../deploy.sh) stages only `rulesync generate --targets opencode`
   (see [`docs/architecture.md`](architecture.md#rulesync-vs-omo-vs-native-opencode-vs-claude-code));
   no Claude Code deployment path is exercised by the recorded deploy script.

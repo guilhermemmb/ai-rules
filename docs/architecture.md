@@ -106,8 +106,8 @@ hashes). The payload is also validated by
 | `~/.config/opencode/oh-my-opencode-slim/` | Appended prompts copied directly from `.rulesync/oh-my-opencode-slim/`. |
 | `~/.config/opencode/.ai-rules.manifest.json` | Deployment ownership manifest (built from payload). |
 | `~/.config/opencode/plugins/rtk.ts` | RTK plugin, initialized by `deploy.sh`. |
-| `~/.local/bin/gitnexus` | GitNexus `1.6.5`, persistently installed by `deploy.sh`; source argv retains the read-only env and OpenCode denies `gitnexus_rename`. |
-| `<repo>/.gitnexus/` | GitNexus repository index, created only by explicit operator-targeted analysis and excluded from source control. |
+| GitNexus MCP | Managed read-only indexed evidence; OpenCode denies `gitnexus_rename`. |
+| GitNexus MCP evidence | Read-only indexed evidence; stale or unusable graph results do not become installed/runtime claims. |
 | `~/.cache/opencode/packages/oh-my-opencode-slim@latest/node_modules/…` | OMO, `@opencode-ai/plugin`, `@opencode-ai/sdk` packages. |
 | `~/.local/bin/wt-orca`, `~/.local/bin/worktree-state.sh` | Adapters installed from sibling dotfiles. |
 | `~/.config/worktrunk/config.toml` | Worktrunk config installed from sibling dotfiles. |
@@ -173,10 +173,10 @@ The earlier `/tmp/` discrepancy is resolved.
 - [`deploy.sh`](../deploy.sh) stages `rulesync generate --targets opencode`
   (`build_staged_payload`).
 
-**Resolved:** Claude Code is descoped. The repository targets OpenCode only; the
-`reviewer` agent remains a compatibility-coordinator alias (retained, not a
-deployment target), and OpenCode review ownership runs through the orchestrator's
-preloaded reviewer workflow.
+**Resolved:** Claude Code is descoped. The repository targets OpenCode only;
+`reviewer-coordinator` is the active review coordinator. The orchestrator
+delegates the complete review packet to it and does not preload its skill,
+select/directly dispatch lanes, batch, aggregate, or compute the verdict.
 
 ### MCP declaration versus assignment
 
@@ -198,35 +198,18 @@ now refers to `figma-mcp` consistently.
 
 The architecture has two discovery tiers. RTK/native OpenCode tools remain the
 default and are authoritative for exact text/files, shell, tests, Git,
-configuration, documentation, and edits. GitNexus is a snapshot graph assigned
-only to Orchestrator, Oracle, Explorer, and Detective. Designer, Fixer,
-`reviewer-code`, and `reviewer-types` have no code-intelligence MCP and use
-native tools for definitions, references, implementations, and diagnostics.
-GitNexus 1.6.5 exposes server-side rename; OpenCode denies the normalized
-`gitnexus_rename` tool, so agents cannot invoke it through this managed OpenCode
-configuration. This is an OpenCode-side control, not a universal process-level
-boundary; direct GitNexus processes are outside that control.
-
-GitNexus is installed persistently by `deploy.sh` at version `1.6.5`. Its source
-MCP command retains `GITNEXUS_MCP_READ_ONLY=1` for forward compatibility, but
-GitNexus 1.6.5 does not enforce it as a universal process-level boundary.
-Worktrunk explicitly indexes only the canonical worktree path during
-`post-start`:
-
-```bash
-gitnexus analyze --index-only "$WORKSPACE_PATH"
-```
-
-The pinned `--index-only` mode does not generate agent files. Setup is
-synchronous; a failed GitNexus command publishes `failed`, never `ready`.
-Cleanup runs only `gitnexus remove --force "$WORKSPACE_PATH"` and treats an
-absent index as an idempotent success. It does not run `gitnexus clean --all` or
-remove the worktree.
+configuration, documentation, and edits. GitNexus is read-only indexed evidence
+assigned to Orchestrator, Oracle, Explorer, Detective, and
+`reviewer-coordinator`; all reviewer lanes use native tools for exact local
+work. Local refresh/analyze commands and GitNexus Bash access are not part of
+this architecture.
 
 GitNexus users follow context/freshness → query/context → affected process
 resources → impact → detect_changes; inspect schema before Cypher. Stale,
-empty, partial, truncated, ambiguous, degraded, or `UNKNOWN` results are
-inconclusive and require immediate RTK/native fallback.
+outdated, empty, partial, truncated, unknown, ambiguous, degraded, error,
+timeout, or unmapped results are unusable. Record `fallback=native` and
+`refresh=not permitted`, make no graph claims, and disclose graph coverage as
+unavailable.
 
 #### Serena removal and deferred Codebase Memory retirement
 
@@ -274,16 +257,16 @@ prompts).
 ### Custom agents
 
 `navigator`, `detective`, `sage` (declared in
-[`.rulesync/subagents/`](../.rulesync/subagents/)) and the `reviewer` compatibility
-coordinator plus ten `reviewer-*` lanes (defined in
+[`.rulesync/subagents/`](../.rulesync/subagents/)) and the
+`reviewer-coordinator` plus ten `reviewer-*` lanes (defined in
 [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) under `agents.*`).
 
-The `reviewer` agent is a retained **compatibility-coordinator alias** (not an
-OpenCode coordinator). In OpenCode, the orchestrator preloads the `reviewer`
-skill and is the sole coordinator, dispatching the applicable `reviewer-*` lanes
-directly (with `reviewer-simplifier` conditional on Phase B); the lanes are
-read-only leaves. See [`README.md`](../README.md) "Reviewer concurrency" and the
-[`reviewer` rule](../.rulesync/skills/reviewer/SKILL.md).
+`reviewer-coordinator` is the sole OpenCode review coordinator. The orchestrator
+delegates to it; it owns lane selection, Phase A batching, Phase B sequencing,
+aggregation, and verdict computation. The lanes are read-only leaves. Its
+runtime skill is referenced as `reviewer-coordinator` in
+[`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json), with the tracked
+Rulesync source at [`.rulesync/skills/reviewer-coordinator/SKILL.md`](../.rulesync/skills/reviewer-coordinator/SKILL.md).
 
 ### Agent categories and authority
 
