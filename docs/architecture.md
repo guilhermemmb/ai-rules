@@ -191,25 +191,49 @@ are **not** declared in `mcp.jsonc` (see `BUILTIN_MCP_REFERENCES` in
 `figma-mcp` ([`.rulesync/mcp.jsonc`](../.rulesync/mcp.jsonc)), and documentation
 now refers to `figma-mcp` consistently.
 
+### Serena and worktree authority
+
+The authority boundary for Serena is explicit:
+
+- [`.rulesync/mcp.jsonc`](../.rulesync/mcp.jsonc) is the canonical OpenCode MCP
+  source.
+- [`.serena/project.yml`](../.serena/project.yml) is the complete generated,
+  read-only Serena configuration for the parent worktree.
+- All `.serena` runtime files except `.serena/project.yml` are ignored.
+- Generated OpenCode files are outputs and are not hand-edited; change their
+  Rulesync source instead.
+- Serena resolves from the current worktree and is not managed by Worktrunk.
+
+Serena is used only by OpenCode's `ide` context over stdio. The dashboard and
+browser are disabled, and VS Code integration is deferred. Serena does not have
+a Worktrunk hook lifecycle.
+
 ### Code intelligence lifecycle
 
 RTK/native OpenCode tools are authoritative for exact text/files, shell, tests,
-Git, configuration, documentation, and edits. Agents use only the MCPs explicitly
-assigned in the current configuration; indexed code-intelligence services are not
-part of deployment or review.
+Git, configuration, documentation, and edits. Serena is the active semantic MCP
+for OpenCode IDE sessions and complements those exact-tool workflows.
+GitNexus is removed and is not an authority or part of deployment or review.
 
-#### Serena removal and deferred Codebase Memory retirement
+Install the pinned version with:
 
-Serena is fully removed from tracked source policy. Runtime removal is deferred
-until deployment and live-output verification, then follows: uninstall
-`serena-agent`; remove only verified launcher, global, and repository state; and
-avoid broad uv-cache deletion. This atlas does not claim runtime cleanup has
-already occurred.
+```zsh
+uv tool install -p 3.13 serena-agent==1.7.0
+```
 
-Retirement of the legacy `codebase-memory-mcp` binary, caches, registrations,
-repository state, and sibling-worktree state waits for sibling Worktrunk setup,
-index, and cleanup scripts to be decoupled in Task 4. No destructive cleanup is
-performed by deployment or validation.
+The Serena/OpenCode lifecycle is:
+
+1. Worktrunk creates or enters a worktree.
+2. OpenCode starts Serena with `--context ide --project-from-cwd`.
+3. Serena resolves the nearest `.serena/project.yml` or `.git` boundary.
+4. Each client session owns one stdio Serena process.
+5. Worktrunk does not start, index, stop, or clean Serena.
+
+Launching from nested `ai-rules` selects its nested Git boundary and does not
+inherit the parent `.serena/project.yml`. Nested `ai-rules` Serena
+configuration is deferred because Worktrunk worktrees require no changes inside
+that nested repository. Serena is not managed by Worktrunk hooks; its dashboard
+and browser remain disabled, and VS Code integration is deferred.
 
 ### Model profile application
 

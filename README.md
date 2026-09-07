@@ -349,8 +349,10 @@ Homebrew is required only when RTK is absent. Test with `git status` — RTK rew
 
 RTK/native OpenCode tools are authoritative for exact text and file discovery,
 shell commands, tests, Git, configuration, documentation, and edits. Agents use
-only the MCPs explicitly assigned in the current configuration; code discovery
-and review evidence do not depend on an indexed code-intelligence service.
+only the MCPs explicitly assigned in the current configuration. Serena is the
+active semantic MCP for OpenCode IDE sessions; it complements, but does not
+replace, native RTK/OpenCode tools for exact repository work.
+GitNexus is removed and is not an authority or part of the current lifecycle.
 
 ### MCP access matrix
 
@@ -368,33 +370,31 @@ and review evidence do not depend on an indexed code-intelligence service.
 | Sage | `cortex` |
 | Navigator, Observer | — |
 
-### Serena removal and deferred/manual uninstall runbook — legacy Codebase Memory state
+### Serena semantic MCP and worktree ownership
 
-Serena's active MCP/agent policy removal is complete. Deploy-time installation
-and runtime removal are later verified lifecycle steps; this task does not
-claim that the launcher, global state, or repository state has already been
-deleted. The required sequence is:
+Install the pinned Serena version with Python 3.13:
 
-1. Verify the validated source configuration and generated live output.
-3. Uninstall `serena-agent` with `uv tool uninstall serena-agent`.
-4. Remove only the verified Serena launcher, global state, and repository state.
-5. Avoid broad uv-cache deletion.
+```zsh
+uv tool install -p 3.13 serena-agent==1.7.0
+```
 
-The legacy `codebase-memory-mcp` binary, caches, registrations, repository
-state, and sibling-worktree state remain deferred until sibling Worktrunk setup,
-index, and cleanup scripts no longer depend on them (Task 4). Removal is
-deferred until an operator has verified every affected path:
+Serena is used only through OpenCode's `ide` context and stdio transport. Its
+dashboard and browser are disabled. Serena has no Worktrunk hook lifecycle:
+Worktrunk does not start, index, stop, or clean Serena. VS Code integration is
+deferred.
 
-1. Stop OpenCode and other clients that may hold the old process or state.
-2. Deploy the migrated configuration and verify the generated configuration.
-3. Migrate sibling worktree setup, index, and cleanup scripts away from the old
-   integration; do not assume this repository owns those files.
-4. Review old registrations and state locations, preserving anything still
-   needed by an active workspace.
-5. Remove the old binary, cache, and state only by verified paths, then confirm
-   no client or cleanup hook still references them.
+The lifecycle is:
 
-No automatic deployment or validation step performs these destructive actions.
+1. Worktrunk creates or enters a worktree.
+2. OpenCode starts Serena with `--context ide --project-from-cwd`.
+3. Serena resolves the nearest `.serena/project.yml` or `.git` boundary.
+4. Each client session owns one stdio Serena process.
+5. Worktrunk does not start, index, stop, or clean Serena.
+
+Launching OpenCode from nested `ai-rules` selects that nested Git boundary and
+does not inherit the parent `.serena/project.yml`. Nested `ai-rules` Serena
+configuration is deferred because Worktrunk worktrees require no changes inside
+that nested repository.
 
 ## Worktrunk → Orca → OpenCode workflow
 
@@ -404,6 +404,10 @@ second checkout. OpenCode and oh-my-opencode-slim (OMO) run inside the
 Orca-owned terminal. `ai-rules/deploy.sh` is the source of truth for generated
 OpenCode configuration; do not edit generated files under
 `~/.config/opencode/` directly.
+
+Serena is not part of the Worktrunk hook lifecycle. It resolves from the
+current worktree when OpenCode starts and owns one stdio process per client
+session; Worktrunk does not start, index, stop, or clean it.
 
 ### Normal operator flow
 

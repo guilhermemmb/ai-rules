@@ -302,30 +302,41 @@ RTK is absent). Test with `git status` — RTK rewrites it transparently.
 ### Code intelligence lifecycle
 
 Deployment and review use native RTK/OpenCode inspection. No indexed
-code-intelligence service, local analyzer, or graph-evidence lifecycle is part of
-the current configuration.
+code-intelligence service or graph-evidence lifecycle is part of the current
+configuration. Serena is the active semantic MCP for OpenCode IDE sessions; it
+complements native inspection rather than replacing it.
+GitNexus is removed and is not an authority or part of the workflow.
 
-#### Serena removal and deferred Codebase Memory retirement
+Install the pinned Serena version with:
 
-Serena's active MCP/agent policy removal is complete, while deploy-time
-installation and runtime deletion are deferred until deployment and live-output
-verification. The full removal sequence is: remove source/configuration grants;
-verify the validated configuration and live output; uninstall `serena-agent`; remove
-only verified launcher, global, and repository state; and avoid broad uv-cache
-deletion.
+```zsh
+uv tool install -p 3.13 serena-agent==1.7.0
+```
 
-Retirement of the legacy `codebase-memory-mcp` binary, caches, registrations,
-repository state, and sibling-worktree state must wait for sibling Worktrunk
-setup/index/cleanup scripts to be migrated away from that dependency (Task 4).
-No cleanup is claimed here, and no automatic deployment or validation step
-performs these destructive actions. See the [README runbook](../README.md#serena-removal-and-deferredmanual-uninstall-runbook--legacy-codebase-memory-state).
+Serena uses only OpenCode's `ide` context and stdio transport. Its dashboard and
+browser are disabled. VS Code integration is deferred. Serena has no Worktrunk
+hook lifecycle.
+
+#### Serena and Worktrunk lifecycle
+
+1. Worktrunk creates or enters a worktree.
+2. OpenCode starts Serena with `--context ide --project-from-cwd`.
+3. Serena resolves the nearest `.serena/project.yml` or `.git` boundary.
+4. Each client session owns one stdio Serena process.
+5. Worktrunk does not start, index, stop, or clean Serena.
+
+Launching from nested `ai-rules` selects its nested Git boundary and does not
+inherit the parent `.serena/project.yml`. Nested `ai-rules` Serena
+configuration is deferred because Worktrunk worktrees require no changes inside
+that nested repository.
 
 ### Worktrunk → Orca → OpenCode ownership
 
 Source: [`README.md`](../README.md#worktrunk--orca--opencode-workflow).
 
 - **Worktrunk** is the only Git worktree lifecycle owner (creates/removes
-  worktrees). Its `pre-remove` hook owns cleanup and the retry queue.
+  worktrees). Its `pre-remove` hook owns cleanup and the retry queue. It does
+  not start, index, stop, or clean Serena.
 - **Orca** attaches to an existing Worktrunk path and must not create a second
   checkout.
 - **OpenCode** and **oh-my-opencode-slim** run inside the Orca-owned terminal.

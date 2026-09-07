@@ -57,5 +57,21 @@
       "url": "http://127.0.0.1:3845/mcp",
       "enabled": true,
     },
+    "serena": {
+      "description": "Semantic code navigation and analysis MCP server",
+      "type": "stdio",
+      "command": "serena",
+      "args": [
+        "start-mcp-server",
+        "--context",
+        "ide",
+        "--project-from-cwd",
+        "--enable-web-dashboard",
+        "false",
+        "--open-web-dashboard",
+        "false"
+      ],
+      "enabled": true,
+    },
   },
 }

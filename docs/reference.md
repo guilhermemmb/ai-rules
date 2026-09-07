@@ -232,22 +232,27 @@ Datadog and GCP Logs are accessed via `pup` and `gcloud` CLIs (Bash), not MCP.
 ### Code intelligence lifecycle
 
 RTK/native OpenCode tools are authoritative for exact local work, review inputs,
-and source confirmation. No indexed code-intelligence service is deployed or
-required by the current configuration.
+and source confirmation. Serena is the active semantic MCP for OpenCode IDE
+sessions and complements those exact-tool workflows. GitNexus is removed and is
+not an authority or part of deployment or review.
 
-#### Serena removal and deferred Codebase Memory retirement
+Serena is declared canonically in [`.rulesync/mcp.jsonc`](../.rulesync/mcp.jsonc)
+and uses only OpenCode's `ide` context over stdio. Its dashboard and browser are
+disabled, and VS Code integration is deferred. The parent worktree's complete,
+generated, read-only configuration is [`.serena/project.yml`](../.serena/project.yml);
+all other `.serena` runtime files are ignored. Install the pinned version with:
 
-Serena's active MCP/agent policy removal is complete. Deploy-time installation
-and runtime removal follow a verified sequence: verify the validated configuration
-and live output, uninstall `serena-agent`, remove only
-verified launcher/global/repository state, and avoid broad uv-cache deletion.
-This documentation pass does not claim that runtime cleanup has already
-occurred.
+```zsh
+uv tool install -p 3.13 serena-agent==1.7.0
+```
 
-Retirement of the legacy `codebase-memory-mcp` binary, caches, registrations,
-repository state, and sibling-worktree state waits for sibling Worktrunk scripts
-to be decoupled from it in Task 4. No destructive cleanup is performed by
-deployment or validation.
+Worktrunk creates or enters the worktree, but does not own Serena's lifecycle:
+it does not start, index, stop, or clean Serena. OpenCode starts Serena with
+`--context ide --project-from-cwd`; Serena resolves the nearest
+`.serena/project.yml` or `.git` boundary, and each client session owns one
+stdio process. Launching from nested `ai-rules` selects its nested Git boundary
+and does not inherit the parent `.serena/project.yml`; nested configuration is
+deferred because Worktrunk worktrees need no changes inside it.
 
 ---
 

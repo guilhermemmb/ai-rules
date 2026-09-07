@@ -40,16 +40,27 @@ summary remains governed by the authoritative runtime configuration.
 Rulesync owns the skills under `.rulesync/skills/` and projects them to the
 generated global output. Unmanaged unrelated vendor skills are preserved.
 
-## Serena removal and deferred Codebase Memory retirement
+## Serena semantic MCP and worktree ownership
 
-Serena's active MCP/agent policy removal is complete. Deploy-time installation
-and runtime removal are deferred until deployment and live-output verification,
-then remove only the verified launcher/global/repository state after
-uninstalling `serena-agent`; broad uv-cache deletion is not part of the
-lifecycle. Retirement of legacy
-`codebase-memory-mcp` state waits for sibling Worktrunk scripts to be decoupled
-from it in Task 4. This inventory does not claim either runtime cleanup has
-already occurred.
+Serena is the active semantic MCP for OpenCode IDE sessions. GitNexus is
+removed and is not an authority or part of this inventory's lifecycle. Serena
+uses only OpenCode's `ide` context over stdio; its dashboard and browser are
+disabled, and VS Code integration is deferred. Install the pinned version with:
+
+```zsh
+uv tool install -p 3.13 serena-agent==1.7.0
+```
+
+Worktrunk creates or enters worktrees but does not own Serena's lifecycle: it
+does not start, index, stop, or clean Serena. OpenCode starts Serena with
+`--context ide --project-from-cwd`; Serena resolves the nearest
+`.serena/project.yml` or `.git` boundary, and each client session owns one
+stdio process. The parent worktree's `.serena/project.yml` is complete,
+generated, and read-only; all other `.serena` runtime files are ignored.
+
+Launching from nested `ai-rules` selects its nested Git boundary and does not
+inherit the parent `.serena/project.yml`. Nested configuration is deferred
+because Worktrunk worktrees need no changes inside it.
 
 ## Dispatch Graph
 
