@@ -21,7 +21,7 @@ as global prompt overrides.
 | :--- | :--- | :--- |
 | overview | Global instructions: branch naming, git safety, forbidden commands, PR routing | [`overview.md`](../.rulesync/rules/overview.md) |
 | custom-rules | T-shirt sizing, SDD, review routing, parallel specialist decomposition, commits, packages, delegation | [`custom-rules.md`](../.rulesync/rules/custom-rules.md) |
-| code-exploration | RTK/native and GitNexus discovery routing | [`code-exploration.md`](../.rulesync/rules/code-exploration.md) |
+| code-exploration | RTK/native discovery routing | [`code-exploration.md`](../.rulesync/rules/code-exploration.md) |
 | git-safety | Git/GitHub safety (no push, commit approval, PR generate-only, API read-only) | [`git-safety.md`](../.rulesync/rules/git-safety.md) |
 | pr-workflow | PR creation/update format and command format | [`pr-workflow.md`](../.rulesync/rules/pr-workflow.md) |
 | security-scan | On-demand commit/push safety checklist | [`security-scan.md`](../.rulesync/rules/security-scan.md) |
@@ -71,19 +71,6 @@ All under [`.rulesync/skills/`](../.rulesync/skills/), grouped by purpose.
 | codemap | Generate hierarchical codemaps | [`codemap/SKILL.md`](../.rulesync/skills/codemap/SKILL.md) |
 | cortex | Gorgias domain knowledge via Context Layer MCP | [`cortex/SKILL.md`](../.rulesync/skills/cortex/SKILL.md) |
 | oh-my-opencode-slim | Tune OMO agents/prompts/config | [`oh-my-opencode-slim/SKILL.md`](../.rulesync/skills/oh-my-opencode-slim/SKILL.md) |
-
-### GitNexus
-
-Rulesync owns the complete GitNexus skill set under
-[`.rulesync/skills/gitnexus-*/`](../.rulesync/skills/). Deployment projects it
-to `~/.config/opencode/skills/gitnexus-*/`. Existing copies under
-`~/.agents/skills/` and `~/.claude/skills/` are retained until generated global
-output is content-verified; cleanup is deferred to Task 5. Unmanaged unrelated
-vendor skills are preserved.
-
-| Skill set | Purpose | Source |
-| :--- | :--- | :--- |
-| `gitnexus-*` | GitNexus indexed architecture, exploration, impact, query, refactoring, review, taint analysis, and work workflows | [`.rulesync/skills/`](../.rulesync/skills/) |
 
 ### Datadog observability
 
@@ -223,7 +210,6 @@ Agent assignments: [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json).
 
 | MCP | Enabled (source) | Assigned to (source) |
 | :--- | :--- | :--- |
-| gitnexus | ✓ | Orchestrator, Oracle, Explorer, Detective, reviewer-coordinator |
 | context7 | ✓ | Librarian |
 | github | ✓ | Orchestrator |
 | sentry | ✗ | — (Detective reports it unavailable) |
@@ -245,25 +231,15 @@ Datadog and GCP Logs are accessed via `pup` and `gcloud` CLIs (Bash), not MCP.
 
 ### Code intelligence lifecycle
 
-GitNexus is read-only indexed evidence. No local refresh/analyze commands,
-GitNexus Bash access, or Phase 0 receipt service are part of this architecture.
-Use the sequence context/freshness → query/context → affected process resources
-→ impact → detect_changes and inspect schema before Cypher. Stale, outdated,
-empty, partial, truncated, unknown, ambiguous, degraded, error, timeout, or
-unmapped results are unusable: record `fallback=native` and
-`refresh=not permitted`, make no graph claims, and disclose graph coverage as
-unavailable. The canonical operation table is in
-[`docs/workflows.md`](./workflows.md#gitnexus-sequence-and-tool-selection).
-
-Only Orchestrator, Oracle, Explorer, Detective, and `reviewer-coordinator` have
-the managed read-only GitNexus evidence grant. Designer, Fixer, and the
-reviewer lanes use native RTK/OpenCode tools for exact local work.
+RTK/native OpenCode tools are authoritative for exact local work, review inputs,
+and source confirmation. No indexed code-intelligence service is deployed or
+required by the current configuration.
 
 #### Serena removal and deferred Codebase Memory retirement
 
 Serena's active MCP/agent policy removal is complete. Deploy-time installation
-and runtime removal follow a verified sequence: deploy GitNexus-only
-configuration, verify live output, uninstall `serena-agent`, remove only
+and runtime removal follow a verified sequence: verify the validated configuration
+and live output, uninstall `serena-agent`, remove only
 verified launcher/global/repository state, and avoid broad uv-cache deletion.
 This documentation pass does not claim that runtime cleanup has already
 occurred.

@@ -71,23 +71,8 @@
 
 ## Code Exploration
 
-- GitNexus is assigned to Orchestrator, Oracle, Explorer, Detective, and
-  Reviewer Coordinator.
-- Before graph work, inspect `gitnexus://repo/{name}/context` and confirm
-  freshness. Follow: `context/freshness → query/context → affected process
-  resources → impact → detect_changes`.
-- Use `query` for unfamiliar concepts, `context` for known relationships, and
-  read affected process resources before making workflow claims. Inspect the
-  schema before Cypher; use `impact` before edits or dependency claims and
-  `detect_changes` before review or handoff.
-- Treat stale, empty, partial, truncated, ambiguous, degraded, or `UNKNOWN`
-  results as inconclusive and fall back immediately to native RTK/OpenCode
-  tools, which remain authoritative for exact files, shell, tests,
+- Native RTK/OpenCode tools remain authoritative for exact files, shell, tests,
   configuration, documentation, and edits.
-- GitNexus 1.6.5 exposes server-side `rename`; this managed OpenCode
-  configuration denies the normalized `gitnexus_rename` tool. Agents must not
-  invoke mutation tools. Direct GitNexus processes outside managed OpenCode
-  are not covered.
 
 ## Commit Messages
 
@@ -143,7 +128,7 @@ For each eligible batch:
    with a complete review packet. The packet must include the target descriptor
    (current diff/task, branch, entire branch, or PR), explicit mode/aspect
    request, full diff, changed paths, task/plan context, project guidelines,
-   implementer's report, and available GitNexus evidence. The coordinator owns
+   implementer's report. The coordinator owns
    lane selection, bounded Phase A execution, conditional sequential Phase B,
    aggregation, and the review verdict. The orchestrator must not preload the
    coordinator skill, select or dispatch lanes directly, run Phase B, aggregate

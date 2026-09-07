@@ -49,10 +49,6 @@ REVIEWER_LANES: tuple[str, ...] = (
 REVIEWER_PHASE_A_LANES = REVIEWER_LANES[:-1]
 REVIEWER_IDS = (REVIEWER_COORDINATOR, *REVIEWER_LANES)
 REVIEWER_ID_PATTERN = re.compile(r"\breviewer-[a-z0-9][a-z0-9-]*\b")
-GITNEXUS_EXECUTABLE = "/Users/guilhermebomfim/.local/bin/gitnexus"
-GITNEXUS_ENV_EXECUTABLE = "/usr/bin/env"
-GITNEXUS_ENV_ASSIGNMENT = "GITNEXUS_MCP_READ_ONLY=1"
-GITNEXUS_COMMAND = "mcp"
 # Supplied by the user's OpenCode installation, not vendored into this repo.
 EXTERNAL_SKILL_REFERENCES = frozenset({"orca-cli"})
 AGENT_CONTRACT_FIELDS = (
@@ -87,13 +83,13 @@ AGENT_CONTRACT_FIELD_SHAPES = {
     "permissions": "mapping",
 }
 EXPECTED_MCP_ASSIGNMENTS = {
-    "orchestrator": ("gitnexus", "github"),
-    "oracle": ("gitnexus",),
-    "explorer": ("gitnexus",),
-    "detective": ("gitnexus",),
+    "orchestrator": ("github",),
+    "oracle": (),
+    "explorer": (),
+    "detective": (),
     "designer": ("figma-mcp",),
     "fixer": (),
-    REVIEWER_COORDINATOR: ("gitnexus",),
+    REVIEWER_COORDINATOR: (),
     **{lane: () for lane in REVIEWER_LANES},
     "sage": ("cortex",),
     "navigator": (),
@@ -140,7 +136,26 @@ RULESYNC_TARGETS = frozenset({"opencode"})
 OPENCODE_OUTPUT_ROOT = str(Path.home())
 
 COORDINATOR_READ_PERMISSION = {
-    "*": "deny",
+    "*": "allow",
+    "*.env": "deny",
+    "*.env.*": "deny",
+    "**/.env*": "deny",
+    "*.pem": "deny",
+    "**/*.pem": "deny",
+    "*.key": "deny",
+    "**/*.key": "deny",
+    "*.p12": "deny",
+    "**/*.p12": "deny",
+    "*.pfx": "deny",
+    "**/*.pfx": "deny",
+    "**/.ssh/**": "deny",
+    "**/.aws/**": "deny",
+    "**/.config/gcloud/**": "deny",
+    "**/.npmrc": "deny",
+    "**/.netrc": "deny",
+    "**/.docker/config.json": "deny",
+    "**/credentials.json": "deny",
+    "**/.git-credentials": "deny",
 }
 COORDINATOR_NATIVE_READ_TOOLS = (
     "read",
@@ -152,13 +167,6 @@ COORDINATOR_NATIVE_READ_TOOLS = (
     "ast_grep_search",
 )
 COORDINATOR_DENIED_TOOLS = (
-    "read",
-    "glob",
-    "grep",
-    "list",
-    "lsp",
-    "codesearch",
-    "ast_grep_search",
     "bash",
     "edit",
     "write",
@@ -499,7 +507,7 @@ class Validator:
         return names - disabled_names, disabled_names
 
     def validate_mcp_transports(self, artifact: Artifact | None) -> None:
-        """Validate generic MCP transport fields and GitNexus safety wiring."""
+        """Validate generic MCP transport fields."""
 
         if artifact is None:
             return
@@ -559,61 +567,6 @@ class Validator:
                         text=artifact.text,
                     )
 
-        gitnexus = servers.get("gitnexus")
-        if not isinstance(gitnexus, dict):
-            self.add_error(
-                artifact.path,
-                "mcpServers.gitnexus must be declared as an enabled local server",
-                key="gitnexus",
-                text=artifact.text,
-            )
-            return
-        if gitnexus.get("enabled") is not True:
-            self.add_error(
-                artifact.path,
-                "mcpServers.gitnexus must be enabled",
-                key="gitnexus",
-                text=artifact.text,
-            )
-        if gitnexus.get("type") != "local":
-            self.add_error(
-                artifact.path,
-                "mcpServers.gitnexus must use the local transport",
-                key="gitnexus",
-                text=artifact.text,
-            )
-        command = gitnexus.get("command")
-        if isinstance(command, list) and all(isinstance(argument, str) for argument in command):
-            if len(command) != 4:
-                self.add_error(
-                    artifact.path,
-                    "mcpServers.gitnexus.command must contain exactly env, one read-only assignment, the pinned executable, and mcp",
-                    key="command",
-                    text=artifact.text,
-                )
-            else:
-                expected_parts = (
-                    (0, GITNEXUS_ENV_EXECUTABLE, "must invoke /usr/bin/env"),
-                    (1, GITNEXUS_ENV_ASSIGNMENT, "must set exactly GITNEXUS_MCP_READ_ONLY=1"),
-                    (2, GITNEXUS_EXECUTABLE, f"must use the pinned executable {GITNEXUS_EXECUTABLE!r}"),
-                    (3, GITNEXUS_COMMAND, "must end with the mcp command"),
-                )
-                for index, expected, message in expected_parts:
-                    if command[index] != expected:
-                        self.add_error(
-                            artifact.path,
-                            f"mcpServers.gitnexus.command {message}",
-                            key="command",
-                            text=artifact.text,
-                        )
-        environment = gitnexus.get("environment")
-        if environment is not None:
-            self.add_error(
-                artifact.path,
-                "mcpServers.gitnexus must encode read-only mode in its command argv, not environment",
-                key="environment",
-                text=artifact.text,
-            )
 
     def validate_context7_mcp(self, artifact: Artifact | None) -> None:
         """Validate the source Context7 server's transport and credentials."""
@@ -811,7 +764,7 @@ class Validator:
     def validate_mcp_assignments(
         self, artifact: Artifact, agents: dict[str, dict[str, Any]]
     ) -> None:
-        """Enforce the approved GitNexus ownership matrix."""
+        """Enforce the approved MCP ownership matrix."""
 
         unexpected_agents = sorted(set(agents) - set(EXPECTED_MCP_ASSIGNMENTS))
         if unexpected_agents:
@@ -855,24 +808,6 @@ class Validator:
                 self.add_error(
                     artifact.path,
                     f"agents.{agent_id}.mcps must be exactly {list(expected)!r}, got {list(actual_names)!r}",
-                    key="mcps",
-                    text=artifact.text,
-                )
-
-        assigned_agents = set(EXPECTED_MCP_ASSIGNMENTS)
-        for agent_id, specification in agents.items():
-            actual = specification.get("mcps", [])
-            if not isinstance(actual, list):
-                continue
-            forbidden = [
-                value
-                for value in actual
-                if value == "gitnexus" and agent_id not in assigned_agents
-            ]
-            if forbidden:
-                self.add_error(
-                    artifact.path,
-                    f"agents.{agent_id}.mcps grants GitNexus outside the approved assignment matrix: {forbidden!r}",
                     key="mcps",
                     text=artifact.text,
                 )
@@ -3281,10 +3216,10 @@ class Validator:
             )
             return
 
-        if coordinator.get("mcps") != ["gitnexus"]:
+        if coordinator.get("mcps") != []:
             self.add_error(
                 artifact.path,
-                f"agents.{REVIEWER_COORDINATOR}.mcps must be exactly ['gitnexus']",
+                f"agents.{REVIEWER_COORDINATOR}.mcps must be exactly []",
                 key=REVIEWER_COORDINATOR,
                 text=artifact.text,
             )
@@ -3310,7 +3245,7 @@ class Validator:
             "*": "deny",
             "read": COORDINATOR_READ_PERMISSION,
             **{
-                tool: "deny"
+                tool: "allow"
                 for tool in COORDINATOR_NATIVE_READ_TOOLS[1:]
             },
             **{
@@ -3632,10 +3567,6 @@ class Validator:
             else self.root / "opencode.json"
         )
         opencode_artifact = self.load_json(opencode_path)
-        self.validate_gitnexus_rename_permission(opencode_artifact)
-        if self.payload:
-            source_opencode_artifact = self.load_json(self.root / "opencode.json")
-            self.validate_gitnexus_rename_permission(source_opencode_artifact)
         model_catalog = self.model_catalog(opencode_artifact)
 
         opencode_jsonc_artifact = (
@@ -3870,32 +3801,6 @@ class Validator:
             actual - BUILTIN_MCP_REFERENCES - {"context-layer"},
             text=artifact.text,
         )
-
-    def validate_gitnexus_rename_permission(self, artifact: Artifact | None) -> None:
-        """Require OpenCode to deny GitNexus' exposed rename tool explicitly."""
-
-        if artifact is None:
-            return
-        config = self.require_mapping(artifact, "opencode.json")
-        if config is None:
-            return
-        permission = config.get("permission")
-        if not isinstance(permission, dict):
-            self.add_error(
-                artifact.path,
-                "permission must be a mapping denying gitnexus_rename",
-                key="permission",
-                text=artifact.text,
-            )
-            return
-        if permission.get("gitnexus_rename") != "deny":
-            self.add_error(
-                artifact.path,
-                "permission.gitnexus_rename must be exactly 'deny'",
-                key="gitnexus_rename",
-                text=artifact.text,
-            )
-
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)

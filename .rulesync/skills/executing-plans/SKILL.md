@@ -183,7 +183,7 @@ Dispatch exactly one `@reviewer-coordinator` with:
 - The target descriptor and review mode/aspect request (task/current diff
   defaults to `auto`; branch or PR defaults to `full`, unless explicitly
   overridden)
-- Changed paths and any available GitNexus evidence
+- Changed paths and any available native RTK/OpenCode evidence for exact/local confirmation
 
 The coordinator returns: spec compliance (✅/❌), task quality (approved/needs work), issues by severity, and Review Health. It selects and dispatches the reviewer lanes, including the conditional sequential simplifier pass; the orchestrator must not dispatch lanes directly or aggregate findings.
 

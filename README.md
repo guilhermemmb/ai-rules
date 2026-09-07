@@ -55,15 +55,13 @@ compute the verdict. The coordinator owns exactly ten read-only lanes:
 `reviewer-accessibility`, `reviewer-comments`, and `reviewer-simplifier`.
 The first nine run in Phase A batches; `reviewer-simplifier` runs exactly once
 sequentially in Phase B. It returns one inline Markdown report with telemetry,
-lane and batch/session details, GitNexus status or native fallback, Review
+lane and batch/session details, native evidence status, Review
 Health, verdict, prioritized findings, strengths, and recommended action.
 
 Review policy is target-aware: current diff/task defaults to `auto`; entire
 branch, branch, and PR default to `full`; explicit tagged `auto`, `full`, or
-`aspects` overrides the default. Textual `all` normalizes to `full`. Stale or
-otherwise unusable GitNexus evidence records `fallback=native` and
-`refresh=not permitted`; no graph claims are made and graph coverage is
-disclosed as unavailable.
+`aspects` overrides the default. Textual `all` normalizes to `full`. Review
+evidence comes from the complete packet and native RTK/OpenCode reads.
 
 ### OpenCode multi-fixer scheduler
 
@@ -255,7 +253,7 @@ ai-rules/
 │   │   ├── custom-rules.md         # Workflow, packages, commits, dispatch rules
 │   │   ├── pr-workflow.md          # PR creation workflow
 │   │   ├── security-scan.md        # On-demand commit/push safety checklist
-│   │   └── code-exploration.md     # RTK/native and GitNexus routing
+│   │   └── code-exploration.md     # RTK/native routing
 │   ├── subagents/              # Custom agent prompt definitions
 │   │   ├── navigator.md        # Browser automation
 │   │   ├── detective.md        # Production diagnostics
@@ -335,7 +333,7 @@ rtk init -g --opencode --auto-patch
 
 Restart OpenCode after the plugin is installed.
 
-For **code discovery**, use explicit RTK subcommands: `rtk grep`, `rtk read`, `rtk find`. See the `code-exploration` rule for the full routing protocol between RTK/native tools and GitNexus.
+For **code discovery**, use explicit RTK subcommands: `rtk grep`, `rtk read`, `rtk find`. See the `code-exploration` rule for the full RTK/native routing protocol.
 
 ```bash
 # Check for missing RTK/plugin or deployment drift without installing or mutating
@@ -349,55 +347,26 @@ Homebrew is required only when RTK is absent. Test with `git status` — RTK rew
 
 ## Code intelligence and MCP lifecycle
 
-The system has two explicit discovery tiers:
-
-1. **RTK/native OpenCode tools** are authoritative for exact text and file
-   discovery, shell commands, tests, Git, configuration, documentation, and
-   edits.
-2. **GitNexus** is read-only indexed evidence for Orchestrator, Oracle,
-   Explorer, Detective, and `reviewer-coordinator`. Confirm context and
-   freshness, then use the documented
-   `context/freshness -> query/context -> affected process resources -> impact ->
-   detect_changes` sequence. Inspect the schema before using Cypher; do not
-   invent query syntax. GitNexus 1.6.5 exposes server-side rename, but OpenCode
-   denies the normalized `gitnexus_rename` tool in this managed configuration.
-   This is an OpenCode-side control, not a universal process-level boundary;
-   direct GitNexus processes are outside that control. The canonical operation
-   table is in
-   [`docs/workflows.md`](docs/workflows.md#gitnexus-sequence-and-tool-selection).
-
-   Only Orchestrator, Oracle, Explorer, Detective, and `reviewer-coordinator`
-   have the managed read-only GitNexus evidence grant. Designer, Fixer, and
-   all reviewer lanes otherwise use native OpenCode tools for exact
-   definitions, references, diagnostics, files, shell, tests, and edits.
-   Stale, outdated, empty, partial, truncated, unknown, ambiguous, degraded,
-   error, timeout, or unmapped evidence is unusable. Local refresh/analyze
-   commands and GitNexus Bash access are not part of this architecture; fall
-   back to native tools and disclose graph coverage as unavailable.
+RTK/native OpenCode tools are authoritative for exact text and file discovery,
+shell commands, tests, Git, configuration, documentation, and edits. Agents use
+only the MCPs explicitly assigned in the current configuration; code discovery
+and review evidence do not depend on an indexed code-intelligence service.
 
 ### MCP access matrix
 
-| Agent | GitNexus | Other assigned access |
-| :--- | :--- | :--- |
-| Orchestrator | ✓ | `github` |
-| Oracle | ✓ | — |
-| Explorer | ✓ | — |
-| Detective | ✓ | `pup`/`gcloud` via Bash |
-| Designer | — | `figma-mcp`; no code-intelligence MCP |
-| Fixer | — | no code-intelligence MCP |
-| `reviewer-coordinator` | ✓ (read-only evidence) | Owns reviewer coordination; no direct lane access by Orchestrator |
-| `reviewer-*` lanes | — | no code-intelligence MCP |
-| Librarian | — | `context7`, `websearch`, `gh_grep`, `linear`, `cortex` |
-| Sage | — | `cortex` |
-| Navigator, Observer, and reviewer lanes | — | None |
-
-GitNexus is exposed to assigned agents only through the managed read-only MCP;
-OpenCode denies the normalized `gitnexus_rename` tool. There is no documented
-local refresh/analyze lifecycle, GitNexus Bash fallback, or Phase 0 receipt
-service. When evidence is stale, outdated, empty, partial, truncated, unknown,
-ambiguous, degraded, errored, timed out, or unmapped, the consumer records
-`fallback=native` and `refresh=not permitted`, stops graph claims, and
-discloses graph coverage as unavailable.
+| Agent | Other assigned access |
+| :--- | :--- |
+| Orchestrator | `github` |
+| Oracle | — |
+| Explorer | — |
+| Detective | `pup`/`gcloud` via Bash |
+| Designer | `figma-mcp`; no code-intelligence MCP |
+| Fixer | no code-intelligence MCP |
+| `reviewer-coordinator` | Owns reviewer coordination; no direct lane access by Orchestrator |
+| `reviewer-*` lanes | no code-intelligence MCP |
+| Librarian | `context7`, `websearch`, `gh_grep`, `linear`, `cortex` |
+| Sage | `cortex` |
+| Navigator, Observer | — |
 
 ### Serena removal and deferred/manual uninstall runbook — legacy Codebase Memory state
 
@@ -406,9 +375,7 @@ and runtime removal are later verified lifecycle steps; this task does not
 claim that the launcher, global state, or repository state has already been
 deleted. The required sequence is:
 
-1. Remove source/configuration grants and deploy the GitNexus-only configuration.
-2. Verify the live output and the five-agent GitNexus access matrix (Orchestrator,
-   Oracle, Explorer, Detective, and reviewer-coordinator).
+1. Verify the validated source configuration and generated live output.
 3. Uninstall `serena-agent` with `uv tool uninstall serena-agent`.
 4. Remove only the verified Serena launcher, global state, and repository state.
 5. Avoid broad uv-cache deletion.
@@ -419,7 +386,7 @@ index, and cleanup scripts no longer depend on them (Task 4). Removal is
 deferred until an operator has verified every affected path:
 
 1. Stop OpenCode and other clients that may hold the old process or state.
-2. Deploy the migrated configuration and verify the GitNexus-only matrix.
+2. Deploy the migrated configuration and verify the generated configuration.
 3. Migrate sibling worktree setup, index, and cleanup scripts away from the old
    integration; do not assume this repository owns those files.
 4. Review old registrations and state locations, preserving anything still
@@ -428,14 +395,6 @@ deferred until an operator has verified every affected path:
    no client or cleanup hook still references them.
 
 No automatic deployment or validation step performs these destructive actions.
-
-### GitNexus skill ownership
-
-Rulesync owns the GitNexus skill source at `.rulesync/skills/gitnexus-*/`.
-Deployment projects those skills to `~/.config/opencode/skills/gitnexus-*/`.
-Copies under `~/.agents/skills/` and `~/.claude/skills/` are removed only after
-Rulesync generation and global output content have been verified. Unmanaged,
-unrelated vendor skills are preserved.
 
 ## Worktrunk → Orca → OpenCode workflow
 
@@ -603,7 +562,6 @@ Repository MCP definitions live in `.rulesync/mcp.jsonc`; agent assignments live
 
 | MCP                 | Enabled     | Assigned to                                            |
 | ------------------- | ----------- | ------------------------------------------------------ |
-| gitnexus            | ✓           | Orchestrator, Oracle, Explorer, Detective               |
 | context7            | ✓           | Librarian                                              |
 | github              | ✓           | Orchestrator                                           |
 | sentry              | ❌ disabled | —                                                      |

@@ -23,38 +23,22 @@ Click any card to expand and see detailed information — constraints, responsib
 
 ## Code intelligence boundary
 
-The visualization follows the final two-tier architecture:
+The visualization follows the current tool boundary:
 
 - **RTK/native OpenCode tools** — default and authoritative for exact text/files,
   shell, tests, Git, configuration, documentation, and edits.
-- **GitNexus** — read-only indexed evidence for Orchestrator, Oracle, Explorer,
-  Detective, and `reviewer-coordinator`. Stale, outdated, empty, partial,
-  truncated, unknown, ambiguous, degraded, error, timeout, or unmapped evidence
-  is unusable. Local refresh/analyze commands and GitNexus Bash access are not
-  part of this architecture; use native fallback and disclose graph coverage as
-  unavailable.
-- **Native OpenCode tools** — remain authoritative for exact local work for
-  every agent, including agents that consume GitNexus evidence; this overview
-  does not infer the absence of additional access from an unlisted grant.
-
-Use context/freshness → query/context → affected process resources → impact →
-detect_changes; inspect schema before Cypher. GitNexus failures or stale,
-outdated, empty, partial, truncated, unknown, ambiguous, degraded, error,
-timeout, or unmapped evidence records `fallback=native` and
-`refresh=not permitted`, stops graph claims, and discloses graph coverage as
-unavailable. No Phase 0 receipt service is used. The canonical GitNexus
-operation table is in [`docs/workflows.md`](../docs/workflows.md#gitnexus-sequence-and-tool-selection).
+- **RTK/native OpenCode tools** — authoritative for exact local inspection,
+  shell commands, tests, configuration, documentation, and edits.
+- **Assigned MCPs and CLIs** — available only to the agents listed in the
+  runtime configuration; this overview does not infer unlisted access.
 
 The generated inventory preserves unrelated access: Orchestrator has `github`,
 Designer has `figma-mcp`, Librarian has `context7`, `websearch`, `gh_grep`,
 `linear`, and `cortex`, and Sage has `cortex`. Access not listed in this
 summary remains governed by the authoritative runtime configuration.
 
-Rulesync owns GitNexus skill source under `.rulesync/skills/gitnexus-*/` and
-projects it to `~/.config/opencode/skills/gitnexus-*/`. Copies under
-`~/.agents/skills/` and `~/.claude/skills/` remain until generation and global
-output are content-verified; cleanup is deferred to Task 5. Unmanaged unrelated
-vendor skills are preserved.
+Rulesync owns the skills under `.rulesync/skills/` and projects them to the
+generated global output. Unmanaged unrelated vendor skills are preserved.
 
 ## Serena removal and deferred Codebase Memory retirement
 
@@ -120,7 +104,7 @@ are clamped to `3`. Any non-empty lane `errors` array makes Review Health
 Degraded/inconclusive.
 OpenCode review commands run through `reviewer-coordinator`, which returns one
 inline Markdown report containing telemetry, triggered/skipped lanes,
-batches/session IDs, timing, GitNexus status/fallback, Review Health, verdict,
+batches/session IDs, timing, native RTK/OpenCode tools status/fallback, Review Health, verdict,
 prioritized findings, strengths, and recommended action. The ten `reviewer-*`
 agents are read-only leaf lanes; they do not load the coordinator skill or
 dispatch further tasks. Failed, timed-out,
@@ -129,9 +113,8 @@ findings from other lanes are retained without invented citations.
 
 Review policy defaults are target-aware: current diff/task uses `auto`; entire
 branch, branch, and PR uses `full`; explicit tagged `auto`, `full`, or `aspects`
-overrides the default, and textual `all` normalizes to `full`. Unusable GitNexus
-evidence records `fallback=native` and `refresh=not permitted`; graph coverage
-is disclosed as unavailable.
+overrides the default, and textual `all` normalizes to `full`. Review evidence
+comes from the complete packet and native RTK/OpenCode reads.
 
 ## Model Routing and Reasoning Variants
 
@@ -332,14 +315,13 @@ No code needed—YAML drives everything.
 
 **orchestrator:**
 
-- **GitNexus** — Read-only indexed architecture, processes, API impact, and
-  blast radius; OpenCode denies `gitnexus_rename` in the managed configuration
+- **RTK/native OpenCode tools** — Exact local inspection, shell, tests,
+  configuration, documentation, and edits
 - **github** — GitHub CLI integration (PRs, issues, checks)
 
 **oracle / explorer / detective / reviewer-coordinator:**
 
-- **GitNexus** — Indexed architecture and impact analysis; OpenCode denies
-  `gitnexus_rename` in the managed configuration
+- **RTK/native OpenCode tools** — Exact local inspection and source confirmation
 
 **designer:**
 
@@ -376,8 +358,8 @@ No code needed—YAML drives everything.
 - **context7**, **websearch**, **gh_grep**, **linear**, **cortex** — Knowledge retrieval and internal documentation
 
 All agents use RTK/native tools as applicable for exact text/files, shell, tests,
-Git, configuration, documentation, and edits. The GitNexus consumer list above
-is explicit; this overview makes no blanket claim about access not described by
+Git, configuration, documentation, and edits. The access list above is explicit;
+this overview makes no blanket claim about access not described by
 the selected visualization fields.
 
 ### Tools

@@ -42,8 +42,8 @@ flowchart TD
         POLICY["Target-aware policy:<br/>current diff/task → auto · entire branch/branch/PR → full<br/>explicit tagged auto/full/aspects overrides · textual all → full"]
         PHASEA["Phase A: first nine lanes<br/>reviewer-code · reviewer-test · reviewer-errors · reviewer-types<br/>reviewer-security · reviewer-performance · reviewer-data-integrity<br/>reviewer-accessibility · reviewer-comments<br/>bounded independent batches"]
         PHASEB["Phase B: reviewer-simplifier<br/>exactly once, sequentially when executable/source/config content applies"]
-        FALLBACK["Unusable GitNexus evidence<br/>fallback=native · refresh=not permitted<br/>no graph claims; disclose graph coverage unavailable"]
-        REPORT["One inline Markdown report<br/>telemetry · triggered/skipped lanes · batches/session IDs · timing<br/>GitNexus status/fallback · Review Health · verdict<br/>prioritized findings · strengths · recommended action"]
+        FALLBACK["Native RTK/OpenCode evidence is authoritative<br/>review uses the complete packet; no graph claims"]
+        REPORT["One inline Markdown report<br/>telemetry · triggered/skipped lanes · batches/session IDs · timing<br/>native evidence status · Review Health · verdict<br/>prioritized findings · strengths · recommended action"]
         COORD --> POLICY --> PHASEA --> PHASEB --> REPORT
         COORD -.-> FALLBACK
     end

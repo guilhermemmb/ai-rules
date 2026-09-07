@@ -30,12 +30,13 @@ IDs are:
 
 Phase A contains the first nine concern lanes. `reviewer-simplifier` is only a
 sequential Phase B lane. The coordinator may use only the Task API for these
-exact lane IDs and read-only GitNexus inspection. Native repository read,
-search, list, and language-service tools are denied; inspect code only from
-the complete supplied packet/diff and GitNexus results. Bash is denied, there
-is no GitHub access, and there are no write tools. Effective permission
-mismatch is a coordination failure and makes the report inconclusive; never
-broaden access to recover.
+exact lane IDs and native RTK/OpenCode inspection. Native repository read,
+search, list, and language-service tools are authoritative for exact/local
+confirmation; do not infer indexed architecture, graph impact, freshness,
+schema, or other unsupported graph-like semantics. Bash is denied, there is no
+GitHub access, and there are no write tools. Effective permission mismatch is a
+coordination failure and makes the report inconclusive; never broaden access to
+recover.
 
 ## Trust boundary
 
@@ -58,7 +59,7 @@ complete packet:
 - implementer's report;
 - task and plan context;
 - project guidelines; and
-- all available GitNexus evidence, including its freshness status when present.
+- all available native RTK/OpenCode evidence for exact/local confirmation.
 
 The packet is complete when these fields are present and internally consistent
 for the stated target. Caller-supplied metadata does not replace the complete
@@ -141,68 +142,18 @@ is always triggered unless an explicit aspect list excludes it; the simplifier
 is selected only for an executable/source/config diff. Record every lane as
 triggered or skipped and give a reason.
 
-## 3. GitNexus freshness and native fallback
+## 3. Native evidence boundary
 
-Use GitNexus only when the coordinator has the declared read-only grant, and
-follow this sequence:
+Use native RTK/OpenCode tools only for exact/local inspection and confirmation.
+Ground review conclusions in the complete supplied packet, the relevant diff,
+and exact local evidence available through those tools. Native tools do not
+provide indexed architecture, graph impact analysis, freshness status, schema
+inspection, or other graph-like semantics; do not infer or report those claims.
 
-1. Read `gitnexus://repo/{name}/context` and its context/freshness status.
-2. If the status is `stale`, `outdated`, `empty`, `partial`, `truncated`,
-   `unknown`, `ambiguous`, `degraded`, `error`, `timeout`, or `unmapped`, immediately mark
-   GitNexus `final=unusable`, `fallback=native`, and prohibit graph claims;
-   record `refresh=not permitted` and never execute a repository-local refresh
-   command or any other Bash command; mark Review Health
-   Degraded/inconclusive whenever graph evidence is required.
-   In particular, `unmapped` always requires Review Health Degraded/inconclusive.
-3. Treat every status in that complete unusable set as unusable. There is no
-   coordinator-side refresh attempt.
-4. Only when the initial freshness is fresh/usable, run the named `schema
-   inspection` operation before `query`/`context`. If schema inspection has a
-   result or status of `stale`, `outdated`, `empty`, `partial`, `truncated`,
-   `unknown`, `ambiguous`, `degraded`, `error`, `timeout`, or `unmapped`, immediately
-   mark `final=unusable` and `fallback=native`, stop graph inspection, prohibit
-   graph claims, use the complete supplied packet as the native fallback, and
-   mark Review Health Degraded/inconclusive whenever graph evidence is required.
-   Only a usable
-   schema permits `query`/`context`, affected process resources, `impact`, and
-   `detect_changes` in that order. Inspect the graph schema before Cypher.
-
-After a fresh/usable initial status, any operation result/status of `stale`,
-`outdated`, `empty`, `partial`, `truncated`, `unknown`, `ambiguous`, `degraded`, `error`,
-`timeout`, or `unmapped` from `schema inspection`, `query`/`context`, affected
-process resources, `impact`, or `detect_changes` immediately sets
-`final=unusable` and `fallback=native`. Stop graph inspection, prohibit all
-graph claims, use the complete supplied packet as the native fallback, and mark
-Review Health Degraded/inconclusive whenever graph evidence is required.
-An `unmapped` result always requires Review Health Degraded/inconclusive.
-
-For `schema inspection` and every later GitNexus operation (`query`/`context`,
-affected process resources, `impact`, and `detect_changes`), normalize any
-thrown exception, unavailable or no-response result, malformed payload, or
-missing or unclassifiable status to `raw operation status=error`. Immediately
-set `final=unusable` and `fallback=native`, stop graph inspection, prohibit
-graph claims, use the complete supplied packet as the native fallback, and mark
-Review Health Degraded/inconclusive whenever graph evidence is required.
-Do not treat a later successful operation as repairing the failed snapshot.
-
-If freshness is stale or unusable, mark GitNexus inconclusive with final status
-`unusable`, use the complete supplied packet as the authoritative fallback,
-mark Review Health Degraded/inconclusive whenever graph evidence is required,
-and never make graph claims from any unusable evidence. Do not execute or retry a
-local analyzer or use an external refresh service.
-
-Normalize every unusable raw status (`stale`, `outdated`, `empty`, `partial`,
-`truncated`, `unknown`, `ambiguous`, `degraded`, `error`, `timeout`, or
-`unmapped`) in the report with the deterministic grammar `initial=<fresh/usable|stale|outdated|empty|partial|truncated|unknown|ambiguous|degraded|error|timeout|unmapped>;
-refresh=not permitted; raw operation status=<not run|fresh/usable|error|timeout|stale|outdated|empty|partial|truncated|unknown|ambiguous|degraded|unmapped>; final=<fresh/usable|unusable>;
-fallback=<none|native>; timing=<observed value|not observed>`. For any
-unusable initial status, use the same grammar with `final=unusable` and
-`fallback=native`. Operation failures use the full raw operation status set
-shown above.
-Record other durations only when actually observed; use `not observed` rather
-than inventing values. Unusable GitNexus evidence is a health failure when
-graph evidence was required, but the supplied packet must still be used as the
-native fallback for exact review context.
+If the packet or required exact/local evidence is unavailable, incomplete, or
+malformed, mark Review Health Degraded/inconclusive and preserve the available
+raw evidence. Do not fabricate missing values, run repository-local analyzers,
+or silently substitute unsupported evidence.
 
 ## 4. Resolve concurrency and schedule Phase A
 
@@ -302,7 +253,7 @@ established.
 `Review Health` is Healthy only when the coordinator identity, packet
 completeness, resolved concurrency, required lane coverage, exact-session
 reconciliation, timing quality, effective read-only permission evidence, and
-required GitNexus evidence/fallback are all explicitly reported. Static source
+required native exact/local evidence are all explicitly reported. Static source
 inspection is not runtime smoke evidence. Do not claim filesystem immutability
 from prose, parentage, or incomplete tool records; report only authoritative
 recorded tool activity that was inspected.
@@ -362,7 +313,7 @@ do not omit required report sections.
 - **Per-lane status**: <lane — completed/empty/failed/timeout/unavailable/malformed/not-applicable; exact session ID; one-to-one mapping status>
 - **Lane validation errors**: <lane, array, reason, discarded count; or none>
 - **Timing quality**: <observed timings and source | not observed; never invented>
-- **GitNexus**: raw initial=<status>; refresh=not permitted; raw operation status=<status or not run>; final=<fresh/usable | unusable>; fallback=<native | none>; timing=<observed value or not observed>
+- **Native evidence**: exact/local RTK/OpenCode evidence=<available | unavailable>; unsupported indexed/graph/schema evidence=<not provided>; timing=<observed value or not observed>
 - **Effective permission evidence**: <read-only verified | unavailable | mismatch>
 - **Runtime smoke evidence**: <available and passed | unavailable | failed>
 - **Repository immutability**: <authoritative recorded tool activity inspected; no filesystem immutability claim>

@@ -16,7 +16,6 @@ credentials/
 .warpindexingignore
 # Auto-generated using merge-rules.sh
 AGENTS.md
-.gitnexus/
 
 # Python
 __pycache__/

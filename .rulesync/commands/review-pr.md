@@ -19,7 +19,7 @@ partial direct-lane review.
 
 The packet must include target descriptor, scope, complete relevant diff,
 changed paths, diff metadata when available, implementer's report, task/plan
-context, project guidelines, and available GitNexus evidence. The packet is
+context, and project guidelines. The packet is
 complete only when these fields are present and internally consistent for the
 stated target; caller-supplied metadata does not replace the complete diff or
 changed-path list. Missing or inconsistent packet fields fail closed: produce
@@ -51,25 +51,9 @@ trigger table. Full dispatches all nine Phase A concern lanes, then runs
 `reviewer-simplifier` exactly once as sequential Phase B only for a non-empty
 executable/source/config diff; docs-only records simplifier not-applicable.
 
-GitNexus context is read-only evidence. The coordinator reads
-`context/freshness`; stale, outdated, empty, partial, truncated, unknown,
-ambiguous, degraded, error, timeout, or unmapped evidence is unusable, immediately
-produces `final=unusable` and `fallback=native`, records `refresh=not permitted`,
-marks Review Health Degraded/inconclusive when graph evidence is required, and
-uses native RTK/OpenCode fallback without graph claims. It must not execute
-repository-local analyze commands or any other Bash. After a fresh/usable initial status, run
-the named `schema inspection` operation before any query/context. Any schema inspection,
-query/context, process-resource, impact, or detect_changes result/status of
-stale, outdated, empty, partial, truncated, unknown, ambiguous, degraded, error, timeout, or
-unmapped immediately sets `final=unusable` and `fallback=native`, stops graph inspection, prohibits graph claims, uses native fallback,
-and makes health inconclusive when graph evidence is required. An `unmapped`
-status always requires Review Health Degraded/inconclusive. Normalize the
-report as
-`initial=<fresh/usable|stale|outdated|empty|partial|truncated|unknown|ambiguous|degraded|error|timeout|unmapped>;
-refresh=not permitted; raw operation status=<not run|fresh/usable|error|timeout|stale|outdated|empty|partial|truncated|unknown|ambiguous|degraded|unmapped>; final=<fresh/usable|unusable>;
-fallback=<none|native>; timing=<observed value|not observed>`. For any
-unusable initial status, use `final=unusable` and `fallback=native`; operation
-failures use the full raw operation status set shown above.
+Use native RTK/OpenCode reads as the source of truth for review evidence. The
+coordinator must not execute repository-local analyze commands or any other
+Bash.
 
 Resolve `REVIEWER_MAX_PARALLEL` as a trimmed complete integer: 1–3 are valid,
 unset/empty/non-integer/zero/negative resolve to 3, and values above 3 clamp to
@@ -93,7 +77,7 @@ count while retaining other valid findings. Caller-facing output is one inline
 Markdown report, not JSON. The report includes target, packet completeness and
 diff metadata, requested/resolved policy, triggered/skipped lanes with reasons,
 raw/resolved concurrency, batches, Phase B decision, per-lane status, timing
-quality, GitNexus initial/refresh/final/fallback status, Review Health, verdict,
+quality, Review Health, verdict,
 deduplicated Critical/Important/Suggestions with source lane and changed
 file:line/confidence/remediation, Strengths, Recommended Action, and any
 finalization error.

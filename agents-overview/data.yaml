@@ -28,7 +28,7 @@ nodes:
       dependency_policy: "Overlapping, ambiguous, shared, generated, lockfile, and ordered work serializes"
       failure_policy: "NEEDS_CONTEXT, BLOCKED, timeout, failure, or malformed results hold dependents and are surfaced"
       ownership_policy: "Fixer Files are hard write allowlists; unowned changes fail closed"
-    mcp_access: gitnexus, github
+    mcp_access: github
     review_ownership: "OpenCode: reviewer-coordinator is the sole coordinator; orchestrator delegates the complete review packet and does not preload the coordinator skill, select/directly dispatch lanes, batch, aggregate, or compute the verdict."
     constraints:
       "Hard-enforced at tool/config level: no sentry/rootly MCP access (unavailable in Detective),
@@ -63,7 +63,7 @@ nodes:
     parent: orchestrator
     model: GPT-5.6 Terra
     skills: simplify
-    mcp_access: gitnexus
+    mcp_access: ""
     trigger: Architecture review, hard debugging, trade-offs, code review
     constraints: Read-heavy analysis. No sentry/datadog/cortex MCPs.
     responsibilities: "• Architecture review & trade-off analysis
@@ -82,7 +82,7 @@ nodes:
     color: "#38bdf8"
     parent: orchestrator
     model: DeepSeek V4 Flash (low)
-    mcp_access: gitnexus
+    mcp_access: ""
     trigger: Broad codebase searches, pattern discovery, unfamiliar repos
     constraints: Read-only exploration. Follows code-exploration rule.
     responsibilities: "• Broad codebase scouting & pattern discovery
@@ -91,8 +91,8 @@ nodes:
 
       • Map unfamiliar repos quickly
 
-      • Follow code-exploration rule: RTK/native for exact/local discovery and GitNexus for
-      structural analysis
+      • Follow code-exploration rule: RTK/native for exact/local discovery and source
+        confirmation
 
       "
   - id: librarian
@@ -242,7 +242,7 @@ nodes:
     color: "#f87171"
     parent: orchestrator
     model: GPT-5.6 Luna (medium)
-    mcp_access: gitnexus
+    mcp_access: ""
     tools: pup CLI, gcloud CLI via Bash
     trigger: Production errors, logs, metrics, traces, incidents, root cause analysis
     constraints:
@@ -308,7 +308,7 @@ nodes:
     color: "#f59e0b"
     parent: orchestrator
     model: DeepSeek V4 Flash (medium)
-    mcp_access: gitnexus
+    mcp_access: ""
     skills: reviewer-coordinator
     trigger: Receives complete OpenCode review packets from the orchestrator
     dispatches:
@@ -323,19 +323,15 @@ nodes:
       - reviewer-comments
       - reviewer-simplifier
     constraints:
-      "Sole OpenCode review coordinator. GitNexus access is read-only evidence. The orchestrator delegates the complete packet;
+      "Sole OpenCode review coordinator. The orchestrator delegates the complete packet;
       this agent owns policy, lane selection, batching, aggregation, and verdict.
 
       Runs the first nine lanes in Phase A batches capped by REVIEWER_MAX_PARALLEL
       (default and maximum 3; invalid values fall back to 3; values above 3 are clamped),
       then reviewer-simplifier exactly once sequentially in Phase B when applicable.
 
-      Stale/outdated/empty/partial/truncated/unknown/ambiguous/degraded/error/timeout/
-      unmapped GitNexus evidence is unusable: fallback=native, refresh=not permitted,
-      no graph claims, and disclose graph coverage unavailable.
-
       Returns one inline Markdown report with telemetry, triggered/skipped lanes,
-      batches/session IDs, timing, GitNexus status/fallback, Review Health, verdict,
+      batches/session IDs, timing, native evidence status, Review Health, verdict,
       prioritized findings, strengths, and recommended action.
 
       "
@@ -448,13 +444,6 @@ nodes:
     model: Gemini 3 Flash Preview (medium)
     mcp_access: ""
     trigger: Phase A; UI files changed or rendering behavior changed
-  - id: gitnexus-mcp
-    label: gitnexus
-    type: mcp
-    role: Managed-OpenCode Read-Only Indexed Code Intelligence
-    color: "#a78bfa"
-    parent: null
-    config: "Managed OpenCode read-only evidence; stale/outdated/empty/partial/truncated/unknown/ambiguous/degraded/error/timeout/unmapped results are unusable; fallback=native; refresh=not permitted; no local refresh/analyze or GitNexus Bash access"
   - id: context7-mcp
     label: context7
     type: mcp
@@ -838,9 +827,6 @@ links:
     target: reviewer-coordinator
     label: delegates complete review packet
   - source: orchestrator
-    target: gitnexus-mcp
-    label: uses (managed-OpenCode read-only)
-  - source: orchestrator
     target: github-mcp
     label: uses
   - source: librarian
@@ -900,18 +886,6 @@ links:
   - source: sage
     target: cortex-mcp
     label: uses
-  - source: oracle
-    target: gitnexus-mcp
-    label: uses (managed-OpenCode read-only)
-  - source: explorer
-    target: gitnexus-mcp
-    label: uses (managed-OpenCode read-only)
-  - source: detective
-    target: gitnexus-mcp
-    label: uses (managed-OpenCode read-only)
-  - source: reviewer-coordinator
-    target: gitnexus-mcp
-    label: uses (managed-OpenCode read-only)
   - source: fixer
     target: skill-fixer
     label: invokes

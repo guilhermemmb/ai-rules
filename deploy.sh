@@ -35,15 +35,6 @@ WORKTREE_STATE_SOURCE="${WORKTREE_STATE_SOURCE:-$DOTFILES_DIR/worktree-state.sh}
 WORKTREE_STATE_DESTINATION="${WORKTREE_STATE_DESTINATION:-$(dirname "$WT_ORCA_DESTINATION")/worktree-state.sh}"
 DEPLOYMENT_LOCK_HELPER="${DEPLOYMENT_LOCK_HELPER:-$DOTFILES_DIR/deployment-lock.sh}"
 
-GITNEXUS_VERSION="1.6.5"
-GITNEXUS_TARBALL_URL="https://registry.npmjs.org/gitnexus/-/gitnexus-1.6.5.tgz"
-# Registry tarball SRI for the pinned GitNexus artifact. The downloaded bytes
-# are verified directly before the tarball is passed to npm for installation.
-GITNEXUS_INTEGRITY="sha512-xluRjhobdJ0M0IJniTSZompGoZJQdKBQ4AbZ3HfcbNYRR1Z9jebqOi7/IVrHYGdTdW55/lvnnT1n+zYTq4CnyQ=="
-GITNEXUS_INSTALL_PREFIX="${GITNEXUS_INSTALL_PREFIX:-${HOME}/.local}"
-GITNEXUS_BIN="${GITNEXUS_BIN:-${GITNEXUS_INSTALL_PREFIX}/bin/gitnexus}"
-GITNEXUS_ARTIFACT_ROOT=""
-GITNEXUS_ARTIFACT=""
 RTK_BIN="${RTK_BIN:-}"
 RTK_HOMEBREW_FORMULA="rtk-ai/tap/rtk"
 RTK_PLUGIN_PATH="${OPENDIR}/plugins/rtk.ts"
@@ -152,15 +143,6 @@ cleanup_stage() {
   fi
   if [[ "$FORCE_MUTATION_STARTED" = true && $exit_code -ne 0 ]]; then
     force_recovery_warning
-  fi
-  if [[ -n "$GITNEXUS_ARTIFACT_ROOT" && -d "$GITNEXUS_ARTIFACT_ROOT" ]]; then
-    if rm -rf "$GITNEXUS_ARTIFACT_ROOT"; then
-      GITNEXUS_ARTIFACT_ROOT=""
-      GITNEXUS_ARTIFACT=""
-    else
-      red "  ❌ could not remove GitNexus staging artifacts: $GITNEXUS_ARTIFACT_ROOT"
-      exit_code=1
-    fi
   fi
   if [[ -n "$STAGE_ROOT" && -d "$STAGE_ROOT" ]]; then
     if [[ "$RECOVERY_ARTIFACTS_PRESERVED" = true ]]; then
@@ -275,235 +257,6 @@ preflight_pyyaml() {
   fi
 }
 
-gitnexus_version_matches() {
-  gitnexus_path_is_trusted || return 1
-  gitnexus_artifact_is_verified || return 1
-  "$GITNEXUS_BIN" --version 2>/dev/null | grep -Eq "(^|[^0-9])${GITNEXUS_VERSION//./\\.}([^0-9]|$)"
-}
-
-gitnexus_prefix_is_trusted() {
-  "$PYTHON_BIN" - "$GITNEXUS_INSTALL_PREFIX" <<'PY'
-import os
-import stat
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-current_uid = os.getuid()
-if path.is_symlink():
-    raise SystemExit("GitNexus install prefix is a symlink")
-
-existing = path
-while not existing.exists():
-    parent = existing.parent
-    if parent == existing:
-        raise SystemExit("GitNexus install prefix has no existing parent")
-    existing = parent
-
-for candidate in [existing, *existing.parents]:
-    candidate_stat = os.lstat(candidate)
-    if candidate in (path, existing) and candidate_stat.st_uid != current_uid:
-        raise SystemExit(f"GitNexus install prefix component is not owned by the current user: {candidate}")
-    if stat.S_IMODE(candidate_stat.st_mode) & 0o022:
-        raise SystemExit(f"GitNexus install prefix component is group- or world-writable: {candidate}")
-    if not stat.S_ISDIR(candidate_stat.st_mode):
-        raise SystemExit(f"GitNexus install prefix component is not a directory: {candidate}")
-PY
-}
-
-gitnexus_path_is_trusted() {
-  [[ -e "$GITNEXUS_BIN" && -x "$GITNEXUS_BIN" ]] || return 1
-  "$PYTHON_BIN" - "$GITNEXUS_BIN" "$GITNEXUS_INSTALL_PREFIX" <<'PY'
-import os
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-prefix = Path(sys.argv[2]).resolve()
-try:
-    resolved = path.resolve(strict=True)
-except OSError:
-    raise SystemExit("GitNexus executable is dangling or cannot be resolved")
-if not resolved.is_file() or not os.access(resolved, os.X_OK):
-    raise SystemExit("GitNexus executable does not resolve to an executable regular file")
-try:
-    resolved.relative_to(prefix)
-except ValueError:
-    raise SystemExit("GitNexus executable resolves outside the expected npm install prefix")
-PY
-}
-
-prepare_gitnexus_artifact() {
-  GITNEXUS_ARTIFACT_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/gitnexus-artifact.XXXXXX")" || return 1
-  chmod 700 "$GITNEXUS_ARTIFACT_ROOT"
-  GITNEXUS_ARTIFACT="$GITNEXUS_ARTIFACT_ROOT/gitnexus-${GITNEXUS_VERSION}.tgz"
-  if ! "$PYTHON_BIN" - "$GITNEXUS_TARBALL_URL" "$GITNEXUS_ARTIFACT" <<'PY'
-import shutil
-import sys
-import urllib.request
-from pathlib import Path
-
-url, destination = sys.argv[1:]
-with urllib.request.urlopen(url, timeout=120) as response, Path(destination).open("xb") as handle:
-    shutil.copyfileobj(response, handle)
-PY
-  then
-    red "  ❌ could not download the pinned GitNexus package artifact"
-    return 1
-  fi
-  [[ -f "$GITNEXUS_ARTIFACT" && ! -L "$GITNEXUS_ARTIFACT" ]] || {
-    red "  ❌ npm did not produce a regular GitNexus package artifact"
-    return 1
-  }
-  "$PYTHON_BIN" - "$GITNEXUS_ARTIFACT" "$GITNEXUS_INTEGRITY" <<'PY'
-import base64
-import hashlib
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-expected = sys.argv[2].removeprefix("sha512-")
-actual = base64.b64encode(hashlib.sha512(path.read_bytes()).digest()).decode("ascii")
-if actual != expected:
-    raise SystemExit("GitNexus package artifact does not match the pinned SRI")
-PY
-}
-
-gitnexus_artifact_is_verified() {
-  [[ -n "$GITNEXUS_ARTIFACT" && -f "$GITNEXUS_ARTIFACT" ]] || return 1
-  gitnexus_prefix_is_trusted || return 1
-  gitnexus_path_is_trusted || return 1
-  "$PYTHON_BIN" - "$GITNEXUS_ARTIFACT" "$GITNEXUS_INSTALL_PREFIX" "$GITNEXUS_BIN" "$GITNEXUS_INTEGRITY" <<'PY'
-import base64
-import hashlib
-import json
-import os
-import stat
-import sys
-import tarfile
-from pathlib import Path
-
-artifact, prefix, executable, expected_sri = sys.argv[1:]
-prefix = Path(prefix).resolve()
-package_root = prefix / "lib" / "node_modules" / "gitnexus"
-current_uid = os.getuid()
-
-def check_regular(path, label):
-    info = os.lstat(path)
-    if info.st_uid != current_uid or stat.S_IMODE(info.st_mode) & 0o022:
-        raise SystemExit(f"{label} has unsafe ownership or permissions: {path}")
-    if not stat.S_ISREG(info.st_mode):
-        raise SystemExit(f"{label} is not a regular file: {path}")
-
-actual_sri = base64.b64encode(hashlib.sha512(Path(artifact).read_bytes()).digest()).decode("ascii")
-if expected_sri != "sha512-" + actual_sri:
-    raise SystemExit("GitNexus package artifact SRI mismatch")
-
-artifact_files = {}
-with tarfile.open(artifact, "r:gz") as archive:
-    for member in archive.getmembers():
-        name = member.name
-        if name in ("package", "package/"):
-            continue
-        if not name.startswith("package/") or "\x00" in name:
-            raise SystemExit("GitNexus package artifact contains an unsafe path")
-        relative = Path(name.removeprefix("package/"))
-        if relative.is_absolute() or ".." in relative.parts:
-            raise SystemExit("GitNexus package artifact contains a path traversal")
-        if member.issym() or member.islnk():
-            raise SystemExit("GitNexus package artifact contains a symlink")
-        if member.isfile():
-            extracted = archive.extractfile(member)
-            if extracted is None:
-                raise SystemExit("GitNexus package artifact member cannot be read")
-            artifact_files[relative.as_posix()] = extracted.read()
-        elif not member.isdir():
-            raise SystemExit("GitNexus package artifact contains an unsupported member")
-
-if not artifact_files or "package.json" not in artifact_files:
-    raise SystemExit("GitNexus package artifact has no valid package files")
-for relative, expected in artifact_files.items():
-    candidate = package_root / relative
-    check_regular(candidate, "GitNexus installed package file")
-    # GitNexus 1.6.5's native dependency lifecycle scripts regenerate these
-    # Makefiles during npm install. All other package bytes remain pinned to the
-    # verified tarball; the executable itself is checked exactly below.
-    lifecycle_generated = (
-        relative.startswith("vendor/node_modules/node-addon-api/")
-        and (relative.endswith(".mk") or relative.endswith(".Makefile"))
-    )
-    if not lifecycle_generated and candidate.read_bytes() != expected:
-        raise SystemExit(f"GitNexus installed package bytes differ from the pinned artifact: {relative}")
-
-package = json.loads(artifact_files["package.json"].decode("utf-8"))
-bins = package.get("bin")
-if isinstance(bins, str):
-    bin_target = bins
-elif isinstance(bins, dict):
-    bin_target = bins.get("gitnexus")
-else:
-    bin_target = None
-if not isinstance(bin_target, str) or not bin_target:
-    raise SystemExit("GitNexus package has no gitnexus executable entry")
-resolved_executable = Path(executable).resolve(strict=True)
-try:
-    executable_relative = resolved_executable.relative_to(package_root).as_posix()
-except ValueError:
-    raise SystemExit("GitNexus executable resolves outside the installed package")
-if executable_relative != bin_target.removeprefix("./"):
-    raise SystemExit("GitNexus executable is not the package's declared bin target")
-check_regular(resolved_executable, "GitNexus executable")
-if resolved_executable.read_bytes() != artifact_files.get(executable_relative):
-    raise SystemExit("GitNexus executable bytes differ from the pinned artifact")
-PY
-}
-
-install_gitnexus() {
-  gitnexus_prefix_is_trusted || return 1
-  prepare_gitnexus_artifact || return 1
-  if gitnexus_version_matches; then
-    green "  ✅ GitNexus ${GITNEXUS_VERSION} already matches the verified artifact at $GITNEXUS_BIN — skipping"
-    return 0
-  fi
-  if [[ ! -d "$GITNEXUS_INSTALL_PREFIX" ]]; then
-    mkdir -p "$GITNEXUS_INSTALL_PREFIX"
-    chmod 700 "$GITNEXUS_INSTALL_PREFIX"
-  fi
-  cyan "  ⚡ installing pinned GitNexus ${GITNEXUS_VERSION}..."
-  if ! "$NPM_BIN" install --global --prefix "$GITNEXUS_INSTALL_PREFIX" --no-audit --no-fund "$GITNEXUS_ARTIFACT"; then
-    red "  ❌ GitNexus installation failed"
-    return 1
-  fi
-
-  [[ -x "$GITNEXUS_BIN" ]] || {
-    red "  ❌ GitNexus installation did not create $GITNEXUS_BIN"
-    return 1
-  }
-  gitnexus_path_is_trusted || {
-    red "  ❌ GitNexus executable is dangling or resolves outside $GITNEXUS_INSTALL_PREFIX"
-    return 1
-  }
-  gitnexus_artifact_is_verified || return 1
-  gitnexus_version_matches || {
-    red "  ❌ installed GitNexus version did not match ${GITNEXUS_VERSION}"
-    return 1
-  }
-  green "  ✅ GitNexus ${GITNEXUS_VERSION} installed at $GITNEXUS_BIN"
-}
-
-preflight_gitnexus() {
-  local check_only="$1"
-  if [[ "$check_only" = true ]]; then
-    if ! prepare_gitnexus_artifact || ! gitnexus_version_matches; then
-      red "  ❌ missing dependency: GitNexus ${GITNEXUS_VERSION} at $GITNEXUS_BIN"
-      return 1
-    fi
-    return 0
-  fi
-
-  install_gitnexus || return 1
-}
-
 verify_rtk() {
   if ! "$RTK_BIN" gain >/dev/null 2>&1; then
     fail "RTK_BIN is not the RTK Token Killer executable: rtk gain failed for $RTK_BIN"
@@ -579,20 +332,15 @@ preflight_dependencies() {
     preflight_pyyaml || failed=1
   fi
 
-  if [[ -n "${NPM_BIN:-}" && -n "${PYTHON_BIN:-}" ]]; then
-    preflight_gitnexus "$check_only" || failed=1
-  fi
 
   return "$failed"
 }
 
 validate_tracked_worktrunk_config() {
   [[ -f "$WORKTRUNK_CONFIG_SOURCE" ]] || return 1
-  grep -Fq '[[post-start]]' "$WORKTRUNK_CONFIG_SOURCE" || return 1
+  [[ "$(grep -Fc '[[post-start]]' "$WORKTRUNK_CONFIG_SOURCE")" -eq 2 ]] || return 1
   grep -Fq 'install-deps = "~/developer/dotfiles/worktree-pnpm-install.sh --workspace-path {{ worktree_path }}"' "$WORKTRUNK_CONFIG_SOURCE" || return 1
   grep -Fq 'worktree-setup = "~/developer/dotfiles/worktree-setup.sh' "$WORKTRUNK_CONFIG_SOURCE" || return 1
-  grep -Fq '[pre-remove]' "$WORKTRUNK_CONFIG_SOURCE" || return 1
-  grep -Fq 'worktree-cleanup = "bash ~/developer/dotfiles/worktree-cleanup.sh' "$WORKTRUNK_CONFIG_SOURCE" || return 1
 }
 
 validate_json_file() {
@@ -2414,7 +2162,7 @@ run_deploy() {
   recover_pending_opencode_transaction
 
   # All executable checks happen before any generated configuration mutation.
-  yellow "  ⚠️  Preflight/package side effects are outside deployment rollback: GitNexus npm state, RTK/Homebrew state, and OMO package/cache state."
+  yellow "  ⚠️  Preflight/package side effects are outside deployment rollback: RTK/Homebrew state and OMO package/cache state."
   preflight_dependencies false || fail "dependency preflight failed"
   # Host/package compatibility probing is intentionally not part of normal
   # deployment: probing unrelated package metadata on every deploy is wasteful.

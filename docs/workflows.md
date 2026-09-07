@@ -82,10 +82,10 @@ Source: [`custom-rules.md`](../.rulesync/rules/custom-rules.md) and
 
 ## 2. Discovery and delegation
 
-### Discovery routing: RTK/native and GitNexus
+### Discovery routing: RTK/native
 
-Two discovery tiers cover different question shapes. Source:
-[`.rulesync/rules/code-exploration.md`](../.rulesync/rules/code-exploration.md).
+Native RTK/OpenCode tools are authoritative for exact local inspection and
+repository work. Source: [`.rulesync/rules/code-exploration.md`](../.rulesync/rules/code-exploration.md).
 
 | Task | Tool |
 | :--- | :--- |
@@ -94,43 +94,15 @@ Two discovery tiers cover different question shapes. Source:
 | File discovery by pattern | `rtk find` |
 | Dynamic templates, macros, non-AST text | `rtk grep` / `rtk read` |
 | Definitions, references, implementations, diagnostics | RTK/native OpenCode tools |
-| Indexed architecture, processes, API impact, blast radius | GitNexus (assigned graph agents only) |
+| Architecture and dependency reasoning | Native source inspection and task context |
 
-GitNexus sequence and tool selection:
-
-| Question | GitNexus operation/resource |
-| :--- | :--- |
-| Confirm indexed project and freshness | `context` / freshness check |
-| Search indexed architecture | `query` |
-| Inspect a connected node or relationship | `context` |
-| Read affected process resources | process resources |
-| Assess dependency or edit blast radius | `impact` |
-| Map changes before review or handoff | `detect_changes` |
-
-GitNexus users must follow `context/freshness → query/context → affected process
-resources → impact → detect_changes`. Inspect the schema before Cypher and do
-not invent query syntax. GitNexus is snapshot-based and does not replace native
-exact-file work. GitNexus 1.6.5 exposes server-side rename; OpenCode denies the
-normalized `gitnexus_rename` tool, so agents cannot invoke it through this
-managed OpenCode configuration. This is an OpenCode-side control, not a
-universal process-level boundary; direct GitNexus processes are outside that
-control. Stale, outdated, empty, partial, truncated, ambiguous, degraded, or
-`UNKNOWN` results are inconclusive, so fall back immediately to RTK/native
-tools. Orchestrator, Oracle, Explorer, Detective, and reviewer-coordinator have
-GitNexus access.
-
-Designer, Fixer, and all reviewer lanes otherwise use native RTK/OpenCode tools
-for definitions, references, implementations, diagnostics, files, shell, tests,
-and edits; reviewer-coordinator additionally inspects its complete review packet
-and GitNexus evidence before coordinating lanes.
-
-**Fallback rule:** fall back immediately to `rtk grep` / `rtk read` when GitNexus
-is unavailable or returns empty/incomplete results. Do not use
-unproxied `cat` / plain `grep` / `ls` for discovery output.
+Use native RTK/OpenCode tools for repository reconnaissance, dependency reasoning,
+review inputs, and exact edits. Do not use unproxied `cat` / plain `grep` / `ls`
+for discovery output.
 
 RTK is also an OpenCode plugin that transparently rewrites ordinary commands
-(`git status` → `rtk git status`). Explicit discovery subcommands are
-`rtk grep`, `rtk read`, `rtk find`.
+(`git status` → `rtk git status`). Explicit discovery subcommands are `rtk grep`,
+`rtk read`, and `rtk find`.
 
 ### Agent delegation map
 
@@ -142,13 +114,13 @@ Intent-to-agent routing. Models are `Current` as declared in
 | :--- | :--- | :--- |
 | Master delegation & coordination | Orchestrator | Default agent; delegates complete review packets to `reviewer-coordinator` |
 | Strategic/architecture decisions, escalation | Oracle | Also adjudicates failed review loops |
-| Codebase reconnaissance | Explorer | RTK/native + GitNexus discovery |
+| Codebase reconnaissance | Explorer | RTK/native discovery |
 | External/public research, docs | Librarian | Context7, websearch, Linear, Cortex |
 | UI/UX implementation & design | Designer | Native tools + Figma skills; no code-intelligence MCP |
 | Scoped code implementation | Fixer | Native tools; hard `Files` allowlist, no architecture decisions |
 | Visual analysis | Observer | Auto-routes images from Orchestrator |
 | Browser automation | Navigator | `agent-browser` CLI via Bash only |
-| Production diagnostics | Detective | GitNexus graph with the managed OpenCode rename denial + `pup`/`gcloud` via Bash, read-only |
+| Production diagnostics | Detective | `pup`/`gcloud` via Bash, read-only |
 | Gorgias domain knowledge | Sage | Cortex MCP, read-only |
 | Review coordination (OpenCode) | `reviewer-coordinator` | Receives the orchestrator's complete packet; selects, batches, aggregates, and computes the verdict for 10 read-only lanes |
 
@@ -244,9 +216,9 @@ source, or config content is present. A docs-only full review does not run the
 simplifier.
 
 The coordinator returns one inline Markdown report containing telemetry,
-triggered/skipped lanes, batches and exact session IDs, timing, GitNexus
-status/fallback, Review Health, verdict, prioritized findings, strengths, and
-recommended action.
+triggered/skipped lanes, batches and exact session IDs, timing, native
+RTK/OpenCode evidence, Review Health, verdict, prioritized findings, strengths,
+and recommended action.
 
 ### Lanes and triggers
 
@@ -287,12 +259,7 @@ smoke evidence are all reported. Any of the following forces
   identity / tool execution;
 - effective-permission mismatch (a failed smoke test or permission mismatch).
 
-GitNexus evidence is read-only. Stale, outdated, empty, partial, truncated,
-unknown, ambiguous, degraded, error, timeout, or unmapped evidence is unusable;
-the coordinator records `fallback=native` and `refresh=not permitted`, makes no
-graph claims, and discloses graph coverage as unavailable. Local
-refresh/analyze commands, GitNexus Bash access, and a Phase 0 receipt service
-are not part of this workflow.
+Review evidence comes from the complete packet and native RTK/OpenCode reads.
 
 Static validation alone is **never** runtime smoke evidence. A
 `Degraded`/inconclusive status describes coverage, not a code defect. Runtime
@@ -332,33 +299,18 @@ rtk init -g --opencode --auto-patch
 The manual prerequisite is `brew install rtk-ai/tap/rtk` (Homebrew only when
 RTK is absent). Test with `git status` — RTK rewrites it transparently.
 
-### GitNexus integration and Serena removal lifecycle
+### Code intelligence lifecycle
 
-Deployment records GitNexus as managed read-only evidence. There is no local
-refresh/analyze lifecycle, GitNexus Bash access, or Phase 0 receipt service in
-this architecture. Stale, outdated, empty, partial, truncated, unknown,
-ambiguous, degraded, error, timeout, or unmapped evidence is unusable; use
-native RTK/OpenCode fallback, record `fallback=native` and
-`refresh=not permitted`, and disclose graph coverage as unavailable.
-
-The GitNexus sequence for graph work through the managed OpenCode configuration
-remains context/freshness → query/context → affected process resources → impact
-→ detect_changes; schema inspection comes before Cypher. Only Orchestrator,
-Oracle, Explorer, Detective, and `reviewer-coordinator` have the managed
-read-only GitNexus grant; reviewer lanes use native tools for exact local work.
-
-Rulesync owns GitNexus skill source under `.rulesync/skills/gitnexus-*/` and
-projects it to `~/.config/opencode/skills/gitnexus-*/`. Copies under
-`~/.agents/skills/` and `~/.claude/skills/` are removed only after generation
-and global output content are verified. Unmanaged unrelated vendor skills stay
-in place.
+Deployment and review use native RTK/OpenCode inspection. No indexed
+code-intelligence service, local analyzer, or graph-evidence lifecycle is part of
+the current configuration.
 
 #### Serena removal and deferred Codebase Memory retirement
 
 Serena's active MCP/agent policy removal is complete, while deploy-time
 installation and runtime deletion are deferred until deployment and live-output
 verification. The full removal sequence is: remove source/configuration grants;
-deploy GitNexus-only config; verify live output; uninstall `serena-agent`; remove
+verify the validated configuration and live output; uninstall `serena-agent`; remove
 only verified launcher, global, and repository state; and avoid broad uv-cache
 deletion.
 

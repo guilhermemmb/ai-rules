@@ -1,16 +1,6 @@
 {
   "$schema": "https://github.com/dyoshikawa/rulesync/releases/latest/download/mcp-schema.json",
   "mcpServers": {
-    "gitnexus": {
-      "enabled": true,
-      "type": "local",
-      "command": [
-        "/usr/bin/env",
-        "GITNEXUS_MCP_READ_ONLY=1",
-        "/Users/guilhermebomfim/.local/bin/gitnexus",
-        "mcp"
-      ],
-    },
     "context7": {
       "type": "http",
       "url": "https://mcp.context7.com/mcp",

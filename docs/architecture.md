@@ -47,13 +47,13 @@ fourth is observed at runtime and cannot be proven from source alone.
 | [`.rulesync/subagents/`](../.rulesync/subagents/) | Custom subagent definitions (`detective`, `navigator`, `sage`) with YAML frontmatter declaring model/tools/mcps/skills. |
 | [`.rulesync/commands/`](../.rulesync/commands/) | Command definitions (`review-pr.md`). |
 | [`.rulesync/oh-my-opencode-slim/`](../.rulesync/oh-my-opencode-slim/) | Per-agent appended prompts (`{agent}_append.md`). |
-| [`.rulesync/skills/`](../.rulesync/skills/) | Rulesync-owned skills distributed by Rulesync, including the complete `gitnexus-*` skill set. |
+| [`.rulesync/skills/`](../.rulesync/skills/) | Rulesync-owned skills distributed by Rulesync. |
 | [`.rulesync/mcp.jsonc`](../.rulesync/mcp.jsonc) | MCP server declarations (endpoints, enable flags). |
 | [`profiles/models/`](../profiles/models/) | Model profiles (`default.yml`, `cost-efficient.yml`) — schema version 1 with a required per-agent `model` and an optional `variant`. |
 | [`scripts/`](../scripts/) | Cross-artifact validator, profile applier, and latency-reporting utilities. |
 | [`deploy.sh`](../deploy.sh) | Deployment/check/rollback entry point; source of truth for generated configuration. |
 | [`agents-overview/`](../agents-overview/) | Interactive visualization (`data.yaml` + `index.html`). |
-| [`skills-lock.json`](../skills-lock.json) | Pinned/locked external skills, including the Rulesync-owned GitNexus skill set and `agent-browser` from `vercel-labs/agent-browser`. |
+| [`skills-lock.json`](../skills-lock.json) | Pinned/locked external skills, including `agent-browser` from `vercel-labs/agent-browser`. |
 
 ### Sibling-dotfiles inputs (outside this repo)
 
@@ -101,13 +101,10 @@ hashes). The payload is also validated by
 | `~/.config/opencode/oh-my-opencode-slim.json` | Installed after profile patch. |
 | `~/.config/opencode/AGENTS.md` | Rulesync-generated global instructions. |
 | `~/.config/opencode/agents/`, `skills/` | Installed from Rulesync-generated output. |
-| `~/.config/opencode/skills/gitnexus-*/` | Global projection of Rulesync-owned GitNexus skills; external duplicate copies remain until deployment verification. |
 | `~/.config/opencode/commands/` | **Directly copied** from [`.rulesync/commands/`](../.rulesync/commands/) (`copy_tree`), not Rulesync-generated. |
 | `~/.config/opencode/oh-my-opencode-slim/` | Appended prompts copied directly from `.rulesync/oh-my-opencode-slim/`. |
 | `~/.config/opencode/.ai-rules.manifest.json` | Deployment ownership manifest (built from payload). |
 | `~/.config/opencode/plugins/rtk.ts` | RTK plugin, initialized by `deploy.sh`. |
-| GitNexus MCP | Managed read-only indexed evidence; OpenCode denies `gitnexus_rename`. |
-| GitNexus MCP evidence | Read-only indexed evidence; stale or unusable graph results do not become installed/runtime claims. |
 | `~/.cache/opencode/packages/oh-my-opencode-slim@latest/node_modules/…` | OMO, `@opencode-ai/plugin`, `@opencode-ai/sdk` packages. |
 | `~/.local/bin/wt-orca`, `~/.local/bin/worktree-state.sh` | Adapters installed from sibling dotfiles. |
 | `~/.config/worktrunk/config.toml` | Worktrunk config installed from sibling dotfiles. |
@@ -196,20 +193,10 @@ now refers to `figma-mcp` consistently.
 
 ### Code intelligence lifecycle
 
-The architecture has two discovery tiers. RTK/native OpenCode tools remain the
-default and are authoritative for exact text/files, shell, tests, Git,
-configuration, documentation, and edits. GitNexus is read-only indexed evidence
-assigned to Orchestrator, Oracle, Explorer, Detective, and
-`reviewer-coordinator`; all reviewer lanes use native tools for exact local
-work. Local refresh/analyze commands and GitNexus Bash access are not part of
-this architecture.
-
-GitNexus users follow context/freshness → query/context → affected process
-resources → impact → detect_changes; inspect schema before Cypher. Stale,
-outdated, empty, partial, truncated, unknown, ambiguous, degraded, error,
-timeout, or unmapped results are unusable. Record `fallback=native` and
-`refresh=not permitted`, make no graph claims, and disclose graph coverage as
-unavailable.
+RTK/native OpenCode tools are authoritative for exact text/files, shell, tests,
+Git, configuration, documentation, and edits. Agents use only the MCPs explicitly
+assigned in the current configuration; indexed code-intelligence services are not
+part of deployment or review.
 
 #### Serena removal and deferred Codebase Memory retirement
 
@@ -362,7 +349,6 @@ The blocking checks and compatibility diagnostics precede
 snapshot. Before snapshotting, `run_deploy` may:
 
 - recover a pending OpenCode transaction (`recover_pending_opencode_transaction`),
-- install or refresh the pinned GitNexus executable, and
 - install RTK/Homebrew if the RTK binary is absent (`preflight_rtk` →
   `resolve_rtk_binary`).
 
@@ -419,7 +405,7 @@ directory, including the RTK plugin at `plugins/rtk.ts`) and
 `restore_managed_file` (the wt-orca, worktree-state, and Worktrunk config files). A transaction marker supports recovery of an interrupted
 deployment. Rollback restores the previous live configuration; it does not derive
 from or rewrite the ownership manifest, and it does not undo pre-snapshot actions
-such as a recovered pending transaction or newly installed GitNexus packages
+such as a recovered pending transaction or newly installed RTK/Homebrew
 or RTK/Homebrew.
 
 ### Force mode: no snapshot or rollback backup
