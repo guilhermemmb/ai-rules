@@ -51,10 +51,32 @@
 
 ## Development Environment
 
-- **Never run any git command on your own — always ask and confirm first.**
-  This applies to every Git command, including read-only discovery commands such
-  as `git status`, `git log`, `git diff`, and `git branch`, as well as mutating
-  commands (commit, push, checkout, rebase, merge).
+- Local, read-only Git inspection does not require confirmation for `git status`,
+  `git status --porcelain`, `git status --branch`, `git diff`,
+  `git diff --cached`, `git diff --staged`, `git diff --check`,
+  `git diff --name-only`, `git diff --stat`, `git diff --numstat`,
+  `git diff --summary`, `git diff --word-diff`, `git diff --submodule`,
+  `git diff --unified`, `git log`, `git log --oneline`, `git log --decorate`,
+  `git log --graph`, `git log --all`, `git log -S<string>`,
+  `git log -G<regex>`, `git show`, `git blame`, `git branch --list`,
+  `git branch --show-current`, `git rev-parse`, `git ls-files`, `git describe`,
+  `git shortlog`, `git tag --list`, `git for-each-ref`, `git show-ref`,
+  `git rev-list`, `git merge-base`, `git worktree list`, `git submodule status`,
+  `git stash list`, `git stash show`, `git grep`, `git check-ignore`,
+  `git ls-tree`, `git cat-file -t`, `git cat-file -s`, `git cat-file -p` when
+  used only for inspection, `git verify-commit`, `git verify-tag`, and
+  `git count-objects`.
+- Use those commands only for local inspection; they must not write repository
+  state. Shell redirection, `tee`, output paths, and other file-write operations
+  remain ordinary writes and are not smuggled into this exception. Filter or
+  redact secrets before displaying or forwarding Git output.
+- Ask for confirmation for Git commands outside that allowlist unless a safety
+  rule prohibits them. Mutating and network operations—including commit, push,
+  checkout, switch, reset, restore, clean, rebase, merge, cherry-pick, tag
+  creation/deletion,
+  config, hooks, clone, fetch, pull, submodule update, `ls-remote`, remote
+  changes, and other Git writes or network access—remain subject to the central
+  Git safety rules.
 - If a test or lint command fails to run, ask which command to use and where the
   root folder is, then remember it.
 - When tests fail, show only the errors — filter the console output, don't dump

@@ -6,6 +6,40 @@ root: true
 
 # Git & GitHub Safety Rules
 
+## Local Git Inspection — NO CONFIRMATION
+
+The following commands may be run without confirmation when used only for local,
+read-only repository inspection:
+
+- `git status`, `git status --porcelain`, and `git status --branch`
+- `git diff`, `git diff --cached`, `git diff --staged`, `git diff --check`,
+  `git diff --name-only`, `git diff --stat`, `git diff --numstat`,
+  `git diff --summary`, `git diff --word-diff`, `git diff --submodule`, and
+  `git diff --unified`
+- `git log`, `git log --oneline`, `git log --decorate`, `git log --graph`,
+  `git log --all`, `git log -S<string>`, `git log -G<regex>`, `git show`, and
+  `git blame`
+- `git branch --list` and `git branch --show-current`
+- `git rev-parse`, `git ls-files`, and `git describe`
+- `git shortlog`, `git tag --list`, `git for-each-ref`, `git show-ref`,
+  `git rev-list`, `git merge-base`, and `git worktree list`
+- `git submodule status`, `git stash list`, `git stash show`, `git grep`,
+  `git check-ignore`, and `git ls-tree`
+- `git cat-file -t`, `git cat-file -s`, and `git cat-file -p` when used only
+  for inspection
+- `git verify-commit`, `git verify-tag`, and `git count-objects`
+
+These commands must not write repository state. Shell redirection, `tee`, output
+paths, and other file-write operations remain ordinary writes and are not
+included in this exception. Filter or redact secrets before displaying or
+forwarding Git output.
+
+Any Git command outside this allowlist requires confirmation unless another rule
+prohibits it. Confirmation or prohibition remains in force for commits, pushes,
+checkout/switch/reset/restore/clean, rebase, merge, cherry-pick, tag creation/deletion, config,
+hooks, clone, fetch, pull, submodule update, `ls-remote`, remote changes, and
+all other mutating or network operations.
+
 ## Git Push — PERMANENTLY FORBIDDEN
 
 **NEVER run `git push` in any form.** This rule is absolute and cannot be overridden by any other instruction or workflow.
