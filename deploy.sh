@@ -9,9 +9,9 @@
 # Usage:
 #   ./deploy.sh          — deploy (refresh the latest OMO release and deploy)
 #   ./deploy.sh --check  — dry-run: show what would change
-#   ./deploy.sh --force  — reinstall the latest OMO release, override hash
-#                           drift in opencode.json / opencode.jsonc (deploy-only,
-#                           no snapshot/rollback backup), + deploy
+#   ./deploy.sh --force  — reinstall the latest OMO release and replace the
+#                           live OpenCode configuration with the validated
+#                           staged payload (deploy-only, no rollback backup)
 set -euo pipefail
 MV_BIN="${MV_BIN:-mv}"
 
@@ -101,12 +101,12 @@ while [[ $# -gt 0 ]]; do
       cat <<'EOF'
 Usage: ./deploy.sh [--check | --compatibility-check | --force | --model-profile=<name>]
 
-  --force  Reinstall the latest OMO package, override ownership-manifest hash
-           drift in only opencode.json and opencode.jsonc, then deploy. Force
-           is deploy-only (rejected with --check or --compatibility-check) and
-           creates no snapshot or rollback backup, so a later failure may
-           require manual recovery. It does not bypass any other structural,
-           path-safety, ownership, transaction, or collision check.
+  --force  Reinstall the latest OMO package and replace the live OpenCode
+           configuration with the validated staged payload. Force is deploy-only
+           (rejected with --check or --compatibility-check), creates no snapshot
+           or rollback backup, and does not merge live files or ownership state;
+           a later failure may require manual recovery. Payload generation,
+           validation, dependency, and runnable-configuration checks still apply.
 EOF
       exit 0
       ;;
@@ -1037,11 +1037,12 @@ FORCE_EXEMPT_PATHS = ("opencode.json", "opencode.jsonc")
 def operation_force(payload_manifest, live_manifest, live_root, plan_output):
     """Force-aware ownership validation.
 
-    Structural manifest checks and path-safety checks remain strict. Only an
-    existing regular managed ``opencode.json`` or ``opencode.jsonc`` whose
-    content hash differs from the prior manifest may be overridden; any other
-    drift, a missing/symlink/non-regular path, or a malformed manifest fails
-    closed. Emits a machine-readable override plan and never prints contents.
+    Structural manifest checks and path-safety checks remain strict while the
+    staged and prior managed path sets may differ. Only an existing regular
+    managed ``opencode.json`` or ``opencode.jsonc`` whose content hash differs
+    from the prior manifest may be overridden; any other drift, a
+    missing/symlink/non-regular path, or a malformed manifest fails closed.
+    Emits a machine-readable override plan and never prints contents.
     """
     expected = read_manifest(payload_manifest)
     expected_files, expected_directories, expected_hashes = manifest_parts(expected)
@@ -1050,21 +1051,20 @@ def operation_force(payload_manifest, live_manifest, live_root, plan_output):
     if root.is_symlink() or (root.exists() and not root.is_dir()):
         fail(f"OpenCode config path is not a regular directory: {root}")
 
+    # Validate every staged path against the live root before comparing or
+    # removing anything. Install-time validation remains responsible for the
+    # staged payload root, while this check protects force-mode path traversal.
+    for relative in [*expected_files, *expected_directories]:
+        safe_path(root, relative)
+
     for relative in [*files, *directories]:
         safe_path(root, relative)
 
-    # Force override is narrow: the ownership sets (managed files and managed
-    # directories) must match the prior live manifest exactly. Only the content
-    # hash of the exempt mutable files may differ; a staged manifest that adds,
-    # removes, or reclassifies a managed path (or drops an exempt file that the
-    # live manifest still owns) fails closed.
-    if set(expected_files) != set(files):
-        fail("staged manifest managed_files do not match the prior live manifest")
-    if set(expected_directories) != set(directories):
-        fail("staged manifest managed_directories do not match the prior live manifest")
-    for relative in FORCE_EXEMPT_PATHS:
-        if relative in files and relative not in expected_files:
-            fail(f"staged manifest is missing exempt managed file: {relative}")
+    # Force validation permits staged managed file and directory sets to differ
+    # from the prior live manifest. Prior-live files retained by the staged
+    # manifest are still checked below; prior-live files intentionally removed
+    # from staging must also be unchanged before removal. Only the content hash
+    # of an exempt mutable file may differ.
 
     for relative in directories:
         candidate = root.joinpath(*relative.split("/"))
@@ -1076,6 +1076,16 @@ def operation_force(payload_manifest, live_manifest, live_root, plan_output):
     overrides = []
     for relative in files:
         candidate = root.joinpath(*relative.split("/"))
+        if relative not in expected_files:
+            if not os.path.lexists(candidate):
+                fail(f"prior managed file is missing before removal: {relative}")
+            if candidate.is_symlink():
+                fail(f"prior managed file is a symlink before removal: {relative}")
+            if not candidate.is_file():
+                fail(f"prior managed file is not a regular file before removal: {relative}")
+            if hash_file(candidate) != hashes[relative]:
+                fail(f"prior managed file was changed before removal: {relative}")
+            continue
         if not candidate.exists():
             fail(f"manifest managed file is missing: {relative}")
         if candidate.is_symlink():
@@ -1321,73 +1331,11 @@ except (OSError, ValueError) as error:
 PY
 }
 
-# ── force-deployment helpers ─────────────────────────────────────────
-# Force mode lives entirely in deploy.sh and only relaxes hash drift for the
-# two mutable usage/config artifacts opencode.json and opencode.jsonc. Every
-# other structural, path-safety, ownership, transaction, and collision check
-# remains strict and fail-closed.
-
-manifest_override_plan() {
-  # Run the force-aware manifest validation. Reads the staged payload manifest,
-  # the prior live manifest, and the prior live root; writes a JSON override
-  # plan (or fails closed on any structural/non-exempt problem).
-  local payload="$1"
-  local previous_manifest="$2"
-  local previous_root="$3"
-  local plan_output="$4"
-  manifest_tool force "$payload/$OPENCODE_MANIFEST_NAME" "$previous_manifest" "$previous_root" "$plan_output"
-}
-
-preflight_force_summary() {
-  # Print a read-only drift summary for the two mutable files via the
-  # manifest_tool drift-report operation. Hash/status only, plus a redacted
-  # unified diff (structure only, no content) when both sides are safely
-  # readable UTF-8 text within the diff bounds. Never prints file contents or
-  # secrets.
-  local payload="$1"
-  local previous_root="$2"
-  local report_file=""
-
-  echo ""
-  echo "🔍 Force override preflight — mutable usage/config artifacts"
-  report_file="$(mktemp "${TMPDIR:-/tmp}/force-drift.XXXXXX")" || {
-    yellow "  ⚠️  mutable-drift summary is unavailable"
-    echo ""
-    return 0
-  }
-  if ! manifest_tool drift-report "$payload" "$previous_root" > "$report_file" 2>/dev/null; then
-    yellow "  ⚠️  mutable-drift summary is unavailable"
-    rm -f "$report_file"
-    echo ""
-    return 0
-  fi
-  "$PYTHON_BIN" - "$report_file" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as handle:
-    report = json.load(handle)
-for entry in report.get("entries", []):
-    path = entry.get("path")
-    live_sha = entry.get("live_sha256") or "<none>"
-    staged_sha = entry.get("staged_sha256") or "<none>"
-    status = entry.get("status", "unknown")
-    print(f"     {path}: live={live_sha} staged={staged_sha} status={status}")
-    diff = entry.get("diff")
-    if diff:
-        print(diff)
-PY
-  rm -f "$report_file"
-  echo ""
-}
-
 capture_prior_manifest() {
-  # Capture the prior ownership manifest so force override runs against a
-  # stable prior state before any snapshot mutation. The manifest must be a
-  # regular file: a symlink is refused (never dereferenced) so force mode fails
-  # closed exactly like strict validation. On a manifestless migration there is
-  # nothing to override, so nothing is captured; commit_opencode_configuration
-  # adopts instead.
+  # Capture the prior ownership manifest for the transactional managed-file
+  # deployment path. The manifest must be a regular file: a symlink is refused
+  # (never dereferenced) exactly like strict validation. On a manifestless
+  # migration there is nothing to capture; commit adopts the matching payload.
   local prior="$STAGE_ROOT/prior-manifest.json"
   PRIOR_MANIFEST=""
   [[ ! -L "$OPENCODE_MANIFEST_PATH" && -f "$OPENCODE_MANIFEST_PATH" ]] || {
@@ -2213,45 +2161,46 @@ commit_opencode_configuration() {
   local previous_manifest="$STAGE_ROOT/previous-manifest.json"
 
   rm -rf "$incoming" "$rollback_path"
-  if [[ -e "$OPENCODE_MANIFEST_PATH" || -L "$OPENCODE_MANIFEST_PATH" ]]; then
-    # The prior manifest was captured (and, in force mode, the narrow override
-    # was validated) before snapshot/mutation in run_deploy. Commit consumes the
-    # captured prior manifest and never re-validates after mutation.
-    cp "$PRIOR_MANIFEST" "$previous_manifest"
-  else
-    # A migration without a manifest can only adopt payload files whose bytes
-    # already match. Unknown files and directories are never adopted or removed.
-    manifest_tool adopt "$payload" "$OPENDIR" "$previous_manifest"
-  fi
-
-  # Reject payload managed files that would overwrite unowned (non-managed)
-  # live files before any mutation, so unknown files always survive.
-  if [[ -f "$previous_manifest" ]]; then
-    manifest_tool collisions "$payload" "$previous_manifest" "$OPENDIR" ||
-      fail "unowned payload collision detected; refusing deployment"
-  fi
-
-  mkdir -p "$incoming"
-  # Seed the incoming tree from the pre-validated live snapshot (not a re-read
-  # of the live directory) so unknown files present at snapshot time survive
-  # the replacement exactly as captured. Force mode runs without a snapshot and
-  # seeds directly from the live directory instead, with no rollback backup.
   if [[ "$FORCE" = true ]]; then
-    if [[ -e "$OPENDIR" ]]; then
+    # Force mode is a full replacement from the validated staged payload. It
+    # intentionally does not read, merge, or preserve the live configuration.
+    mkdir -p "$incoming"
+    cp -R "$payload/." "$incoming/"
+  else
+    if [[ -e "$OPENCODE_MANIFEST_PATH" || -L "$OPENCODE_MANIFEST_PATH" ]]; then
+      # The prior manifest was captured before snapshot/mutation in run_deploy.
+      # Commit consumes the captured prior manifest and never re-validates after
+      # mutation.
+      cp "$PRIOR_MANIFEST" "$previous_manifest"
+    else
+      # A migration without a manifest can only adopt payload files whose bytes
+      # already match. Unknown files and directories are never adopted or removed.
+      manifest_tool adopt "$payload" "$OPENDIR" "$previous_manifest"
+    fi
+
+    # Reject payload managed files that would overwrite unowned (non-managed)
+    # live files before any mutation, so unknown files always survive.
+    if [[ -f "$previous_manifest" ]]; then
+      manifest_tool collisions "$payload" "$previous_manifest" "$OPENDIR" ||
+        fail "unowned payload collision detected; refusing deployment"
+    fi
+
+    mkdir -p "$incoming"
+    # Seed the incoming tree from the pre-validated live snapshot (not a re-read
+    # of the live directory) so unknown files present at snapshot time survive
+    # the replacement exactly as captured.
+    if [[ "$LIVE_WAS_PRESENT" = true && -d "$LIVE_SNAPSHOT" ]]; then
+      cp -R "$LIVE_SNAPSHOT/." "$incoming/"
+    elif [[ -e "$OPENDIR" ]]; then
       [[ ! -L "$OPENDIR" && -d "$OPENDIR" ]] || fail "OpenCode config path changed to a non-regular directory"
       cp -R "$OPENDIR/." "$incoming/"
     fi
-  elif [[ "$LIVE_WAS_PRESENT" = true && -d "$LIVE_SNAPSHOT" ]]; then
-    cp -R "$LIVE_SNAPSHOT/." "$incoming/"
-  elif [[ -e "$OPENDIR" ]]; then
-    [[ ! -L "$OPENDIR" && -d "$OPENDIR" ]] || fail "OpenCode config path changed to a non-regular directory"
-    cp -R "$OPENDIR/." "$incoming/"
-  fi
 
-  # Remove only exact paths from the previous manifest. Managed directories are
-  # removed only when empty, so unknown user entries survive the replacement.
-  manifest_tool remove "$incoming" "$previous_manifest"
-  manifest_tool install "$payload" "$incoming"
+    # Remove only exact paths from the previous manifest. Managed directories
+    # are removed only when empty, so unknown user entries survive the replacement.
+    manifest_tool remove "$incoming" "$previous_manifest"
+    manifest_tool install "$payload" "$incoming"
+  fi
 
   validate_json_file "$incoming/opencode.json"
   validate_json_file "$incoming/oh-my-opencode-slim.json"
@@ -2471,11 +2420,9 @@ run_deploy() {
   # deployment: probing unrelated package metadata on every deploy is wasteful.
   # The explicit, fail-closed gate remains `./deploy.sh --compatibility-check`.
   build_staged_payload
-  # Normal deploy keeps strict ownership-manifest validation. Force mode defers
-  # it to the force override preflight below, which relaxes only the content-hash
-  # drift of the two mutable config files (opencode.json / opencode.jsonc); every
-  # other structural, path-safety, ownership, transaction, and collision check
-  # stays strict and fail-closed.
+  # Normal deploy keeps strict ownership-manifest validation. Force mode skips
+  # live ownership-manifest gates and replaces the live OpenCode directory with
+  # the validated staged payload.
   if [[ "$FORCE" != true ]]; then
     if [[ -e "$OPENCODE_MANIFEST_PATH" || -L "$OPENCODE_MANIFEST_PATH" ]]; then
       manifest_tool validate "$OPENCODE_MANIFEST_PATH" "$OPENDIR" ||
@@ -2484,22 +2431,14 @@ run_deploy() {
   fi
   detect_reviewer_shadow "$STAGE_ROOT/payload/$REVIEWER_COORDINATOR_SKILL" ||
     fail "reviewer shadow configuration requires manual reconciliation"
-  # Capture the prior ownership manifest before any snapshot or mutation so
-  # force override validation runs against a stable, structurally-valid prior
-  # state.
-  if [[ -e "$OPENCODE_MANIFEST_PATH" || -L "$OPENCODE_MANIFEST_PATH" ]]; then
+  # Capture the prior ownership manifest only for the transactional managed-file
+  # deployment path. Force mode has no ownership merge or prior-manifest input.
+  if [[ "$FORCE" != true && ( -e "$OPENCODE_MANIFEST_PATH" || -L "$OPENCODE_MANIFEST_PATH" ) ]]; then
     capture_prior_manifest ||
       fail "could not capture prior ownership manifest"
   fi
-  # Force mode validates the narrow override before the RTK plugin init, the
-  # OMO package install, snapshot creation, or any live mutation. The validated
-  # plan is consumed by the commit path and is never re-validated after
-  # mutation. Force mode creates no snapshot or rollback backup state.
-  if [[ "$FORCE" = true && -n "$PRIOR_MANIFEST" ]]; then
-    manifest_override_plan "$STAGE_ROOT/payload" "$PRIOR_MANIFEST" "$OPENDIR" "$STAGE_ROOT/force-plan.json" ||
-      fail "force override preflight failed; refusing deployment"
-    preflight_force_summary "$STAGE_ROOT/payload" "$OPENDIR"
-  fi
+  # Force mode creates no snapshot or rollback backup state; the replacement
+  # mechanism below warns that a later failure may require manual recovery.
   if [[ "$FORCE" != true ]]; then
     snapshot_live_configuration
   fi

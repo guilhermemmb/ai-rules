@@ -8,7 +8,7 @@
         "/usr/bin/env",
         "GITNEXUS_MCP_READ_ONLY=1",
         "/Users/guilhermebomfim/.local/bin/gitnexus",
-        "mcp",
+        "mcp"
       ],
     },
     "context7": {

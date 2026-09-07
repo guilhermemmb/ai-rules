@@ -3114,18 +3114,22 @@ class Validator:
             return
         if canonical_hash is None:
             return
-        try:
-            staged_hash = self._sha256(staged_path)
-        except (OSError, UnicodeDecodeError) as error:
-            self.add_error(
-                staged_path,
-                f"staged {REVIEWER_COORDINATOR} SKILL.md cannot be hashed: {error}",
-            )
+        canonical_artifact = self._load_frontmatter(canonical_path, kind="skill")
+        staged_artifact = self._load_frontmatter(staged_path, kind="staged skill")
+        if canonical_artifact is None or staged_artifact is None:
             return
-        if staged_hash != canonical_hash:
+
+        if canonical_artifact.data != staged_artifact.data:
             self.add_error(
                 staged_path,
-                f"staged {REVIEWER_COORDINATOR} SKILL.md SHA-256 {staged_hash!r} differs from canonical SHA-256 {canonical_hash!r}",
+                f"staged {REVIEWER_COORDINATOR} SKILL.md frontmatter differs from canonical skill",
+            )
+        if self._normalized_skill_body(canonical_artifact.text) != self._normalized_skill_body(
+            staged_artifact.text
+        ):
+            self.add_error(
+                staged_path,
+                f"staged {REVIEWER_COORDINATOR} SKILL.md Markdown body differs from canonical skill",
             )
 
     def load_required_reviewer_skill(
@@ -3423,6 +3427,13 @@ class Validator:
         if end is None:
             return ""
         return "".join(lines[end + 1 :])
+
+    @staticmethod
+    def _normalized_skill_body(text: str) -> str:
+        """Remove only blank separator lines between frontmatter and Markdown."""
+
+        body = Validator._body_after_frontmatter(text)
+        return re.sub(r"\A(?:[ \t]*\r?\n)+", "", body)
 
     def validate_review_command(self) -> None:
         paths = [self.root / ".rulesync" / "commands" / "review-pr.md"]
