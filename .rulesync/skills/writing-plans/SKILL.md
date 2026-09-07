@@ -33,7 +33,9 @@ cohesive outcome.
 
 - **S/M:** use the combined-plan format below. Do not require a
   separate spec or split the outcome into independently reviewed tasks; after
-  implementation, dispatch one automatic post-implementation `@reviewer`.
+  implementation, load the on-demand `review-pipeline` skill at the review
+  boundary and run one automatic post-implementation review owned by the
+  orchestrator.
 - **L/XL:** use the full SDD implementation-plan format below after
   the separate spec has been approved.
 
@@ -92,8 +94,8 @@ implementation steps, and validation rather than reproducing a separate spec.
 
 Present the completed document once and ask for one approval. After approval,
 dispatch implementation to `@fixer` for code or `@designer` for UI/UX as
-appropriate, then automatically dispatch exactly one post-implementation
-`@reviewer` and run proportionate validation. Do **not** load
+appropriate, then load `review-pipeline` at the review boundary and run exactly
+one post-implementation review owned by the orchestrator. Do **not** load
 `executing-plans`, create a ledger, dispatch a per-task review loop, or ask for
 a review choice.
 
@@ -256,6 +258,7 @@ After saving an L/XL SDD plan, tell the user:
 **If user says yes:**
 - Load skill `executing-plans`
 - Fresh @fixer per implementation task, @designer for UI tasks
-- @reviewer after each task (spec compliance + code quality)
+- load `review-pipeline` at each review boundary; the orchestrator owns the
+  review-pipeline after each task (spec compliance + code quality)
 - @oracle for architecture escalations
 - Continuous execution — no checkpoints unless BLOCKED

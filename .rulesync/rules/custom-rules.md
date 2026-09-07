@@ -30,8 +30,8 @@ rationale.
   `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, containing rationale, scope/files, concrete steps,
   and validation. Present it once and wait for one approval, then dispatch
   implementation to `@fixer` for code or `@designer` for UI/UX as appropriate,
-  followed automatically by one post-implementation review gate through
-  `@reviewer-coordinator`. Do not create
+  followed automatically by one post-implementation review gate through the
+  orchestrator-managed `review-pipeline` skill. Do not create
   a separate spec, load `executing-plans`, create a ledger, run a per-task
   review loop, or ask for a review choice.
 - **L** — a multi-area or cross-system change, or material uncertainty.
@@ -47,12 +47,14 @@ or artifact requirements.
 
 ## Review routing
 
-- **OpenCode:** The orchestrator dispatches exactly one `@reviewer-coordinator`
-  with a complete review packet. The coordinator is the sole review owner: it
-  selects, batches, and aggregates the ten `reviewer-*` lanes, runs conditional
-  sequential Phase B, and computes the review report. The orchestrator must not
-  preload the coordinator skill, select or dispatch lanes directly, run Phase B,
-  aggregate findings, or compute the verdict. Coordination failures are
+- **OpenCode:** At review boundaries, the orchestrator loads the on-demand
+  `review-pipeline` skill and is the sole review manager. It validates the
+  complete packet, selects and directly dispatches the exact ten `reviewer-*`
+  lanes from `.rulesync/skills/review-pipeline/pipeline.json`, runs bounded
+  Phase A and conditional sequential Phase B, reconciles exact sessions,
+  aggregates findings, computes the health-first verdict, and owns the final
+  report. The full protocol stays out of the always-loaded orchestrator append;
+  no intermediary review agent exists. Coordination or coverage failures are
   reported as Degraded/inconclusive rather than bypassed.
 
 ## Parallel Specialist Decomposition

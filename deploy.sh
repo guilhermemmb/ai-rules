@@ -7,9 +7,9 @@
 # deployment input or output.
 #
 # Usage:
-#   ./deploy.sh          — deploy (refresh the latest OMO release and deploy)
+#   ./deploy.sh          — deploy (refresh the pinned OMO release and deploy)
 #   ./deploy.sh --check  — dry-run: show what would change
-#   ./deploy.sh --force  — reinstall the latest OMO release and replace the
+#   ./deploy.sh --force  — reinstall the pinned OMO release and replace the
 #                           live OpenCode configuration with the validated
 #                           staged payload (deploy-only, no rollback backup)
 set -euo pipefail
@@ -38,13 +38,14 @@ DEPLOYMENT_LOCK_HELPER="${DEPLOYMENT_LOCK_HELPER:-$DOTFILES_DIR/deployment-lock.
 RTK_BIN="${RTK_BIN:-}"
 RTK_HOMEBREW_FORMULA="rtk-ai/tap/rtk"
 RTK_PLUGIN_PATH="${OPENDIR}/plugins/rtk.ts"
-REVIEWER_COORDINATOR="reviewer-coordinator"
-REVIEWER_COORDINATOR_SKILL="skills/${REVIEWER_COORDINATOR}/SKILL.md"
+REVIEW_PIPELINE_SKILL="review-pipeline"
+REVIEW_PIPELINE_SKILL_PATH="skills/${REVIEW_PIPELINE_SKILL}/SKILL.md"
+REVIEW_PIPELINE_REGISTRY_PATH="skills/${REVIEW_PIPELINE_SKILL}/pipeline.json"
 
 # Rulesync is a repository-recorded convergence input.
-# OMO always resolves the latest published release.
+# OMO resolves the repository-pinned release.
 RULESYNC_VERSION="16.2.0"
-OH_MY_OPENCODE_SLIM_PACKAGE="oh-my-opencode-slim@latest"
+OH_MY_OPENCODE_SLIM_PACKAGE="oh-my-opencode-slim@2.2.17"
 RULESYNC_PACKAGE="rulesync@${RULESYNC_VERSION}"
 OPENCODE_PACKAGE_CACHE_DIR="${OPENCODE_PACKAGE_CACHE_DIR:-${HOME}/.cache/opencode/packages}"
 OH_MY_OPENCODE_SLIM_PACKAGE_JSON="${OH_MY_OPENCODE_SLIM_PACKAGE_JSON:-$OPENCODE_PACKAGE_CACHE_DIR/oh-my-opencode-slim/node_modules/oh-my-opencode-slim/package.json}"
@@ -92,7 +93,7 @@ while [[ $# -gt 0 ]]; do
       cat <<'EOF'
 Usage: ./deploy.sh [--check | --compatibility-check | --force | --model-profile=<name>]
 
-  --force  Reinstall the latest OMO package and replace the live OpenCode
+  --force  Reinstall the pinned OMO package and replace the live OpenCode
            configuration with the validated staged payload. Force is deploy-only
            (rejected with --check or --compatibility-check), creates no snapshot
            or rollback backup, and does not merge live files or ownership state;
@@ -438,7 +439,16 @@ while index < len(cleaned):
 
 config = json.loads("".join(normalized))
 if mode == "omo":
-    raise SystemExit(0 if "oh-my-opencode-slim" in config.get("plugin", []) else 1)
+    plugins = config.get("plugin", [])
+    has_omo = isinstance(plugins, list) and any(
+        isinstance(plugin, str)
+        and (
+            plugin == "oh-my-opencode-slim"
+            or plugin.startswith("oh-my-opencode-slim@")
+        )
+        for plugin in plugins
+    )
+    raise SystemExit(0 if has_omo else 1)
 PY
 }
 
@@ -764,10 +774,14 @@ def operation_compare(payload, live):
     for relative in directories:
         if not safe_path(live, relative).is_dir():
             differences.append(f"missing managed directory: {relative}")
+    expected_files = set(expected.get("managed_files", []))
     for relative in files:
+        if relative not in expected_files:
+            differences.append(f"retired managed file: {relative}")
+            continue
         destination = safe_path(live, relative)
         source = payload.joinpath(*relative.split("/"))
-        if not destination.is_file() or hash_file(destination) != hash_file(source):
+        if not destination.is_file() or not source.is_file() or hash_file(destination) != hash_file(source):
             differences.append(f"managed file differs: {relative}")
     if differences:
         for difference in differences:
@@ -1094,40 +1108,23 @@ capture_prior_manifest() {
   PRIOR_MANIFEST="$prior"
 }
 
-detect_reviewer_shadow() {
-  local canonical="$1"
-  local shadow
-  if [[ -f "$canonical" ]]; then
-    for shadow in \
-      "$HOME/.agents/skills/${REVIEWER_COORDINATOR}/SKILL.md" \
-      "$HOME/.agents/skills/${REVIEWER_COORDINATOR}.md" \
-      "$HOME/.agents/skills/${REVIEWER_COORDINATOR}/SKILL.mdx"; do
-      if [[ -L "$shadow" || -e "$shadow" && ! -f "$shadow" ]]; then
-        red "  ❌ reviewer-coordinator shadow entry is not a regular file: $shadow"
-        return 1
-      fi
-      if [[ -f "$shadow" ]] && ! cmp -s "$canonical" "$shadow"; then
-        red "  ❌ reviewer-coordinator shadow skill differs from canonical OpenCode skill: $shadow"
-        red "     Reconcile or remove it manually; deploy.sh will not delete it."
-        return 1
-      fi
-    done
-  fi
-  for shadow in \
-    "$HOME/.agents/skills/reviewer/SKILL.md" \
-    "$HOME/.agents/skills/reviewer.md" \
-    "$HOME/.agents/skills/reviewer/SKILL.mdx"; do
-    if [[ -L "$shadow" || -e "$shadow" && ! -f "$shadow" ]]; then
-      red "  ❌ stale reviewer shadow entry is not a regular file: $shadow"
-      red "     Reconcile or remove it manually; deploy.sh will not delete it."
+validate_review_pipeline_payload() {
+  local payload="$1"
+  local canonical_skill="$SRCDIR/.rulesync/skills/$REVIEW_PIPELINE_SKILL/SKILL.md"
+  local canonical_registry="$SRCDIR/.rulesync/skills/$REVIEW_PIPELINE_SKILL/pipeline.json"
+  local staged_skill="$payload/$REVIEW_PIPELINE_SKILL_PATH"
+  local staged_registry="$payload/$REVIEW_PIPELINE_REGISTRY_PATH"
+
+  for path in "$canonical_skill" "$canonical_registry" "$staged_skill" "$staged_registry"; do
+    [[ -f "$path" && ! -L "$path" ]] || {
+      fail "review-pipeline asset is missing or not a regular file: $path"
       return 1
-    fi
-    if [[ -f "$shadow" ]]; then
-      red "  ❌ stale reviewer shadow entry found: $shadow"
-      red "     Reconcile or remove it manually; deploy.sh will not delete it."
-      return 1
-    fi
+    }
   done
+  cmp -s "$canonical_registry" "$staged_registry" || {
+    fail "staged review-pipeline registry differs from canonical source"
+    return 1
+  }
 }
 
 copy_tree() {
@@ -1139,13 +1136,29 @@ copy_tree() {
 
 stage_rulesync_output() {
   local output_root="$1"
+  local input_root="$STAGE_ROOT/rulesync-input"
   mkdir -p "$output_root"
+  mkdir -p "$input_root"
+  copy_tree "$SRCDIR/.rulesync" "$input_root/.rulesync"
+  cp "$SRCDIR/rulesync.jsonc" "$input_root/rulesync.jsonc"
+  # Rulesync rejects empty skill directories. Prune only empty directories in
+  # the private copy; the tracked source and all unmanaged user files remain
+  # untouched.
+  "$PYTHON_BIN" - "$input_root/.rulesync/skills" <<'PY'
+from pathlib import Path
+import sys
+
+root = Path(sys.argv[1])
+for path in sorted(root.rglob("*"), reverse=True):
+    if path.is_dir() and not any(path.iterdir()):
+        path.rmdir()
+PY
   cyan "  🔄 Generating pinned rulesync output in a private staging directory..."
   if ! (
-    cd "$SRCDIR"
+    cd "$input_root"
     "$BUNX_BIN" "$RULESYNC_PACKAGE" generate \
       --targets opencode \
-      --input-root "$SRCDIR" \
+      --input-root "$input_root" \
       --output-roots "$output_root" \
       --delete
   ); then
@@ -1214,6 +1227,7 @@ build_staged_payload() {
   copy_tree "$rulesync_output/.opencode/skills" "$payload/skills"
   copy_tree "$SRCDIR/.rulesync/oh-my-opencode-slim" "$payload/oh-my-opencode-slim"
   copy_tree "$SRCDIR/.rulesync/commands" "$payload/commands"
+  validate_review_pipeline_payload "$payload" || return 1
   manifest_tool build "$payload" "$payload/$OPENCODE_MANIFEST_NAME"
 
   validate_json_file "$payload/opencode.json" || return 1
@@ -1442,7 +1456,7 @@ install_omo() {
     fail "could not identify a valid installed oh-my-opencode-slim package"
     return 1
   fi
-  green "  ✅ oh-my-opencode-slim ${installed_version} installed (latest package: ${OH_MY_OPENCODE_SLIM_PACKAGE})"
+  green "  ✅ oh-my-opencode-slim ${installed_version} installed (requested package: ${OH_MY_OPENCODE_SLIM_PACKAGE})"
 }
 
 snapshot_file() {
@@ -2128,9 +2142,6 @@ run_check() {
       DRIFT=1
       red "  ⚠️  OpenCode ownership manifest is missing: $OPENCODE_MANIFEST_PATH"
     fi
-    if ! detect_reviewer_shadow "$payload/$REVIEWER_COORDINATOR_SKILL"; then
-      DRIFT=1
-    fi
   fi
 
   compare_path "$WT_ORCA_SOURCE" "$WT_ORCA_DESTINATION" ".local/bin/wt-orca"
@@ -2177,8 +2188,6 @@ run_deploy() {
         fail "existing OpenCode ownership manifest is invalid; refusing deployment"
     fi
   fi
-  detect_reviewer_shadow "$STAGE_ROOT/payload/$REVIEWER_COORDINATOR_SKILL" ||
-    fail "reviewer shadow configuration requires manual reconciliation"
   # Capture the prior ownership manifest only for the transactional managed-file
   # deployment path. Force mode has no ownership merge or prior-manifest input.
   if [[ "$FORCE" != true && ( -e "$OPENCODE_MANIFEST_PATH" || -L "$OPENCODE_MANIFEST_PATH" ) ]]; then

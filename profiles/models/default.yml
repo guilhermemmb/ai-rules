@@ -33,9 +33,6 @@ agents:
   detective:
     model: "bf-o/gpt-5.6-luna"
     variant: "medium"
-  reviewer-coordinator:
-    model: "bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash"
-    variant: "medium"
   reviewer-code:
     model: "bf-o/gpt-5.6-luna"
     variant: "medium"

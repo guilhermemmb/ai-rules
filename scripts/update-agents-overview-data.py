@@ -443,7 +443,6 @@ def main():
         "navigator": "🌐",
         "detective": "🔍",
         "sage": "🧠",
-        "reviewer-coordinator": "⚖️",
         "reviewer-security": "🔒",
         "reviewer-performance": "⚡",
         "reviewer-data-integrity": "🛡️",

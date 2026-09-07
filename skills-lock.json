@@ -171,11 +171,11 @@
       "skillPath": ".rulesync/skills/reflect/SKILL.md",
       "computedHash": "2ac9432f2f2757a6af536ece80506969f54c19166a2abb7a6f39c2c9e1bcb1c6"
     },
-    "reviewer-coordinator": {
+    "review-pipeline": {
       "sourceType": "local",
       "provenance": "unknown",
-      "skillPath": ".rulesync/skills/reviewer-coordinator/SKILL.md",
-      "computedHash": "a30239d88b8a60eb6caf3a4923eeed6ffda9106fcad6c43ebe9b98338962ae03"
+      "skillPath": ".rulesync/skills/review-pipeline/SKILL.md",
+      "computedHash": "3892df7c2c1ca72006cc5b7cdbfc196ec0f19a1c81ef6ec025008eba58327a39"
     },
     "reviewing-plans": {
       "sourceType": "local",

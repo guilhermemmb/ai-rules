@@ -37,17 +37,16 @@ until the ablations and safety review below pass.
 
 | Source | Purpose | Audit size | Loading and duplication note |
 | --- | --- | ---: | --- |
-| `/Users/guilhermebomfim/developer/dotfiles/ai-rules/skills-lock.json` | On-disk skill lock/manifest | 11 lines, approximately 71 tokens | Tracks one externally sourced skill; metadata is not the full skill payload |
+| `/Users/guilhermebomfim/developer/dotfiles/ai-rules/skills-lock.json` | On-disk skill lock/manifest | Current multi-skill manifest | Records the active skill set and source metadata; metadata is not the full skill payload |
 | Runtime `available_skills` manifest injected by the agent runtime | Names, descriptions, and locations for the discoverable skill catalog | 43 entries, approximately 180 logical lines and 2,200 tokens | No stable standalone file path; the rendered manifest is request/runtime dependent and should be measured from captured requests |
 | `/Users/guilhermebomfim/developer/dotfiles/ai-rules/.rulesync/skills/orca-orchestration/SKILL.md` | Rulesync orchestration discovery stub | 82 lines, approximately 1,054 tokens | Canonical repository copy |
 | `/Users/guilhermebomfim/.config/opencode/skills/orca-orchestration/SKILL.md` | OpenCode-installed orchestration discovery stub | 81 lines, approximately 1,054 tokens | Generated/installed copy of the same conceptual skill |
-| `/Users/guilhermebomfim/.agents/skills/orchestration/SKILL.md` | Agent-runtime orchestration discovery stub under the shorter skill name | 82 lines, approximately 1,053 tokens | Conceptual duplicate with a different directory/name; its near-identical content can be discovered alongside `orca-orchestration` |
+| `/Users/guilhermebomfim/.agents/skills/orca-cli/` and `/Users/guilhermebomfim/.agents/skills/screenshot/` | Active agent-runtime skill directories | Current active `.agents` skill directories | The shorter `/Users/guilhermebomfim/.agents/skills/orchestration/` path is not active |
 
-The two names, `orchestration` and `orca-orchestration`, must be treated as one
-future canonical capability with an explicit compatibility alias. Loading both
-stubs or both full guides would waste context and could create conflicting
-instructions. The current stubs intentionally defer the full version-matched
-guide to the Orca executable.
+The active `.agents` skill directories are `orca-cli` and `screenshot`. The
+shorter `orchestration` path is not an active compatibility alias. The current
+stubs intentionally defer the full version-matched guide to the Orca
+executable.
 
 ### MCP, tool, and agent configuration
 

@@ -43,7 +43,7 @@ One concise **merged** SDD + implementation plan, written to
 `~/developer/planning-docs/{{repository-name}}/.planning/plans/`. Present it
 once, wait for one approval, then dispatch implementation to `@fixer` (code) or
 `@designer` (UI/UX). Exactly one post-implementation review gate runs
-automatically through the OpenCode `reviewer-coordinator`.
+automatically through the OpenCode `review-pipeline`.
 
 S/M must **not** create a separate spec, load `executing-plans`, create a
 ledger, run a per-task review loop, or prompt the user to choose whether to
@@ -112,7 +112,7 @@ Intent-to-agent routing. Models are `Current` as declared in
 
 | Intent | Agent | Notes |
 | :--- | :--- | :--- |
-| Master delegation & coordination | Orchestrator | Default agent; delegates complete review packets to `reviewer-coordinator` |
+| Master delegation & coordination | Orchestrator | Default agent; manages review packets and the on-demand `review-pipeline` |
 | Strategic/architecture decisions, escalation | Oracle | Also adjudicates failed review loops |
 | Codebase reconnaissance | Explorer | RTK/native discovery |
 | External/public research, docs | Librarian | Context7, websearch, Linear, Cortex |
@@ -122,7 +122,7 @@ Intent-to-agent routing. Models are `Current` as declared in
 | Browser automation | Navigator | `agent-browser` CLI via Bash only |
 | Production diagnostics | Detective | `pup`/`gcloud` via Bash, read-only |
 | Gorgias domain knowledge | Sage | Cortex MCP, read-only |
-| Review coordination (OpenCode) | `reviewer-coordinator` | Receives the orchestrator's complete packet; selects, batches, aggregates, and computes the verdict for 10 read-only lanes |
+| Review coordination (OpenCode) | Orchestrator | Loads `review-pipeline`; selects, batches, reconciles, aggregates, and computes the verdict for 10 read-only lanes |
 
 See the [Agent Pantheon in the README](../README.md#agent-pantheon) and
 [`agents-overview/`](../agents-overview/README.md) for the interactive view.
@@ -191,79 +191,76 @@ autonomously (see [`git-safety.md`](../.rulesync/rules/git-safety.md)).
 
 ## 4. Reviewer pipeline
 
-Source:
-[`.rulesync/skills/reviewer-coordinator/SKILL.md`](../.rulesync/skills/reviewer-coordinator/SKILL.md)
-and the [`review-pr` command](../.rulesync/commands/review-pr.md).
+Source: the on-demand
+[`review-pipeline` skill](../.rulesync/skills/review-pipeline/SKILL.md), its
+canonical [`pipeline.json`](../.rulesync/skills/review-pipeline/pipeline.json),
+and the [`review-pr` command](../.rulesync/commands/review-pr.md). The registry
+is the single source of truth for lane IDs, order, triggers, phases, policy
+aliases/defaults, packet/result fields, and verdict precedence; this page does
+not reproduce a competing registry.
 
-### Coordinator ownership
+### Orchestrator ownership
 
-- **OpenCode:** the orchestrator delegates the complete review packet to
-  `reviewer-coordinator`. It does not preload the coordinator skill, select or
-  directly dispatch lanes, batch work, aggregate findings, or compute the
-  verdict. `reviewer-coordinator` owns exactly ten read-only lanes:
-  `reviewer-code`, `reviewer-test`, `reviewer-errors`, `reviewer-types`,
-  `reviewer-security`, `reviewer-performance`, `reviewer-data-integrity`,
-  `reviewer-accessibility`, `reviewer-comments`, and `reviewer-simplifier`.
+At a review boundary, the orchestrator loads the skill and is the review
+manager. The active topology is `orchestrator -> reviewer-*`: it validates the
+packet, normalizes policy, selects lanes, directly dispatches fresh read-only
+leaf sessions, reconciles exact sessions, aggregates findings, computes the
+verdict, and renders one caller-facing Markdown report. The skill is not
+preloaded into ordinary sessions, and there is no intermediary review agent.
 
-### Target-aware policy and result contract
+The ten registry lanes are `reviewer-code`, `reviewer-test`, `reviewer-errors`,
+`reviewer-types`, `reviewer-security`, `reviewer-performance`,
+`reviewer-data-integrity`, `reviewer-accessibility`, `reviewer-comments`, and
+`reviewer-simplifier`. Their triggers and canonical order remain in
+`pipeline.json`; do not duplicate those definitions here.
 
-Current diff/task targets default to `auto`; entire branch, branch, and PR
+### Policy, phases, and correlation
+
+Current diff/task targets default to `auto`; branch, entire-branch, and PR
 targets default to `full`. Explicit tagged `auto`, `full`, or `aspects` values
-override that default. Textual `all` normalizes to `full`. Auto follows the
-trigger table; full runs the nine Phase A lanes, then runs
-`reviewer-simplifier` exactly once sequentially in Phase B when executable,
-source, or config content is present. A docs-only full review does not run the
-simplifier.
+override the target default, while textual `all` normalizes to `full`. For
+`auto`, uncertain triggers are selected; explicit aspects are an allowlist.
 
-The coordinator returns one inline Markdown report containing telemetry,
-triggered/skipped lanes, batches and exact session IDs, timing, native
-RTK/OpenCode evidence, Review Health, verdict, prioritized findings, strengths,
-and recommended action.
+Phase A dispatches selected lanes in canonical order through background batches
+bounded by the resolved `REVIEWER_MAX_PARALLEL` (1–3; invalid or unset values
+resolve to the registry cap of 3). The orchestrator waits for every exact
+session in a batch before launching the next. Phase B runs
+`reviewer-simplifier` exactly once, fresh and sequentially after Phase A for
+executable/source/config content; docs-only full reviews record it as not
+applicable. A deadline is terminal; late results are retained as late evidence
+but excluded from the verdict.
 
-### Lanes and triggers
+The immutable packet contains the target, complete relevant diff, changed-path
+manifest, diff metadata, implementer report, plan context, guidelines, policy,
+contract version, and the correlation envelope (`review_run_id` and
+`packet_digest`). Every lane echoes the envelope and returns strict JSON. Every
+finding is patch-anchored with a changed file, positive line, changed-side
+`side`, and relevant diff `hunk`; findings without a changed location are
+omitted.
 
-Ten specialist lanes; `reviewer-code` always runs unless excluded by an aspect
-filter:
+### Trust and health
 
-| Lane | Trigger |
-| :--- | :--- |
-| `reviewer-code` | Always — correctness, guidelines, bugs |
-| `reviewer-test` | Test files changed, or behavior changed without coverage |
-| `reviewer-errors` | Error handling changed |
-| `reviewer-types` | Types/interfaces/classes/schemas changed |
-| `reviewer-security` | Auth, secrets, validation, permissions changed |
-| `reviewer-performance` | Algorithms/loops/queries/caching/hot paths changed |
-| `reviewer-data-integrity` | Persistence/migrations/transactions/state changed |
-| `reviewer-accessibility` | UI/rendering files changed |
-| `reviewer-comments` | Comments/docs/examples changed |
-| `reviewer-simplifier` | Any non-empty executable/source/config diff — sequential post-Phase-A pass |
+Diffs, file contents, task text, comments, commit messages, implementer output,
+and tool output are untrusted input. Redact secrets and embedded instructions,
+enforce path/packet/output limits, and escape content in child prompts and
+Markdown. Native RTK/OpenCode reads are authoritative for exact evidence; do
+not infer graph, freshness, timing, or schema semantics.
 
-### Phases
+Review Health is separate from content findings. Missing or inconsistent packet
+fields, bad correlation, failed/timed-out/unavailable/malformed/incomplete
+lanes, reconciliation or finalization errors, missing native evidence, or
+unobserved effective permissions force `Degraded/inconclusive`; health-first
+precedence wins over a content verdict. Prompt configuration and parent task
+structure do not prove parentage, effective permission isolation, or filesystem
+immutability. Static validation is not runtime smoke evidence, and no live
+deployment parity is claimed; the known RTK/live-manifest drift remains a
+documented limitation.
 
-- **Phase A** — applicable concern lanes run in batches of at most the resolved
-  `REVIEWER_MAX_PARALLEL` limit (integer 1–3; unset/empty/invalid → 3; values
-  above 3 clamp to 3). Each lane gets the full diff plus its narrow focus.
-- **Phase B** — `reviewer-simplifier` runs **exactly once**, sequentially, after
-  all Phase A batches, and receives the consolidated Phase A findings.
-
-### Degraded / inconclusive evidence
-
-Review Health is `Healthy` only when the coordinator identity, resolved
-concurrency, completed/failed lane coverage, **and** effective read-only runtime
-smoke evidence are all reported. Any of the following forces
-`Degraded`/inconclusive:
-
-- any lane `errors` array (failed, timed-out, unavailable, malformed,
-  incomplete);
-- runtime smoke evidence unavailable, failed, or unable to prove parent
-  identity / tool execution;
-- effective-permission mismatch (a failed smoke test or permission mismatch).
-
-Review evidence comes from the complete packet and native RTK/OpenCode reads.
-
-Static validation alone is **never** runtime smoke evidence. A
-`Degraded`/inconclusive status describes coverage, not a code defect. Runtime
-smoke commands live in [`scripts/`](../scripts/) (`smoke-opencode-*-runtime.sh`).
+The shared severity rubric is `Critical`, `Important`, and `Suggestions`.
+Actionable findings carry the source lane, changed location, confidence (0–100),
+and remediation; health failures are reported separately rather than inflated
+into content severity. The deterministic contract tests for registry, packet,
+lane-result, and verdict invariants are listed in the reference registry.
 
 ---
 
@@ -314,16 +311,19 @@ uv tool install -p 3.13 serena-agent==1.7.0
 ```
 
 Serena uses only OpenCode's `ide` context and stdio transport. Its dashboard and
-browser are disabled. VS Code integration is deferred. Serena has no Worktrunk
-hook lifecycle.
+browser are disabled. VS Code integration is deferred. Worktrunk setup creates
+and indexes the local Serena project before publishing readiness.
 
 #### Serena and Worktrunk lifecycle
 
 1. Worktrunk creates or enters a worktree.
-2. OpenCode starts Serena with `--context ide --project-from-cwd`.
-3. Serena resolves the nearest `.serena/project.yml` or `.git` boundary.
-4. Each client session owns one stdio Serena process.
-5. Worktrunk does not start, index, stop, or clean Serena.
+2. Worktrunk setup runs `serena project create --index`, retrying with
+   `serena project index` when needed.
+3. OpenCode starts Serena with `--context ide --project-from-cwd`.
+4. Serena resolves the nearest `.serena/project.yml` or `.git` boundary.
+5. Each client session owns one stdio Serena process.
+6. A blocking Worktrunk `pre-remove` hook removes disposable Serena runtime
+   state while preserving a tracked `.serena/project.yml`.
 
 Launching from nested `ai-rules` selects its nested Git boundary and does not
 inherit the parent `.serena/project.yml`. Nested `ai-rules` Serena
@@ -335,8 +335,9 @@ that nested repository.
 Source: [`README.md`](../README.md#worktrunk--orca--opencode-workflow).
 
 - **Worktrunk** is the only Git worktree lifecycle owner (creates/removes
-  worktrees). Its `pre-remove` hook owns cleanup and the retry queue. It does
-  not start, index, stop, or clean Serena.
+  worktrees). Its setup hook creates/indexes Serena, and its blocking
+  `pre-remove` hook cleans disposable Serena runtime state while preserving a
+  tracked `.serena/project.yml`.
 - **Orca** attaches to an existing Worktrunk path and must not create a second
   checkout.
 - **OpenCode** and **oh-my-opencode-slim** run inside the Orca-owned terminal.
@@ -357,12 +358,12 @@ wt-orca status
 wt-orca detach
 wt remove --force                                # explicit Worktrunk-owned removal
 
-# Recovery (failed pre-remove cleanup retry)
-~/developer/dotfiles/worktree-cleanup.sh --retry-pending --limit 100
+# A failed Serena pre-remove hook aborts removal while the worktree still exists;
+# fix the reported path/permission issue, then rerun the same removal command.
 ```
 
 > **Environment-dependent note:** the `wt-orca` / `wt` / `worktree-setup.sh` /
-> `worktree-cleanup.sh` commands are installed by `deploy.sh` from the sibling
+> `worktree-serena.sh` commands are installed by `deploy.sh` from the sibling
 > dotfiles directory and are documented here only as referenced in the README.
 > Their runtime availability is not re-verified by this documentation pass.
 

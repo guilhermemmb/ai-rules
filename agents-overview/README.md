@@ -77,17 +77,16 @@ flowchart TD
     ORCH --> NAVIGATOR[Navigator]
     ORCH --> DETECTIVE[Detective]
     ORCH --> SAGE[Sage]
-    ORCH --> COORD["reviewer-coordinator"]
-    COORD --> REVIEWERCODE["Reviewer Code (Phase A)"]
-    COORD --> REVIEWERTEST["Reviewer Test (Phase A, if tests/behavior)"]
-    COORD --> REVIEWERERRORS["Reviewer Errors (Phase A, if errors)"]
-    COORD --> REVIEWERTYPES["Reviewer Types (Phase A, if types)"]
-    COORD --> REVIEWERSECURITY["Reviewer Security (Phase A, if security)"]
-    COORD --> REVIEWERPERFORMANCE["Reviewer Performance (Phase A, if performance)"]
-    COORD --> REVIEWERDATA["Reviewer Data Integrity (Phase A, if data)"]
-    COORD --> REVIEWERACCESSIBILITY["Reviewer Accessibility (Phase A, if UI)"]
-    COORD --> REVIEWERCOMMENTS["Reviewer Comments (Phase A, if docs)"]
-    COORD --> REVIEWERSIMPLIFIER["Reviewer Simplifier (Phase B, once sequentially)"]
+    ORCH --> REVIEWERCODE["Reviewer Code (Phase A)"]
+    ORCH --> REVIEWERTEST["Reviewer Test (Phase A, if tests/behavior)"]
+    ORCH --> REVIEWERERRORS["Reviewer Errors (Phase A, if errors)"]
+    ORCH --> REVIEWERTYPES["Reviewer Types (Phase A, if types)"]
+    ORCH --> REVIEWERSECURITY["Reviewer Security (Phase A, if security)"]
+    ORCH --> REVIEWERPERFORMANCE["Reviewer Performance (Phase A, if performance)"]
+    ORCH --> REVIEWERDATA["Reviewer Data Integrity (Phase A, if data)"]
+    ORCH --> REVIEWERACCESSIBILITY["Reviewer Accessibility (Phase A, if UI)"]
+    ORCH --> REVIEWERCOMMENTS["Reviewer Comments (Phase A, if docs)"]
+    ORCH --> REVIEWERSIMPLIFIER["Reviewer Simplifier (Phase B, once sequentially)"]
 ```
 
 OpenCode implementation scheduling is bounded separately from reviewer
@@ -102,9 +101,8 @@ unowned writes. Failed, timed-out, `NEEDS_CONTEXT`, `BLOCKED`, missing, or
 malformed results hold dependents and are surfaced.
 
 The OpenCode orchestrator delegates the complete review packet to
-`reviewer-coordinator`; it does not preload the coordinator skill, select or
-directly dispatch lanes, batch work, aggregate findings, or compute the verdict.
-The coordinator dispatches applicable concern lanes in independent background
+the orchestrator-owned `review-pipeline`; it does not preload the review-pipeline skill in ordinary sessions.
+The orchestrator dispatches applicable concern lanes in independent background
 batches. After Phase A completes, reviewer-simplifier runs exactly once
 sequentially only when selected/applicable—when the normalized diff contains a
 non-empty executable/source/config diff and the aspect filter permits it—and
@@ -113,11 +111,11 @@ receives the consolidated Phase A findings. The runtime setting
 default to `3`, values from `1` through `3` are used, and values above `3`
 are clamped to `3`. Any non-empty lane `errors` array makes Review Health
 Degraded/inconclusive.
-OpenCode review commands run through `reviewer-coordinator`, which returns one
+OpenCode review commands run through the orchestrator-owned `review-pipeline`, which returns one
 inline Markdown report containing telemetry, triggered/skipped lanes,
 batches/session IDs, timing, native RTK/OpenCode tools status/fallback, Review Health, verdict,
 prioritized findings, strengths, and recommended action. The ten `reviewer-*`
-agents are read-only leaf lanes; they do not load the coordinator skill or
+agents are read-only leaf lanes; they do not load the review-pipeline skill or
 dispatch further tasks. Failed, timed-out,
 unavailable, malformed, or incomplete results remain lane errors, while valid
 findings from other lanes are retained without invented citations.
@@ -310,7 +308,7 @@ No code needed—YAML drives everything.
 - **navigator** — Browser automation via the agent-browser CLI; snapshots/refs, navigation, screenshots, forms, extraction
 - **detective** — Production diagnostics; Datadog (pup CLI), GCP logs (gcloud), root cause analysis (Sentry/Rootly/Notion reported unavailable)
 - **sage** — Domain knowledge; Gorgias metrics, table schemas, business rules (cortex)
-- **reviewer-coordinator** — sole OpenCode review coordinator; owns target-aware policy, ten-lane scheduling, aggregation, and verdict
+- **review-pipeline** — orchestrator-owned review protocol; defines target-aware policy, ten-lane scheduling, aggregation, and verdict
 - **reviewer-code** — Always-on general correctness and project-guideline review
 - **reviewer-test** — Behavioral test coverage (test files or uncovered production behavior)
 - **reviewer-errors** — Error, retry, fallback, and failure-propagation review
@@ -330,7 +328,7 @@ No code needed—YAML drives everything.
   configuration, documentation, and edits
 - **github** — GitHub CLI integration (PRs, issues, checks)
 
-**oracle / explorer / detective / reviewer-coordinator:**
+**oracle / explorer / detective / reviewer-* lanes:**
 
 - **RTK/native OpenCode tools** — Exact local inspection and source confirmation
 
@@ -393,11 +391,7 @@ the selected visualization fields.
 - **oh-my-opencode-slim** — Plugin self-configuration
 - **project-context** — Project summaries
 - **brainstorming / writing-plans / executing-plans / reviewing-plans** — SDD workflow
-- No reviewer skill — the orchestrator delegates review packets to `reviewer-coordinator`
-
-**reviewer-coordinator:**
-
-- **reviewer-coordinator** — Ten-lane workflow; owns policy, dispatch, aggregation, and verdict
+- **review-pipeline** — on-demand orchestrator workflow; owns review packets, lane dispatch, aggregation, and verdict
 
 **Oracle:**
 
@@ -440,7 +434,7 @@ determines whether work is immediate, uses a merged plan, or follows full SDD.
   `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, show it once,
   and obtain one approval before dispatching implementation to `@fixer` for
   code or `@designer` for UI/UX as appropriate. Then run exactly one
-  post-implementation review gate (`reviewer-coordinator`) and run proportionate
+  post-implementation review gate (the orchestrator-owned `review-pipeline`) and run proportionate
   validation.
   Do not create a separate spec, load `executing-plans`, create a ledger, run a
   per-task review, or prompt for a review choice.
@@ -473,7 +467,7 @@ flowchart TD
         SM3["Show plan once"]
         SM4{"Approve plan once?"}
         SM5["Dispatch implementation\n@fixer (code) / @designer (UI/UX)"]
-        SM6["Run exactly one review gate\nOpenCode: reviewer-coordinator\npost-implementation"]
+        SM6["Run exactly one review gate\nOpenCode: review-pipeline\npost-implementation"]
         SM8["Proportionate validation\n(no separate spec, executing-plans, ledger,\nor per-task review or review-choice prompt)"]
         SM7["Revise, clarify, or defer"]
 
@@ -523,7 +517,7 @@ flowchart TD
         E2 -->|NEEDS_CONTEXT| E1
         E2 -->|BLOCKED, context issue| E1
         E2 -->|BLOCKED, too hard| E5[Escalate to @oracle]
-        E2 -->|DONE| E3[Run review gate\nOpenCode: reviewer-coordinator\nspec compliance + quality]
+        E2 -->|DONE| E3[Run review gate\nOpenCode: review-pipeline\nspec compliance + quality]
         E3 --> E4{Review passed?}
         E4 -->|no, up to 3 rounds| E1
         E4 -->|yes| E6{More tasks\nin plan?}
@@ -537,7 +531,7 @@ flowchart TD
 
     subgraph P4["🔍 L/XL — Phase 4: Reviewing Plans"]
         direction TB
-        R1[Gather plan + ledger\n+ full branch diff] --> R2[Run review gate\nOpenCode: reviewer-coordinator\nfull comprehensive review]
+        R1[Gather plan + ledger\n+ full branch diff] --> R2[Run review gate\nOpenCode: review-pipeline\nfull comprehensive review]
         R2 --> R3{Critical issues\n= 0?}
     end
 
@@ -556,7 +550,7 @@ flowchart TD
 - S/M work gets one concise merged plan in `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, shown once
   and approved once before dispatching implementation to `@fixer` for code or
   `@designer` for UI/UX as appropriate. It then runs exactly one
-  automatic post-implementation review gate (`reviewer-coordinator`) and runs
+  automatic post-implementation review gate (the orchestrator-owned `review-pipeline`) and runs
   proportionate validation.
   It skips a separate spec, `executing-plans`, a ledger, per-task review, and
   the review-choice prompt.

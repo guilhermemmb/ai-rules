@@ -71,8 +71,9 @@
 
 ## Code Exploration
 
-- Native RTK/OpenCode tools remain authoritative for exact files, shell, tests,
-  configuration, documentation, and edits.
+- Serena provides supplementary semantic navigation and impact analysis. Native
+  RTK/OpenCode tools remain authoritative for exact local evidence, files,
+  shell, tests, configuration, documentation, and edits.
 
 ## Commit Messages
 
@@ -124,17 +125,38 @@ For each eligible batch:
    The fixer may create, modify, or delete only those paths. The allowlist is a
    cooperative prompt contract because OpenCode does not provide a dynamic
    per-task path ACL; runtime smoke must detect violations and fail closed.
-5. Send every `DONE` child to exactly one `@reviewer-coordinator` individually
-   with a complete review packet. The packet must include the target descriptor
-   (current diff/task, branch, entire branch, or PR), explicit mode/aspect
-   request, full diff, changed paths, task/plan context, project guidelines,
-   implementer's report. The coordinator owns
-   lane selection, bounded Phase A execution, conditional sequential Phase B,
-   aggregation, and the review verdict. The orchestrator must not preload the
-   coordinator skill, select or dispatch lanes directly, run Phase B, aggregate
-   findings, or compute the verdict. Do not release any dependent until the
-   coordinator's review passes (or an explicit `@oracle` adjudication resolves
-   the review).
+5. At every review boundary, load and use the on-demand `review-pipeline` skill.
+   The orchestrator is the review manager and owns packet validation, policy
+    normalization, lazy selection, bounded dispatch of the ten `reviewer-*`
+    lanes, exact-session reconciliation, Phase B sequencing, aggregation,
+    health-first verdict computation, and the final Markdown report. Never
+    preload the skill into every orchestrator session. Dispatch only the exact
+    lanes and phases declared by the canonical
+    `.rulesync/skills/review-pipeline/pipeline.json` registry.
+6. Build a complete packet with target descriptor, scope, complete diff,
+    changed paths, diff metadata, implementer's report, task/plan context,
+    project guidelines, normalized policy, unique `review_run_id`, stable
+    `packet_digest`, and the registry `contract_version`. Redact secrets and
+    untrusted instructions, enforce the skill's input size limits and escaping,
+    and pass the same packet plus lane-specific focus to every child.
+7. Launch Phase A in canonical registry order in background batches no larger
+    than the registry cap (maximum 3), wait for each batch, and reconcile every
+    result by its exact returned session ID. Launch `reviewer-simplifier` fresh
+    exactly once in sequential Phase B after Phase A when applicable. Never
+    revive, alias, directly fall back, or dispatch an unlisted lane. Preserve
+    valid results while recording late, timed-out, unavailable, malformed,
+    missing, duplicate, mismatched, or cross-lane results as health failures.
+8. Require each lane result to echo `review_run_id`, `packet_digest`,
+    `contract_version`, and `phase`. Validate strict JSON, changed-file,
+    numeric-line, changed-side/hunk, non-empty issue/remediation, and
+    0–100 confidence requirements before retaining findings. Separate coverage
+    health from finding content; health failures take precedence over content
+    verdicts. Guard finalization and emit the required inconclusive fallback
+    report with raw valid findings/errors if rendering fails.
+9. Do not release any dependent until the review pipeline passes, or an
+    explicit `@oracle` adjudication resolves it. Be honest about parent
+    write-isolation: read-only child permissions and prompt claims are not
+    filesystem immutability without authoritative recorded tool evidence.
 
 `NEEDS_CONTEXT`, `BLOCKED`, timeout or failure, failed, missing, or malformed implementer
 or review results hold all dependents and must be surfaced in the scheduler

@@ -54,7 +54,7 @@ All under [`.rulesync/skills/`](../.rulesync/skills/), grouped by purpose.
 
 | Skill | Purpose | Path |
 | :--- | :--- | :--- |
-| reviewer-coordinator | Ten-lane PR/branch/diff review coordination | [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) (`agents.reviewer-coordinator`) |
+| review-pipeline | On-demand orchestrator-managed policy, packet, lane, phase, and verdict contract | [`review-pipeline/SKILL.md`](../.rulesync/skills/review-pipeline/SKILL.md) + [`pipeline.json`](../.rulesync/skills/review-pipeline/pipeline.json) |
 | simplify | Clarity/readability without behavior change | [`simplify/SKILL.md`](../.rulesync/skills/simplify/SKILL.md) |
 
 ### Implementation specialist
@@ -148,19 +148,21 @@ Defined in [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) under
 | Navigator | [`.rulesync/subagents/navigator.md`](../.rulesync/subagents/navigator.md) | Gemini 3 Flash | Browser automation via `agent-browser` CLI |
 | Detective | [`.rulesync/subagents/detective.md`](../.rulesync/subagents/detective.md) | `bf-o/gpt-5.6-luna` | Production diagnostics via `pup`/`gcloud` (read-only) |
 | Sage | [`.rulesync/subagents/sage.md`](../.rulesync/subagents/sage.md) | `bf-o/gpt-5.6-terra` | Gorgias domain knowledge via Cortex |
-| reviewer-coordinator | [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) | `bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash` | OpenCode review coordinator; read-only orchestration |
-| reviewer-code … reviewer-accessibility (10 lanes) | [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) | Mixed: Luna/Terra/Flash/Gemini | Read-only review specialist lanes owned by reviewer-coordinator |
+| reviewer-code … reviewer-simplifier (10 lanes) | [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) + [`pipeline.json`](../.rulesync/skills/review-pipeline/pipeline.json) | Mixed: Luna/Terra/Flash/Gemini | Read-only review specialist lanes directly managed by the orchestrator |
 
 The ten reviewer lanes are: `reviewer-code`, `reviewer-test`,
 `reviewer-errors`, `reviewer-types`, `reviewer-security`,
 `reviewer-performance`, `reviewer-data-integrity`, `reviewer-accessibility`,
-`reviewer-comments`, `reviewer-simplifier`. The `reviewer-coordinator` agent and
-the ten lanes are defined inline in `oh-my-opencode-slim.json` (not in
-`.rulesync/subagents/`).
+`reviewer-comments`, `reviewer-simplifier`. Lane identity, order, triggers,
+phase, policy, packet, and verdict definitions are canonical in
+`.rulesync/skills/review-pipeline/pipeline.json`; model prompts and permissions
+remain in `oh-my-opencode-slim.json` (not in `.rulesync/subagents/`).
 
 The first nine lanes run in Phase A batches; `reviewer-simplifier` runs exactly
-once sequentially in Phase B. The orchestrator delegates the complete packet to
-`reviewer-coordinator` and does not select or directly dispatch lanes.
+once sequentially in Phase B when executable/source/config content applies.
+The orchestrator loads the skill on demand, selects and directly dispatches
+lanes, reconciles exact sessions, aggregates findings, computes the verdict,
+and renders the report. Do not infer a second registry from this summary.
 
 Per-agent appended prompt instructions live in
 [`.rulesync/oh-my-opencode-slim/`](../.rulesync/oh-my-opencode-slim/)
@@ -178,6 +180,8 @@ All under [`scripts/`](../scripts/).
 | `apply-model-profile.py` | Apply a model profile to OMO config |
 | `update-agents-overview-data.py` | Regenerate `agents-overview/data.yaml` |
 | `opencode-latency-report.py` | OpenCode latency telemetry reporting |
+| `review_pipeline_contract.py` | Deterministic review packet, lane-result, and verdict contract helpers |
+| `test_review_pipeline_contract.py` | Deterministic contract tests for the canonical review registry and health-first verdicts |
 
 Deployment logic itself is [`deploy.sh`](../deploy.sh) at the repo root.
 

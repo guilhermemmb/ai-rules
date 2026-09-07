@@ -35,18 +35,36 @@ repeated patterns, friction, and improvement opportunities.
 
 ### Session Discovery
 
-1. **Load recent sessions** - Query the SQLite database directly:
+1. **Load recent session metadata by default** - Query the SQLite database
+   directly, selecting only the metadata needed to choose and summarize
+   sessions:
    ```bash
-   bun -e "import Database from 'bun:sqlite'; const db = new Database('/home/mhenke/.local/share/opencode/opencode.db'); console.log(db.query('SELECT id, directory, title, agent, model, time_created, cost, tokens_input, tokens_output FROM session ORDER BY time_created DESC LIMIT 50').all())"
+   bun -e "import Database from 'bun:sqlite'; const db = new Database(process.env.HOME + '/.local/share/opencode/opencode.db'); const rows = db.query('SELECT id, directory, title, agent, model, time_created, cost, tokens_input, tokens_output FROM session ORDER BY time_created DESC LIMIT 50').all(); /* redact before any result enters model context */"
    ```
-   Adjust `LIMIT 50` to `--last N` if specified.
+   Adjust `LIMIT 50` to `--last N` if specified. The default `--sessions`
+   flow and `--last N` flow must remain metadata-only; do not load message
+   payloads while discovering sessions. Treat titles and paths as potentially
+   sensitive and redact secrets and PII before any metadata enters model
+   context. Do not print query results wholesale.
 
-   **Session table columns:** `id, directory, title, agent, model, time_created, cost, tokens_input, tokens_output`
+    **Session table columns:** `id, directory, title, agent, model, time_created, cost, tokens_input, tokens_output`
 
-2. **Load session messages** - For each session ID, query the message table:
+2. **Inspect messages only with an explicit content-inspection gate** - Do not
+   load message payloads by default. Before inspecting content, the user must
+   explicitly scope the session IDs and approve content inspection. For those
+   approved IDs only, extract the minimum fields needed for the evidence-driven
+   summary (for example, timestamps, roles, agent/model, summaries, tool names,
+   and outcome markers) rather than loading complete message records into model
+   context:
    ```bash
-   bun -e "import Database from 'bun:sqlite'; const db = new Database('/home/mhenke/.local/share/opencode/opencode.db'); console.log(db.query('SELECT data FROM message WHERE session_id = ?').all('ses_14de9c68effegtZtlATm42wnz7'))"
+   bun -e "import Database from 'bun:sqlite'; const db = new Database(process.env.HOME + '/.local/share/opencode/opencode.db'); const rows = db.query(\"SELECT id, session_id, time_created, time_updated, json_extract(data, '$.role') AS role, json_extract(data, '$.agent') AS agent, json_extract(data, '$.model') AS model, json_extract(data, '$.summary') AS summary FROM message WHERE session_id = ?\").all('<explicitly approved session_id>'); /* redact before any result enters model context */"
    ```
+
+   Never print raw message JSON or a complete message payload wholesale. Only
+   the minimum necessary fields may enter model context, and only after secret
+   and PII redaction. If message text is genuinely necessary after approval,
+   inspect the smallest possible excerpt locally, redact it first, and include
+   only the minimum evidence; do not expose or retain the original payload.
 
    **Message table columns:** `id, session_id, time_created, time_updated, data` (data is JSON with role, agent, model, summary, etc.)
 
@@ -84,13 +102,21 @@ For each session, analyze and produce a structured summary:
 
 ### Storage and Caching
 
-Store session summaries in `~/.config/opencode/oh-my-opencode-slim/reflections/sessions/`.
+Persistence in `~/.config/opencode/oh-my-opencode-slim/reflections/sessions/`
+is opt-in only. Do not create or write there unless the user explicitly asks
+for session-summary persistence. Never store raw message JSON, complete
+message payloads, raw message text, secrets, or unredacted PII. Persist only
+structured, redacted summaries containing the minimum necessary evidence. When
+the user opts in, recommend owner-only permissions for the directory and its
+files (for example, mode `700` for the directory and `600` for files).
 
 **Cache logic:**
-1. Check if `<session-id>.json` exists in reflections directory
-2. If yes, load it (saves tokens)
-3. If no, analyze session and save summary
-4. Aggregate across all summaries for final report
+1. Only after explicit persistence opt-in, check if `<session-id>.json` exists
+   in the reflections directory.
+2. If yes, load it only after confirming it is a structured, redacted summary;
+   do not load raw message content.
+3. If no, analyze the approved evidence and save only the redacted summary.
+4. Aggregate across the permitted summaries for the final report.
 
 ### Aggregation
 

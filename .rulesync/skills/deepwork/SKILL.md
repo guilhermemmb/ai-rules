@@ -21,10 +21,11 @@ not as the default implementation worker.
 
 Required behavior:
 
-- before planning, delegation, or creating a deepwork state file, inspect the
-  existing `.gitignore` and `.ignore`; add only missing entries, without
-  duplicates, so `.gitignore` contains `.slim/deepwork/` and `.ignore` contains
-  `!.slim/deepwork/` and `!.slim/deepwork/**`;
+- before planning or delegation, inspect the existing `.gitignore` and `.ignore`;
+  before editing either ignore file or creating any persistent
+  `.slim/deepwork/` state, obtain explicit user confirmation; add only missing
+  entries, without duplicates, so `.gitignore` contains `.slim/deepwork/` and
+  `.ignore` contains `!.slim/deepwork/` and `!.slim/deepwork/**`;
 - keep OpenCode todos aligned with the active deepwork phase;
 - create and maintain a local markdown progress file under `.slim/deepwork/`;
 - save code/doc deliverables to project paths (e.g. `src/`, `docs/`); reserve
@@ -110,6 +111,11 @@ Before creating this file—and before planning or delegation—inspect the exis
 !.slim/deepwork/
 !.slim/deepwork/**
 ```
+
+Before writing either ignore file, show the exact managed-block diff for the
+missing entries and ask for explicit user confirmation. Before creating the
+task file or any other persistent `.slim/deepwork/` state, ask for explicit user
+confirmation as well. Do not perform either write until the user confirms.
 
 These rules keep deepwork state git-local while allowing OpenCode to read it.
 

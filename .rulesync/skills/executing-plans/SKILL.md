@@ -29,10 +29,10 @@ task, and continuing through all tasks without stopping.
 
 Do not use this skill for XS, S, or M work. S/M combined plans follow their own
 workflow: after one approval, dispatch implementation to `@fixer` for code or
-`@designer` for UI/UX as appropriate, then automatically dispatch one
-post-implementation `@reviewer-coordinator` and run proportionate validation. S/M does not
-use this skill, its ledger, or its per-task review loop, and does not ask for a
-review choice; `@reviewer-coordinator` is required through the combined-plan workflow.
+`@designer` for UI/UX as appropriate, then load `review-pipeline` at the review boundary and run one automatic
+post-implementation review owned by the orchestrator. S/M does not use this
+skill, its ledger, or its per-task review loop, and does not ask for a review
+choice.
 
 ## Agent Dispatch Rules
 
@@ -44,7 +44,7 @@ Assign the right agent per task type:
 | Code implementation (multi-file, integration) | @fixer | xhigh |
 | UI/UX implementation (components, styling, layouts) | @designer | medium |
 | Architecture decisions, complex debugging | @oracle | high |
-| Task review (after each task) | @reviewer-coordinator | high |
+| Task review (after each task) | orchestrator-managed review-pipeline | high |
 | Escalation (stuck after 3 fix rounds) | @oracle | high |
 
 ## The Process
@@ -101,10 +101,10 @@ Run the following lifecycle for each batch:
    before advancing it. Record the exact returned session ID and job ID and
    reconcile each result with `task_result` using that session ID—not an alias,
    title, ordering assumption, or partial report.
-3. Send every `DONE` task to exactly one `@reviewer-coordinator` with its
-   complete review packet. The coordinator owns specialist-lane selection,
-   batching, and Phase B; the orchestrator must not dispatch lanes directly or
-   schedule reviewer lanes.
+3. Send every `DONE` task to exactly one `orchestrator-managed review-pipeline` with its
+   complete review packet. The orchestrator loads `review-pipeline` at this boundary and owns
+   specialist-lane selection, batching, Phase B, aggregation, and the verdict;
+   it directly dispatches only the registry-declared lanes.
 4. Reconcile all implementer reports and reviews, including changed paths
    against each task's hard `Files` allowlist. A task is releasable only after
    a passing per-child review, or an explicit @oracle adjudication that
@@ -175,7 +175,7 @@ The implementer returns a structured status report:
 
 **3. Review the task**
 
-Dispatch exactly one `@reviewer-coordinator` with:
+Dispatch exactly one `orchestrator-managed review-pipeline` with:
 - The task brief file path
 - The implementer's report file path
 - The diff (git log --oneline + git diff from task start to HEAD)
@@ -185,7 +185,7 @@ Dispatch exactly one `@reviewer-coordinator` with:
   overridden)
 - Changed paths and any available native RTK/OpenCode evidence for exact/local confirmation
 
-The coordinator returns: spec compliance (✅/❌), task quality (approved/needs work), issues by severity, and Review Health. It selects and dispatches the reviewer lanes, including the conditional sequential simplifier pass; the orchestrator must not dispatch lanes directly or aggregate findings.
+The orchestrator's review-pipeline report returns spec compliance, task quality, issues by severity, lane statuses, Review Health, and the deterministic verdict. The orchestrator selects and dispatches the registry lanes, including the conditional sequential simplifier pass, then aggregates findings and owns the report.
 
 **4. Fix loop (if review ❌)**
 
@@ -208,11 +208,12 @@ predecessors are complete and releasable.
 
 ### Handoff to Review
 
-After all tasks complete, commit the ledger file and ask the user whether to run the final comprehensive review. This is a mandatory user-choice gate. Do not load skill `reviewing-plans` or dispatch `@reviewer-coordinator` unless the user explicitly chooses to run the review.
+After all tasks complete, commit the ledger file and ask the user whether to run the final comprehensive review. This is a mandatory user-choice gate. Do not load skill `reviewing-plans` or `review-pipeline` unless the user explicitly chooses to run the review.
 
-- If the user opts in, load skill `reviewing-plans`, which dispatches exactly one
-  `@reviewer-coordinator` with the plan file, ledger, full branch diff, target
-  descriptor, review mode, and Global Constraints.
+- If the user opts in, load skill `reviewing-plans`; the orchestrator then loads
+  `review-pipeline` at the boundary and dispatches the registry-declared lanes
+  with the plan file, ledger, full branch diff, target descriptor, review mode,
+  and Global Constraints.
 - If the user skips it, append `Handoff: final review skipped by user` to the ledger and state that the merge-readiness review was not run.
 
 ## Ledger Format

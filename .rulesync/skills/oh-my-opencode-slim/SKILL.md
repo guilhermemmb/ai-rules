@@ -69,8 +69,6 @@ Built-in agent prompt file names are exact agent names:
 - `fixer.md` / `fixer_append.md`
 - `observer.md` / `observer_append.md`
 - `council.md` / `council_append.md`
-- `observer.md` / `observer_append.md`
-- `sage.md` / `sage_append.md`
 
 Prefer `{agent}_append.md` for small behavior tuning. Use `{agent}.md` only when
 the user intentionally wants to replace the bundled prompt entirely.
@@ -91,9 +89,10 @@ Common customizations:
 - **Limit costs**: use cheaper models for `explorer`, `librarian`, and `fixer`.
 - **Improve quality**: use stronger models for `orchestrator`, `oracle`, or
   design-heavy `designer` work.
-- **Control skills**: set `skills` per agent with `['*']`, explicit names, or
-  exclusions like `['*', '!codemap']`.
-- **Control MCPs**: set `mcps` per agent with the same allow/exclude style.
+- **Control skills**: set `skills` per agent with the smallest explicit
+  allowlist needed for the task.
+- **Control MCPs**: set `mcps` per agent with the smallest explicit allowlist
+  needed for the task.
 - **Enable optional agents**: remove agents from `disabled_agents` and configure
   an appropriate model, such as a vision-capable `observer`.
 - **Add custom agents**: define focused specialists under `agents.<name>`.
@@ -114,6 +113,13 @@ Important schema boundary:
 
 ## Config Shapes
 
+### Permission baseline
+
+Use explicit skill and MCP allowlists by default. Wildcard skills or MCP access
+is exceptional, increases exposure, and requires explicit capability-by-
+capability user approval before it is used; never treat wildcard access as the
+normal permission baseline.
+
 ### Tune a built-in agent model/skills/MCPs
 
 Edit the active preset under `presets.<preset>.<agent>`:
@@ -126,14 +132,8 @@ Edit the active preset under `presets.<preset>.<agent>`:
       "orchestrator": {
         "model": "openai/gpt-5.6-terra",
         "variant": "high",
-        "skills": ["*"],
-        "mcps": ["*", "!context7"]
-      },
-      "librarian": {
-        "model": "openai/gpt-5.6-luna",
-        "variant": "low",
-        "skills": [],
-        "mcps": ["websearch", "context7", "gh_grep"]
+        "skills": ["deepwork"],
+        "mcps": []
       }
     }
   }

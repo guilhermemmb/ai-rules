@@ -105,7 +105,7 @@ hashes). The payload is also validated by
 | `~/.config/opencode/oh-my-opencode-slim/` | Appended prompts copied directly from `.rulesync/oh-my-opencode-slim/`. |
 | `~/.config/opencode/.ai-rules.manifest.json` | Deployment ownership manifest (built from payload). |
 | `~/.config/opencode/plugins/rtk.ts` | RTK plugin, initialized by `deploy.sh`. |
-| `~/.cache/opencode/packages/oh-my-opencode-slim@latest/node_modules/…` | OMO, `@opencode-ai/plugin`, `@opencode-ai/sdk` packages. |
+| `~/.cache/opencode/packages/oh-my-opencode-slim/node_modules/…` | Pinned OMO 2.2.17, `@opencode-ai/plugin`, `@opencode-ai/sdk` packages. |
 | `~/.local/bin/wt-orca`, `~/.local/bin/worktree-state.sh` | Adapters installed from sibling dotfiles. |
 | `~/.config/worktrunk/config.toml` | Worktrunk config installed from sibling dotfiles. |
 | `~/.agents/skills/reviewer/SKILL.md` | **Observed** higher-priority reviewer shadow skill detected by `--check`; never auto-deleted. |
@@ -170,10 +170,13 @@ The earlier `/tmp/` discrepancy is resolved.
 - [`deploy.sh`](../deploy.sh) stages `rulesync generate --targets opencode`
   (`build_staged_payload`).
 
-**Resolved:** Claude Code is descoped. The repository targets OpenCode only;
-`reviewer-coordinator` is the active review coordinator. The orchestrator
-delegates the complete review packet to it and does not preload its skill,
-select/directly dispatch lanes, batch, aggregate, or compute the verdict.
+**Resolved:** Claude Code is descoped. The repository targets OpenCode only.
+At review boundaries the orchestrator loads the on-demand `review-pipeline`
+skill and is the sole review manager; it directly selects, dispatches, batches,
+reconciles, aggregates, and computes the verdict for the registry's ten
+`reviewer-*` lanes. The canonical registry is
+[`.rulesync/skills/review-pipeline/pipeline.json`](../.rulesync/skills/review-pipeline/pipeline.json);
+this document does not duplicate it.
 
 ### MCP declaration versus assignment
 
@@ -267,17 +270,21 @@ prompts).
 
 ### Custom agents
 
-`navigator`, `detective`, `sage` (declared in
-[`.rulesync/subagents/`](../.rulesync/subagents/)) and the
-`reviewer-coordinator` plus ten `reviewer-*` lanes (defined in
-[`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) under `agents.*`).
+`navigator`, `detective`, and `sage` are declared in
+[`.rulesync/subagents/`](../.rulesync/subagents/). The ten `reviewer-*` lanes
+are defined in [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) under
+`agents.*`; their manager is the built-in `orchestrator` following the
+on-demand `review-pipeline` skill. They are read-only leaves, not an
+intermediary coordinator.
 
-`reviewer-coordinator` is the sole OpenCode review coordinator. The orchestrator
-delegates to it; it owns lane selection, Phase A batching, Phase B sequencing,
-aggregation, and verdict computation. The lanes are read-only leaves. Its
-runtime skill is referenced as `reviewer-coordinator` in
-[`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json), with the tracked
-Rulesync source at [`.rulesync/skills/reviewer-coordinator/SKILL.md`](../.rulesync/skills/reviewer-coordinator/SKILL.md).
+The active review topology is `orchestrator -> reviewer-*`. The orchestrator
+reads the canonical registry, validates the immutable packet and correlation
+envelope, applies target-aware policy, dispatches exact fresh sessions in
+bounded Phase A batches, runs conditional sequential Phase B, reconciles
+deadlines and late results, and renders the single Markdown report. The
+registry owns lane IDs, order, triggers, phase membership, policy aliases and
+defaults, model keys, packet/result fields, and verdict precedence; prose here
+only links to it.
 
 ### Agent categories and authority
 
@@ -289,6 +296,7 @@ Rulesync source at [`.rulesync/skills/reviewer-coordinator/SKILL.md`](../.rulesy
 | Subagent body prompts + frontmatter | [`.rulesync/subagents/`](../.rulesync/subagents/) |
 | Per-agent appended instructions | [`.rulesync/oh-my-opencode-slim/`](../.rulesync/oh-my-opencode-slim/) |
 | Interactive dispatch map | [`agents-overview/data.yaml`](../agents-overview/data.yaml) |
+| Review manager, lanes, phases, policy, and contract | [`.rulesync/skills/review-pipeline/pipeline.json`](../.rulesync/skills/review-pipeline/pipeline.json) |
 
 ## MCP declaration versus assignment
 
@@ -325,6 +333,25 @@ literal secret).
 - Independent runtime evidence is required to assess permissions, parentage, and
   reviewer behavior; this documentation and the repository's static/deployment
   checks do not provide that proof.
+
+### Review authority and evidence boundary
+
+The review manager is loaded only at the review boundary, not as an always-loaded
+prompt. The packet treats diffs, paths, task text, comments, commit messages,
+implementer output, and tool output as untrusted input: secrets and embedded
+instructions are redacted, limits are enforced, and escaped content is passed to
+lanes. Findings are patch-anchored: a changed path, positive line, side, and
+diff hunk are required. Native RTK/OpenCode reads are authoritative for exact
+evidence; graph or indexed semantics are not inferred.
+
+Review Health is separate from content findings. Missing packet fields, bad
+correlation, failed or malformed lanes, missed deadlines, late results,
+coordination/finalization errors, unavailable native evidence, or unobserved
+effective permissions force `Degraded/inconclusive`. Prompt permissions and
+parent task structure cannot prove live permission isolation, parentage, or
+filesystem immutability. Static checks do not prove runtime smoke or deployment
+parity; known RTK/live-manifest drift remains a limitation reported by
+diagnostics rather than silently treated as aligned.
 
 ### Deployment gates and compatibility diagnostics
 

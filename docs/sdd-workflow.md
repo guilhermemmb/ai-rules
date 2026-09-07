@@ -27,7 +27,7 @@ flowchart TD
         SM3["Show plan once"]
         SM4{"Approve plan once?"}
         SM5["Dispatch implementation\n@fixer (code) / @designer (UI/UX)"]
-        SM6["Automatically run exactly one review gate\nOpenCode: reviewer-coordinator\npost-implementation"]
+        SM6["Automatically run exactly one review gate\nOpenCode: orchestrator-managed review-pipeline\npost-implementation"]
         SM8["Proportionate validation\n(no separate spec, executing-plans, ledger,\nor per-task review loop or review-choice prompt)"]
         SM7["Revise, clarify, or defer"]
 
@@ -105,7 +105,7 @@ flowchart TD
         E6{"Implementer status?"}
         E7["Provide context,\nre-dispatch"]
         E8["Task blocked:\nassess + escalate\nto @oracle if needed"]
-        E9["Run per-child review gate\nOpenCode: reviewer-coordinator"]
+        E9["Run per-child review gate\nOpenCode: orchestrator-managed review-pipeline"]
         E10{"Review: spec ✅\nquality approved?"}
         E11["Fix loop\n(rounds 1-2: same agent\nround 3: fresh agent)"]
         E12{"Round 3 still failing?"}
@@ -147,8 +147,8 @@ flowchart TD
         direction TB
         R1["Load skill: reviewing-plans"]
         R2["Gather context:\nplan file + ledger +\nfull branch diff"]
-        R3["reviewer-coordinator selects applicable lanes\nOrchestrator delegates complete packet only\nPhase A: first nine lanes in batches ≤ resolved cap\n(fallback/max 3), wait between batches\nPhase B: simplifier exactly once, sequentially\nNo direct-lane or partial-lane fallback"]
-        R4["Coordinator returns\nstructured report"]
+        R3["Orchestrator loads review-pipeline\nvalidates registry and immutable packet\nPhase A: registry lanes in batches ≤ resolved cap\n(max 3), wait for exact sessions\nPhase B: simplifier exactly once, sequentially\nNo unlisted-lane fallback"]
+        R4["Orchestrator returns\nstructured report"]
         R5{"Critical issues = 0?"}
         R6["✅ Plan executed\nwith success\n\nReport to orchestrator:\n- Tasks completed\n- Review summary\n- Strengths\n- Merge ready"]
         R7["❌ Gate not passed\n\nReport to orchestrator:\n- Critical issues\n- Recommended fixes\n- Do NOT signal\ncompletion"]
@@ -212,7 +212,7 @@ short rationale first, before exploration or implementation:
   `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, show it once, and obtain one approval before dispatching implementation to
   `@fixer` for code or `@designer` for UI/UX as appropriate. Automatically
   run exactly one post-implementation review gate through OpenCode
-  `reviewer-coordinator`, then run proportionate
+  `orchestrator-managed review-pipeline`, then run proportionate
   validation. Do not create a separate spec, load `executing-plans`, create a
   ledger, run a per-task review, or prompt for a review choice.
 - **L** — multi-area/cross-system work or material uncertainty.
@@ -225,11 +225,11 @@ short rationale first, before exploration or implementation:
 
 ## Agent Usage by Phase
 
-| T-shirt path / phase           | @explorer         | @librarian           | @oracle               | @designer         | @fixer                      | Review coordinator                |
+| T-shirt path / phase           | @explorer         | @librarian           | @oracle               | @designer         | @fixer                      | Review manager                   |
 | ------------------------------ | ----------------- | -------------------- | --------------------- | ----------------- | --------------------------- | --------------------------------- |
 | XS/immediate                   | —                 | —                    | —                     | ✅ UI/UX implementation | ✅ code implementation     | —                                 |
-| S/M merged plan                | optional context  | optional research    | optional architecture | ✅ UI/UX implementation | ✅ code implementation     | ✅ one automatic post-implementation gate (`reviewer-coordinator`) |
+| S/M merged plan                | optional context  | optional research    | optional architecture | ✅ UI/UX implementation | ✅ code implementation     | ✅ one automatic post-implementation gate (`orchestrator-managed review-pipeline`) |
 | L/XL — 1. Brainstorming        | ✅ codebase recon | ✅ external research | ✅ architecture       | ✅ UI sections    | —                           | —                                 |
 | L/XL — 2. Writing Plans        | ✅ context        | ✅ research          | ✅ architecture       | ✅ UI planning    | —                           | —                                 |
-| L/XL — 3. Executing            | —                 | —                    | ✅ escalation         | ✅ UI tasks       | ✅ code tasks               | ✅ per-task review (`reviewer-coordinator`) |
-| L/XL — 4. Reviewing (optional) | —                 | —                    | —                     | —                 | —                           | ✅ final gate (all 10 specialists; `reviewer-coordinator`) |
+| L/XL — 3. Executing            | —                 | —                    | ✅ escalation         | ✅ UI tasks       | ✅ code tasks               | ✅ per-task review (`orchestrator-managed review-pipeline`) |
+| L/XL — 4. Reviewing (optional) | —                 | —                    | —                     | —                 | —                           | ✅ final gate (all 10 specialists; `orchestrator-managed review-pipeline`) |

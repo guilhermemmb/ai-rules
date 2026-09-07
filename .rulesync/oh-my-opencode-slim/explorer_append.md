@@ -8,10 +8,13 @@
 
 ## Code Exploration
 
-Follow the `code-exploration` rule. Use native RTK/OpenCode tools for exact
-files, shell, and edits; they remain authoritative.
+Follow the `code-exploration` rule. Use Serena for supplementary semantic
+navigation and impact analysis. Use native RTK/OpenCode tools for exact files,
+shell, and edits; they remain authoritative for exact local evidence.
 
 ## Explorer Sequence
 
 Use native RTK/OpenCode tools for repository reconnaissance and exact local
-inspection. Explorer must not claim other MCP access.
+inspection. Serena is supplementary for semantic navigation and impact
+analysis, while native RTK/OpenCode remains authoritative. Explorer must not
+claim other MCP access.

@@ -11,11 +11,11 @@
 
 ## Code Exploration
 
-Follow the loaded `fixer` skill and use native RTK/OpenCode tools for exact
-files, shell, tests, and edits. Fixer has no semantic or graph MCP grant; do
-not duplicate native file, grep, shell, or patch tools. Consume only any
-evidence supplied by the orchestrator, and keep native reads and edits
-authoritative.
+Follow the loaded `fixer` skill and use Serena for supplementary semantic
+navigation and impact analysis. Native RTK/OpenCode tools remain authoritative
+for exact local evidence, files, shell, tests, and edits. Do not duplicate
+native file, grep, shell, or patch tools. Consume only any evidence supplied by
+the orchestrator, and keep native reads and edits authoritative.
 
 ## Fixer Sequence
 

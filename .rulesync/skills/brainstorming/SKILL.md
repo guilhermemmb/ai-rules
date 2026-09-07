@@ -35,7 +35,7 @@ For L/XL work, you MUST complete each of these items in order:
 3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
 4. **Propose 2-3 approaches** — with trade-offs and your recommendation; consult @oracle for architecture questions
 5. **Present design** — in sections scaled to their complexity, get user approval after each section; dispatch @designer for UI-heavy sections
-6. **Write design doc** — save to `~/developer/planning-docs/{{repository-name}}/.planning/specs/YYYY-MM-DD-<topic>-design.md`; do not commit it
+6. **Write design doc** — save to `~/developer/planning-docs/{{repository-name}}/.planning/specs/YYYY-MM-DD-<topic>-design.md`; do not commit it in this workflow
 7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope
 8. **User reviews written spec** — ask user to review the spec file before proceeding
 9. **Transition to implementation** — load skill `writing-plans` to create the implementation plan
@@ -115,7 +115,7 @@ brainstorming is `writing-plans`, and only after the separate spec is approved.
 **Documentation:**
 
 - Write the validated design (spec) to `~/developer/planning-docs/{{repository-name}}/.planning/specs/YYYY-MM-DD-<topic>-design.md`
-- Commit the design document to git
+- Do not commit the design document in this workflow
 
 **Spec Self-Review:**
 After writing the spec document, look at it with fresh eyes:
@@ -130,7 +130,7 @@ Fix any issues inline. No need to re-review — just fix and move on.
 **User Review Gate:**
 After the spec review passes, ask the user to review the written spec before proceeding:
 
-> "Spec written and committed to `<path>`. Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
+> "Spec written to `<path>`. Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
 
 Wait for the user's response. If they request changes, make them and re-run the spec review. Only proceed once the user approves.
 

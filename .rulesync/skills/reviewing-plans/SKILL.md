@@ -27,10 +27,9 @@ Collect these inputs:
 
 ### 2. Run the target-specific review workflow
 
-Dispatch exactly one `@reviewer-coordinator` with a complete review packet. The
-orchestrator must not preload the coordinator skill, select or dispatch
-specialist lanes directly, run Phase B, aggregate findings, or compute the
-verdict. Pass it:
+At this review boundary, load `review-pipeline` and have the orchestrator own
+the complete review packet, lane selection, bounded execution, Phase B,
+aggregation, health-first verdict, and report. Pass the packet:
 
 - The implementation plan file path
 - The execution ledger file path (note parked items and adjudicated findings)
@@ -39,13 +38,14 @@ verdict. Pass it:
   unless explicitly overridden)
 - Any Global Constraints from the plan
 
-The coordinator owns selection, bounded execution, failure handling, aggregation,
-and verdict reporting for the ten `reviewer-*` lanes. Do not dispatch specialist
-lanes directly or ask them to dispatch additional tasks.
+The orchestrator directly dispatches the exact ten `reviewer-*` lanes declared
+by the canonical registry, with no intermediary review agent. It must reconcile
+exact sessions, preserve valid findings, and never use revive, alias, or direct
+fallback when coordination fails.
 
 ### 3. Evaluate the Report
 
-The active target coordinator returns the standard report with sections:
+The active review-pipeline returns the standard report with sections:
 - Critical Issues (must fix before sign-off)
 - Important Issues (should fix)
 - Suggestions (nice to have)
@@ -107,7 +107,7 @@ Return a concise summary to the orchestrator:
 
 ## Rules
 
-- **Explicit user opt-in is required**: Do not load this skill or start the final comprehensive review unless the user explicitly chooses to run it. Dispatch exactly one `@reviewer-coordinator` after opt-in.
+- **Explicit user opt-in is required**: Do not load this skill or start the final comprehensive review unless the user explicitly chooses to run it. After opt-in, load `review-pipeline` at the boundary and let the orchestrator dispatch the registry-declared lanes.
 - **No code changes**: Reviewing-plans is advisory only. Never fix issues inline.
 - **Binary gate**: Critical = 0 → success. Any Critical > 0 → not passed.
 - **Trust the ledger**: Parked items with rulings from executing-plans are resolved. Do not re-litigate.

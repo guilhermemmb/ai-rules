@@ -40,7 +40,8 @@ flowchart TD
     D4 --> D1
     D3 --> D5 --> D6
 
-    D6 --> DETACH["wt-orca stop<br/>(detach → cleanup → delegate remove)"]
+    D6 --> DETACH["wt-orca stop<br/>(detach → delegate remove)"]
     DETACH --> REMOVE["wt remove --force<br/>(Worktrunk-owned removal)"]
-    REMOVE --> CLEANUP["pre-remove cleanup hook<br/>+ retry queue (worktree-cleanup.sh --retry-pending)"]
-    CLEANUP --> DONE(["Workspace removed by Worktrunk"])
+    REMOVE --> CLEANUP["blocking pre-remove hook<br/>Serena cleanup while path exists"]
+    CLEANUP --> PRESERVE["remove runtime .serena state<br/>preserve tracked .serena/project.yml"]
+    PRESERVE --> DONE(["Workspace removed by Worktrunk"])

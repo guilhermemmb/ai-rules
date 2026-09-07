@@ -3,7 +3,7 @@
   "shell": "zsh",
   "default_agent": "orchestrator",
   "lsp": true,
-  "plugin": ["oh-my-opencode-slim"],
+  "plugin": ["oh-my-opencode-slim@2.2.17"],
   "agent": {
     "explore": {
       "disable": true
@@ -40,9 +40,6 @@
     },
     "sage": {
       "color": "primary"
-    },
-    "reviewer-coordinator": {
-      "color": "warning"
     },
     "reviewer-code": {
       "color": "error"

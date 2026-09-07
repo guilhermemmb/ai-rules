@@ -6,7 +6,7 @@
 > deployment code, scripts, MCP configuration, or generated outputs are modified
 > by this document. Proposals are **future work**, not implemented changes.
 >
-> **Review baseline:** refreshed **as of 2026-09-02** against the current tree
+> **Review baseline:** refreshed **as of 2026-09-07** against the current tree
 > (OpenCode-only hardening). Each finding below carries a resolution status, and
 > findings are split into **resolved/historical** versus **open** in
 > [Resolution status](#resolution-status). Where a finding is marked resolved,
@@ -20,15 +20,50 @@ which describes the same system's layers and authority boundaries, and
 disagree in emphasis, this document is the one that carries severity, impact,
 and remediation ordering.
 
-### Current reviewer architecture (2026-09-04)
+### Current reviewer architecture (2026-09-07)
 
-The implemented OpenCode topology is `orchestrator -> reviewer-coordinator ->`
-the ten read-only `reviewer-*` lanes. The orchestrator delegates the complete
-packet and does not preload the coordinator skill, select/directly dispatch
-lanes, batch, aggregate, or compute the verdict. `reviewer-coordinator` owns
-target-aware policy, Phase A/Phase B scheduling, native fallback, and the single
-inline Markdown result. Any older `reviewer` or `@reviewer` coordinator wording
-below is historical evidence or a deferred proposal, not current ownership.
+The implemented OpenCode topology is `orchestrator -> reviewer-*`.
+At review boundaries the orchestrator loads the on-demand `review-pipeline`
+skill and validates the canonical registry at
+[`.rulesync/skills/review-pipeline/pipeline.json`](../.rulesync/skills/review-pipeline/pipeline.json).
+It directly selects and dispatches the ten narrow, advisory, read-only lanes,
+reconciles exact sessions and deadlines, aggregates patch-anchored findings,
+computes the health-first verdict, and renders the single caller-facing
+Markdown report. The skill is not preloaded into ordinary sessions and the
+documentation does not maintain a second policy or lane registry.
+
+The immutable packet carries the complete relevant diff, changed paths, policy,
+context, contract version, and the correlation envelope (`review_run_id` and
+`packet_digest`). Diffs, task text, comments, implementer output, and tool
+output are untrusted input. Phase A is bounded and batched; Phase B runs
+`reviewer-simplifier` exactly once sequentially for executable/source/config
+content and is not applicable to docs-only full reviews. Failed, malformed,
+missing, timed-out, or late results degrade health; late evidence cannot affect
+the verdict. Prompt configuration is not evidence of live parentage, effective
+permission isolation, or filesystem immutability, and static validation does not
+prove runtime smoke or deployment parity.
+
+### Historical coordinator evidence
+
+The following wording is retained only as historical evidence from the
+pre-Task-2 runtime topology. It is not an active agent, route, owner, or fallback:
+the former `reviewer-coordinator` sat between the orchestrator and lanes and
+owned scheduling and aggregation. Current ownership is exclusively the
+orchestrator and the canonical `review-pipeline` registry above.
+
+### Review-pipeline hardening recorded in this refresh
+
+The current documentation now reflects the reliability and security contract in
+the canonical skill and registry: on-demand loading; direct orchestrator
+management; ten registry-declared leaf lanes; target-aware policy; bounded
+Phase A and sequential Phase B; exact-session reconciliation; deadlines and
+late-result exclusion; `review_run_id`/`packet_digest` correlation; patch-
+anchored evidence; a shared Critical/Important/Suggestions rubric; and separate
+coverage/evidence health. It also records that parent task structure and prompt
+permissions cannot prove live permission isolation, filesystem immutability,
+runtime smoke, or deployment parity. Untrusted diff/task/comment/implementer
+input is redacted, bounded, and escaped before dispatch. Deterministic contract
+tests provide static invariants, not runtime evidence.
 
 - [Scope and method](#scope-and-method)
 - [Labels](#labels)
@@ -69,7 +104,7 @@ Reused from [`architecture.md`](architecture.md#label-legend) with one addition:
 
 ## Resolution status
 
-Refreshed against the current tree (2026-09-02). Resolved findings are kept for
+Refreshed against the current tree (2026-09-07). Resolved findings are kept for
 history; open findings remain proposals.
 
 | Finding | Status | Note |
@@ -208,7 +243,8 @@ targets; the repository is now OpenCode-only.
 - [`README.md:414-423`](../README.md) "Configuration Layers" lists only
   OpenCode/OMO paths; there is no Claude Code layer.
 
-**Impact** — The rules declare Claude Code a target and a review coordinator, but
+**Historical impact (pre-OpenCode-only; not current ownership)** — The rules
+formerly declared Claude Code a target and a review coordinator, but
 the repository's deploy and validation tooling only covers OpenCode. The Claude
 Code alignment is asserted in prose, never produced or verified by the tooling.
 This is **Unverified** at runtime.

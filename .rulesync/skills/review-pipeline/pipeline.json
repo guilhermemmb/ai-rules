@@ -1,0 +1,187 @@
+{
+  "manager": "orchestrator",
+  "skill": "review-pipeline",
+  "contract_version": 1,
+  "max_phase_a_concurrency": 3,
+  "aspect_ids": [
+    "comments",
+    "tests",
+    "errors",
+    "types",
+    "security",
+    "performance",
+    "data-integrity",
+    "code",
+    "simplify",
+    "accessibility"
+  ],
+  "policy": {
+    "target_aliases": {
+      "current": "current-diff",
+      "diff": "current-diff",
+      "pull-request": "pr"
+    },
+    "textual_aliases": {
+      "all": {
+        "kind": "full"
+      }
+    },
+    "target_defaults": {
+      "current-diff": "auto",
+      "task": "auto",
+      "branch": "full",
+      "entire-branch": "full",
+      "pr": "full"
+    }
+  },
+  "phases": {
+    "A": [
+      "reviewer-code",
+      "reviewer-test",
+      "reviewer-errors",
+      "reviewer-types",
+      "reviewer-security",
+      "reviewer-performance",
+      "reviewer-data-integrity",
+      "reviewer-accessibility",
+      "reviewer-comments"
+    ],
+    "B": [
+      "reviewer-simplifier"
+    ]
+  },
+  "lanes": [
+    {
+      "id": "reviewer-code",
+      "aspect": "code",
+      "phase": "A",
+      "order": 1,
+      "trigger": "Always, unless an explicit aspect list excludes it; review correctness, guideline compliance, and changed-code bugs.",
+      "model_profile_key": "reviewer-code",
+      "required_output_fields": ["agent", "summary", "critical", "important", "suggestions", "positive", "errors"]
+    },
+    {
+      "id": "reviewer-test",
+      "aspect": "tests",
+      "phase": "A",
+      "order": 2,
+      "trigger": "Test files or production behavior changed without matching behavioral coverage.",
+      "model_profile_key": "reviewer-test",
+      "required_output_fields": ["agent", "summary", "critical", "important", "suggestions", "positive", "errors"]
+    },
+    {
+      "id": "reviewer-errors",
+      "aspect": "errors",
+      "phase": "A",
+      "order": 3,
+      "trigger": "try/catch, error callbacks, retries, fallback branches, rejected promises, or failure propagation changed.",
+      "model_profile_key": "reviewer-errors",
+      "required_output_fields": ["agent", "summary", "critical", "important", "suggestions", "positive", "errors"]
+    },
+    {
+      "id": "reviewer-types",
+      "aspect": "types",
+      "phase": "A",
+      "order": 4,
+      "trigger": "Types, interfaces, classes, schemas, enums, generics, or type boundaries added or modified.",
+      "model_profile_key": "reviewer-types",
+      "required_output_fields": ["agent", "summary", "critical", "important", "suggestions", "positive", "errors"]
+    },
+    {
+      "id": "reviewer-security",
+      "aspect": "security",
+      "phase": "A",
+      "order": 5,
+      "trigger": "Authentication, authorization, secrets, validation, sanitization, injection, permissions, cryptography, network boundaries, dependencies, or sensitive data changed.",
+      "model_profile_key": "reviewer-security",
+      "required_output_fields": ["agent", "summary", "critical", "important", "suggestions", "positive", "errors"]
+    },
+    {
+      "id": "reviewer-performance",
+      "aspect": "performance",
+      "phase": "A",
+      "order": 6,
+      "trigger": "Algorithms, loops, queries, caching, concurrency, I/O, rendering, allocations, hot paths, or large-data processing changed.",
+      "model_profile_key": "reviewer-performance",
+      "required_output_fields": ["agent", "summary", "critical", "important", "suggestions", "positive", "errors"]
+    },
+    {
+      "id": "reviewer-data-integrity",
+      "aspect": "data-integrity",
+      "phase": "A",
+      "order": 7,
+      "trigger": "Persistence, migrations, transactions, serialization, idempotency, event/state mutation, synchronization, or invariants changed.",
+      "model_profile_key": "reviewer-data-integrity",
+      "required_output_fields": ["agent", "summary", "critical", "important", "suggestions", "positive", "errors"]
+    },
+    {
+      "id": "reviewer-accessibility",
+      "aspect": "accessibility",
+      "phase": "A",
+      "order": 8,
+      "trigger": "UI or rendering files changed.",
+      "model_profile_key": "reviewer-accessibility",
+      "required_output_fields": ["agent", "summary", "critical", "important", "suggestions", "positive", "errors"]
+    },
+    {
+      "id": "reviewer-comments",
+      "aspect": "comments",
+      "phase": "A",
+      "order": 9,
+      "trigger": "Comments, documentation, examples, or user-facing explanatory text changed.",
+      "model_profile_key": "reviewer-comments",
+      "required_output_fields": ["agent", "summary", "critical", "important", "suggestions", "positive", "errors"]
+    },
+    {
+      "id": "reviewer-simplifier",
+      "aspect": "simplify",
+      "phase": "B",
+      "order": 10,
+      "trigger": "Run exactly once after Phase A for executable, source, or configuration content; docs-only is not applicable.",
+      "model_profile_key": "reviewer-simplifier",
+      "required_output_fields": ["agent", "summary", "critical", "important", "suggestions", "positive", "errors"]
+    }
+  ],
+  "required_packet_fields": [
+    "target",
+    "scope",
+    "diff",
+    "changed_paths",
+    "diff_metadata",
+    "implementer_report",
+    "plan_context",
+    "guidelines",
+    "policy",
+    "review_run_id",
+    "packet_digest",
+    "contract_version"
+  ],
+  "required_lane_result_fields": [
+    "agent",
+    "review_run_id",
+    "phase",
+    "summary",
+    "critical",
+    "important",
+    "suggestions",
+    "positive",
+    "errors"
+  ],
+  "finding_fields": [
+    "file",
+    "line",
+    "side",
+    "hunk",
+    "issue",
+    "confidence",
+    "fix",
+    "source_lane"
+  ],
+  "verdict_precedence": [
+    "inconclusive",
+    "blocked",
+    "changes-requested",
+    "approved-with-suggestions",
+    "approved"
+  ]
+}

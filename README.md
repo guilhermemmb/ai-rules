@@ -35,10 +35,20 @@ ping all agents
 
 ### Reviewer concurrency
 
-Reviewer runs applicable concern lanes in independent background batches.
-When selected/applicable—when the normalized diff contains a non-empty
-executable/source/config diff and the aspect filter permits it—the
-reviewer-simplifier runs exactly once after Phase A with the Phase A findings.
+Review is an on-demand, orchestrator-managed pipeline. At a review boundary the
+orchestrator loads `review-pipeline`, validates its canonical registry at
+[`.rulesync/skills/review-pipeline/pipeline.json`](.rulesync/skills/review-pipeline/pipeline.json),
+and directly dispatches fresh `reviewer-*` leaf lanes. The skill is not
+preloaded into ordinary orchestrator sessions. The ten lanes are the registry's
+only review lanes; do not maintain a second lane or policy registry in docs or
+configuration.
+
+The orchestrator owns packet validation, policy normalization, lane selection,
+bounded scheduling, exact-session reconciliation, aggregation, verdict
+computation, and the caller-facing Markdown report. The runtime topology is
+`orchestrator -> reviewer-*`; the lanes are narrow, advisory, read-only
+specialists. When selected/applicable, `reviewer-simplifier` runs exactly once
+after Phase A with the Phase A findings.
 Set `REVIEWER_MAX_PARALLEL` in the runtime environment to control the batch size:
 values from `1` to `3` are accepted; unset, empty, non-integer, zero, and
 negative values fall back to `3`, and values above `3` are clamped to `3`.
@@ -46,17 +56,31 @@ Failed, timed-out, unavailable, malformed, or incomplete lane results populate
 `errors` and make Review Health Degraded/inconclusive. This is a runtime setting
 documented in the reviewer prompt/skill, not an OpenCode top-level configuration
 key.
-For OpenCode, review commands and review requests flow from the orchestrator to
-the `reviewer-coordinator`. The orchestrator does not preload the coordinator
-skill, select or directly dispatch lanes, batch work, aggregate findings, or
-compute the verdict. The coordinator owns exactly ten read-only lanes:
-`reviewer-code`, `reviewer-test`, `reviewer-errors`, `reviewer-types`,
-`reviewer-security`, `reviewer-performance`, `reviewer-data-integrity`,
-`reviewer-accessibility`, `reviewer-comments`, and `reviewer-simplifier`.
-The first nine run in Phase A batches; `reviewer-simplifier` runs exactly once
-sequentially in Phase B. It returns one inline Markdown report with telemetry,
-lane and batch/session details, native evidence status, Review
-Health, verdict, prioritized findings, strengths, and recommended action.
+The first nine registry lanes run in Phase A batches; `reviewer-simplifier` runs
+exactly once sequentially in Phase B after Phase A for executable, source, or
+configuration content. A docs-only full review records Phase B as not
+applicable. Phase A concurrency is bounded by `REVIEWER_MAX_PARALLEL` (1–3;
+invalid or unset values resolve to the registry cap of 3). Every batch waits for
+all exact sessions before the next batch starts. Deadlines are terminal health
+failures; late results are retained as late evidence and excluded from the
+verdict. The report identifies the review manager as `orchestrator` and includes
+telemetry, lane/batch/session details, evidence status, Review Health, verdict,
+findings, strengths, and recommended action.
+
+The immutable packet carries the complete relevant diff, changed-path manifest,
+policy, plan/report context, project guidelines, contract version, and the
+correlation envelope (`review_run_id` plus `packet_digest`). Each lane must echo
+that envelope. Findings require a changed path, positive line, changed-side
+evidence, and diff hunk; unsupported findings are omitted. Repository diffs,
+task text, comments, implementer output, and tool output are untrusted input:
+redact secrets and embedded instructions, validate packet/output limits, and
+escape child prompts and Markdown. Native RTK/OpenCode reads are authoritative.
+
+Health is separate from content: missing evidence, failed/late/malformed lanes,
+permission or coordination failures, and finalization failures force
+`Degraded/inconclusive`, regardless of finding severity. Prompt configuration
+does not prove parentage, effective permission isolation, or filesystem
+immutability; those remain unobserved without runtime evidence.
 
 Review policy is target-aware: current diff/task defaults to `auto`; entire
 branch, branch, and PR default to `full`; explicit tagged `auto`, `full`, or
@@ -145,7 +169,11 @@ configuration. The repository's remaining validation mechanisms provide static,
 configuration, compatibility, and deployment-precondition evidence; they do not
 prove background-task parentage, reconciliation, effective permissions, or the
 absence of forbidden reviewer tool execution. Those runtime conclusions remain
-unverified without independent runtime evidence.
+unverified without independent runtime evidence. The deterministic review
+contract tests cover registry, packet, lane-result, and health-first verdict
+invariants; they do not replace runtime smoke. `deploy.sh --check` can report
+known RTK/live-manifest drift, which remains a limitation rather than proof of
+runtime or deployment parity.
 
 ## Model Profiles
 
@@ -187,15 +215,14 @@ anywhere in this configuration.
 | **Fixer**        | DeepSeek V4 Pro via Novita (high) | DeepSeek V4 Pro via Novita (high) | Implementation specialist |
 | **Observer**     | Gemini 3 Flash    | Gemini 3 Flash         | Visual analysis                 |
 
-### Custom (14)
+### Custom (13)
 
 | Agent                       | Model (Default profile)   | Model (Cost-efficient profile) | Dispatch when                                              |
 | :-------------------------- | :---------------- | :--------------------- | :--------------------------------------------------------- |
 | **Navigator**               | Gemini 3 Flash    | Gemini 3 Flash         | agent-browser CLI, snapshots/refs, screenshots, extraction |
 | **Detective**               | GPT-5.6 Luna      | DeepSeek V4 Flash      | Production errors, logs, metrics                           |
 | **Sage**                    | GPT-5.6 Terra     | GPT-5.6 Terra          | Gorgias metrics, schemas, rules                            |
-| **reviewer-coordinator**    | DeepSeek V4 Flash (medium) | DeepSeek V4 Flash (medium) | Owns OpenCode review policy, batching, aggregation, and verdict |
-| **Reviewer lanes (10)**     | Mixed: Luna, Terra, DeepSeek V4 Flash, Gemini 3 Flash | Mixed: DeepSeek V4 Flash, DeepSeek V4 Pro, GPT-5.6 Terra | `reviewer-coordinator` review workflow |
+| **Reviewer lanes (10)**     | Mixed: Luna, Terra, DeepSeek V4 Flash, Gemini 3 Flash | Mixed: DeepSeek V4 Flash, DeepSeek V4 Pro, GPT-5.6 Terra | Orchestrator-managed `review-pipeline` |
 | **reviewer-code**           | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | CLAUDE.md compliance, bugs                                 |
 | **reviewer-test**           | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Behavioral test coverage                                   |
 | **reviewer-errors**         | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Silent failures, error handling                            |
@@ -208,9 +235,10 @@ anywhere in this configuration.
 | **reviewer-simplifier**     | DeepSeek V4 Flash | DeepSeek V4 Flash      | Post-Phase-A clarity and maintainability pass              |
 
 **Council** disabled. Observer auto-routes images from Orchestrator. The
-`reviewer-coordinator` agent is the OpenCode review owner; its ten specialist
-lanes are read-only and it alone selects, batches, aggregates, and computes the
-review verdict. There is no active `@reviewer` compatibility coordinator.
+orchestrator is the OpenCode review manager and directly owns the ten registry
+lanes through the on-demand `review-pipeline` skill. The lanes are read-only;
+there is no intermediary review agent and no active `@reviewer` compatibility
+coordinator.
 
 **Model Profiles Rationale:** routing is **neutral across speed, quality, and
 cost**. Both profiles use Novita DeepSeek V4 Pro for the Fixer with the preserved
@@ -290,7 +318,7 @@ or reviewer.
 S/M work uses one concise merged SDD + implementation plan, one approval, and
 implementation dispatched to `@fixer` for code or `@designer` for UI/UX as
 appropriate. It then always runs exactly one automatic post-implementation
-review gate through `reviewer-coordinator`;
+review gate managed directly by the orchestrator through `review-pipeline`;
 it does not use `executing-plans`, a ledger, or per-task reviews, and does not
 ask the user to choose whether to review.
 
@@ -303,8 +331,8 @@ S/M post-implementation reviewer gate.
 | ------------------------------------ | ----------------- | --------------------------------------------------------------------------------------- |
 | 1. Brainstorm                        | `brainstorming`   | @explorer, @librarian, @oracle, @designer                                               |
 | 2. Plan                              | `writing-plans`   | — (orchestrator writes the S/M combined plan or L/XL plan)                              |
-| 3. Execute                           | S/M combined-plan; `executing-plans` for L/XL | @fixer (code), @designer (UI/UX), OpenCode orchestrator (execution lead; delegates review gates), @oracle (escalation) |
-| 4. Review (optional; user-confirmed) | `reviewing-plans` | OpenCode `reviewer-coordinator` (final gate — up to 10 applicable reviewer-* specialists, only after opt-in) |
+| 3. Execute                           | S/M combined-plan; `executing-plans` for L/XL | @fixer (code), @designer (UI/UX), OpenCode orchestrator (execution lead; manages review gates), @oracle (escalation) |
+| 4. Review (optional; user-confirmed) | `reviewing-plans` | OpenCode orchestrator (`review-pipeline`; up to 10 applicable reviewer-* specialists, only after opt-in) |
 
 See `docs/sdd-workflow.md` for the full flowchart and agent usage matrix.
 
@@ -364,7 +392,7 @@ GitNexus is removed and is not an authority or part of the current lifecycle.
 | Detective | `pup`/`gcloud` via Bash |
 | Designer | `figma-mcp`; no code-intelligence MCP |
 | Fixer | no code-intelligence MCP |
-| `reviewer-coordinator` | Owns reviewer coordination; no direct lane access by Orchestrator |
+| Orchestrator | Loads `review-pipeline` on demand; directly dispatches and reconciles reviewer-* lanes |
 | `reviewer-*` lanes | no code-intelligence MCP |
 | Librarian | `context7`, `websearch`, `gh_grep`, `linear`, `cortex` |
 | Sage | `cortex` |
@@ -379,17 +407,20 @@ uv tool install -p 3.13 serena-agent==1.7.0
 ```
 
 Serena is used only through OpenCode's `ide` context and stdio transport. Its
-dashboard and browser are disabled. Serena has no Worktrunk hook lifecycle:
-Worktrunk does not start, index, stop, or clean Serena. VS Code integration is
-deferred.
+dashboard and browser are disabled. Worktrunk setup creates and immediately
+indexes the local Serena project.
+VS Code integration is deferred.
 
 The lifecycle is:
 
 1. Worktrunk creates or enters a worktree.
-2. OpenCode starts Serena with `--context ide --project-from-cwd`.
-3. Serena resolves the nearest `.serena/project.yml` or `.git` boundary.
-4. Each client session owns one stdio Serena process.
-5. Worktrunk does not start, index, stop, or clean Serena.
+2. Worktrunk setup runs `serena project create --index`, falling back to
+   `serena project index` when the project already exists.
+3. OpenCode starts Serena with `--context ide --project-from-cwd`.
+4. Serena resolves the nearest `.serena/project.yml` or `.git` boundary.
+5. Each client session owns one stdio Serena process.
+6. Worktrunk's blocking `pre-remove` hook removes disposable Serena runtime
+   state while preserving a tracked `.serena/project.yml`.
 
 Launching OpenCode from nested `ai-rules` selects that nested Git boundary and
 does not inherit the parent `.serena/project.yml`. Nested `ai-rules` Serena
@@ -405,9 +436,11 @@ Orca-owned terminal. `ai-rules/deploy.sh` is the source of truth for generated
 OpenCode configuration; do not edit generated files under
 `~/.config/opencode/` directly.
 
-Serena is not part of the Worktrunk hook lifecycle. It resolves from the
-current worktree when OpenCode starts and owns one stdio process per client
-session; Worktrunk does not start, index, stop, or clean it.
+Worktrunk setup creates and indexes Serena for the current worktree before
+readiness is published. OpenCode still starts Serena with
+`--project-from-cwd` and owns one stdio process per client session. Worktrunk's
+blocking `pre-remove` hook cleans disposable Serena runtime state before
+removal and preserves a tracked `.serena/project.yml`.
 
 ### Normal operator flow
 
@@ -425,9 +458,9 @@ wt-orca stop --name feature-example --force  # explicit destructive override
 The `--force` stop option must be supplied explicitly by the destroy hook or
 operator; it is never inferred from an uncommitted worktree.
 
-`wt-orca stop` does not invoke cleanup directly. Worktrunk's `pre-remove` hook
-remains the cleanup and retry-queue owner, so cleanup runs once during the
-delegated `wt remove` operation.
+`wt-orca stop` does not invoke Serena cleanup directly. Worktrunk's blocking
+`pre-remove` hook runs Serena cleanup once during the delegated `wt remove`
+operation while the worktree path still exists.
 
 For manual operation outside an Orca recipe:
 
@@ -449,11 +482,11 @@ It waits for setup readiness, registers the primary repository
 with Orca if necessary, and attaches to the existing path with a
 `path:<absolute-worktree-path>` selector. `status` reports readiness and the
 Orca terminal; `detach` closes only that terminal. `wt-orca stop` detaches the
-owned terminal and delegates removal to Worktrunk; it does not invoke cleanup
-directly. Worktrunk's `pre-remove` hook owns the cleanup and retry queue and
-runs once during that delegated removal. Neither adapter operation creates or
-removes a Git worktree directly; generated local artifacts can make a
-non-forced Worktrunk removal refuse to proceed.
+owned terminal and delegates removal to Worktrunk; it does not invoke Serena
+cleanup directly. Worktrunk's blocking `pre-remove` hook runs once during that
+delegated removal. Neither adapter operation creates or removes a Git worktree
+directly; generated local artifacts can make a non-forced Worktrunk removal
+refuse to proceed.
 
 ### Recovery and cleanup
 
@@ -489,19 +522,10 @@ non-forced Worktrunk removal refuse to proceed.
 - **timeout** — attachment stops with a timeout and OpenCode is not launched.
   Check `wt-orca status "$WORKSPACE_PATH"`, allow setup more time, or retry the
   setup before attaching again. A timeout does not remove the worktree.
-- **pending cleanup** — a failed pre-remove cleanup writes a durable queue
-  record keyed by the canonical root/workspace pair. Retry it without needing
-  the removed directory:
-
-  ```zsh
-  ~/developer/dotfiles/worktree-cleanup.sh --retry-pending --limit 100
-  ```
-
-  Failed retries remain queued and observable; repeat the retry after fixing
-  the external failure. `--state-key <64-hex-key>` scopes a retry, and
-  `--prune-state` removes only ordinary state for gone workspaces—it preserves
-  pending cleanup records. Cleanup never invokes `wt remove` or Git worktree
-  removal.
+- **pre-remove cleanup failure** — Worktrunk aborts removal while the worktree
+  still exists. Fix the reported Serena path, Git metadata, or permission
+  problem, then rerun the same `wt remove` operation. Serena cleanup does not
+  use a retry queue and never invokes Git worktree removal itself.
 
 Orca repository registration is intentionally retained after `wt-orca detach`
 and after the Worktrunk path is removed. The observed Orca CLI exposes
