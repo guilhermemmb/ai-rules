@@ -207,6 +207,19 @@ Apply the registry verdict precedence exactly:
 
 Health-first precedence always wins over a content verdict.
 
+## Validation evidence
+
+The final report must contain a dedicated `## Validation evidence` section.
+For every relevant typecheck, unit-test, integration-test, build, and lint
+category, include a row with the exact `command`, one terminal `status`, and
+`source` (for example, the implementer report, orchestrator-relayed event
+history, or native evidence). Preserve `passed`, `failed`, `skipped`,
+`unavailable`, and not-run distinctly; never infer `passed` from an absent
+event, a skipped check, or an unavailable command. Include the corresponding
+start event when available, exit status when observed, and filtered errors or
+an explicit reason whenever the status is not passed. If no evidence exists,
+report `not observed` rather than claiming a successful validation.
+
 ## Finalization and report
 
 Guard validation, normalization, deduplication, verdict computation, and
@@ -223,6 +236,7 @@ policy, diff classification, raw/resolved concurrency, Phase A batches with
 exact session IDs, triggered/skipped lanes and reasons, Phase B decision,
 per-lane statuses, timing quality, native evidence, effective permission and
 runtime smoke evidence, repository write-isolation honesty, Review Health,
+`## Validation evidence` (command, status, and source for each category),
 verdict, deduplicated Critical/Important/Suggestions with source lane and
 changed file:line/confidence/remediation, Strengths, Recommended Action, and
 any finalization error. Use `none`, `not applicable`, or `not observed`

@@ -186,6 +186,26 @@ report. Unrelated ready tasks may continue in another safe batch. Never create
 an extra fixer to work around an ownership conflict; stop the affected lane
 and re-sequence it.
 
+## Background Validation Event Relay
+
+Every background fixer must emit validation events as execution happens. Before
+each typecheck, unit-test, integration-test, build, or lint command, the child
+must emit `Validation started — <category>: <exact command>`; after it ends, the
+child must emit exactly one terminal event: passed with exit status and observed
+duration when available, failed with exit status and filtered errors only,
+skipped with an explicit reason, or unavailable with the exact inability/error.
+
+Relay each child start event to the user immediately when received, followed by
+the matching terminal event immediately when received. Do not wait for, or
+replace the event stream with, only the child's final summary. Preserve the
+ordered start/terminal event history by child and category in the scheduler and
+handoff reports. Do not synthesize a passed event when an event is missing; mark
+the check not-run or unavailable with the exact observed reason. A background
+child's final report must retain the same per-category command, start event,
+terminal event, status, exit status when observed, and reason/error when not
+passed. Relay lint using the existing check-only/autofix policy and filtered
+error rules.
+
 ## Security Scan (on-demand)
 
 Before any `git commit`, `git push`, or `git rebase` (also on branch switch, or

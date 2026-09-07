@@ -31,6 +31,25 @@ handoff explicitly lists them. If a needed path is absent, overlaps another
 active task, or ownership is ambiguous, stop and return `NEEDS_CONTEXT` or
 `BLOCKED`.
 
+## Validation event contract
+
+For every requested or attempted `typecheck`, `unit-test`, `integration-test`,
+`build`, or `lint` command, emit visible events immediately around execution:
+
+```text
+Validation started — <category>: <exact command>
+Validation <passed|failed|skipped|unavailable> — <category>: <terminal details>
+```
+
+The terminal event is emitted exactly once per category. `passed` includes the
+observed exit status (normally `0`) and duration when available. `failed`
+includes the observed exit status and filtered errors only. `skipped` includes
+an explicit reason, and `unavailable` includes the exact inability or error.
+Never report a not-run, skipped, or unavailable check as passed. Preserve the
+start and terminal events in the status report; a category that was not
+requested is recorded as `skipped` with reason `not requested`, without a
+fabricated command or start event.
+
 The allowlist is enforced cooperatively by this prompt and verified by the
 orchestrator's changed-path reconciliation; OpenCode does not expose a dynamic
 per-task filesystem ACL. Never claim runtime ACL enforcement that was not
@@ -46,16 +65,19 @@ Brief summary of what was implemented
 - file1.ts: Changed X to Y
 </changes>
 <verification>
-- Tests passed: [yes/no/skip reason]
-- Lint: [passed/failed/autofixed — list files if autofixed]
-- Validation: [passed/failed/skip reason]
+- Validation events:
+  - <category>: command `<exact command or not requested>`, start `<Validation started event or not emitted — not requested>`, terminal `<single terminal event>`
+  - Include every requested/attempted category and record omitted categories as `skipped` with reason `not requested`.
+- Tests: [passed only when the relevant unit/integration-test terminal event is passed; otherwise identify the terminal status]
+- Lint: [passed/failed/skipped/unavailable with the exact terminal event; preserve check-only/autofix mode]
+- Overall validation: [passed only when every required category passed; otherwise not passed with the category statuses]
 </verification>
 <concerns>
 - [any concerns or "none"]
 </concerns>
 ```
 
-**Status field:** `DONE` (all steps completed with passing validation), `NEEDS_CONTEXT` (missing information — name what is missing in `<summary>` and `<concerns>`), or `BLOCKED` (plan or environment prevents completion — give concrete reason in `<summary>` and `<concerns>`).
+**Status field:** `DONE` (all implementation steps completed and every required validation category has exactly one terminal outcome), `NEEDS_CONTEXT` (missing information — name what is missing in `<summary>` and `<concerns>`), or `BLOCKED` (plan or environment prevents completion — give concrete reason in `<summary>` and `<concerns>`). A `DONE` report must not describe skipped, not-run, unavailable, or failed validation as passed.
 
 For `NEEDS_CONTEXT` and `BLOCKED`, `<changes>` and `<verification>` may be omitted if no code was changed.
 
@@ -73,9 +95,9 @@ Execute tasks in this order — do not deviate:
    orchestrator must provide any required impact or `detect_changes` evidence
    before review or handoff.
 5. **Smallest complete change.** Make the minimal change that fulfills the task spec. Do not refactor adjacent code, clean up unrelated patterns, or improve nearby files unless the plan explicitly requires it.
-6. **Run focused validation.** Execute only the validation commands from the handoff. Do not run the full test suite unless specified.
-7. **Run lint validation.** Always run lint (check-only, no autofix) before reporting completion. If the handoff explicitly includes a `Lint Autofix` directive listing permitted files, you may run lint with autofix limited to those files only. When tests fail, show only the errors — filter console output, don't dump raw.
-8. **Report status and concerns.** Use the status report format above.
+6. **Run focused validation.** Execute only the validation commands from the handoff. Immediately announce each command with `Validation started — <category>: <exact command>`, then emit exactly one terminal event with the observed status. Do not run the full test suite unless specified.
+7. **Run lint validation.** Always run lint (check-only, no autofix) before reporting completion. Announce it and report its terminal status using the event contract. If the handoff explicitly includes a `Lint Autofix` directive listing permitted files, you may run lint with autofix limited to those files only. When tests fail, show only the filtered errors — never dump raw console output.
+8. **Report status and concerns.** Use the status report format above and include the complete per-category validation event history.
 
 When dispatched as part of a concurrent batch, the orchestrator will wait for
 all batch children and reconcile your result by the exact returned session ID.

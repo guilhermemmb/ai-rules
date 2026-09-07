@@ -37,3 +37,17 @@ native edit → orchestrator `detect_changes` handoff.
 - When tests fail, show only the errors — filter console output, don't dump raw.
 - For workspace/monorepo: path is relative to the package, not the repo root.
   e.g. `pnpm --filter @gorgias-chat/client test:unit src/foo/Bar.spec.tsx`
+
+## Validation Visibility Contract
+
+For every requested or attempted typecheck, unit-test, integration-test, build,
+or lint command, announce the exact command immediately before execution:
+`Validation started — <category>: <exact command>`. Emit exactly one terminal
+event afterward: `Validation passed — <category>: exit status <n>; duration
+<observed duration>`, `Validation failed — <category>: exit status <n>; errors:
+<filtered errors only>`, `Validation skipped — <category>: <explicit reason>`, or
+`Validation unavailable — <category>: <exact inability or error>`. Never treat
+not-run, skipped, or unavailable as passed. Preserve these events in the
+structured report for every category; omitted categories are `skipped` with
+reason `not requested`, without inventing a command or start event. Keep lint
+check-only/autofix permissions and filtered-error rules unchanged.

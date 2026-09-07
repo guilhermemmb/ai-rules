@@ -91,6 +91,19 @@ cap. Every path a task may create, modify, delete, or generate—including
 lockfiles, generated output, reports, and planning artifacts—is part of its
 write set. Unowned, shared, generated, lockfile, or ambiguous paths serialize.
 
+### Validation event history
+
+The dispatch contract requires each fixer to announce every requested or
+attempted typecheck, unit-test, integration-test, build, and lint command before
+execution as `Validation started — <category>: <exact command>`, then emit
+exactly one terminal event: passed (exit status and duration when observed),
+failed (exit status and filtered errors only), skipped (explicit reason), or
+unavailable (exact inability/error). Not-run, skipped, and unavailable are
+never passed. Preserve the ordered events verbatim by task and category in the
+implementer report and during reconciliation; do not reduce them to a boolean
+or final summary. A category not requested by the task is recorded as skipped
+with reason `not requested`, without an invented command or start event.
+
 Run the following lifecycle for each batch:
 
 1. Select only ready tasks whose required predecessor tasks have completed
@@ -106,10 +119,13 @@ Run the following lifecycle for each batch:
    specialist-lane selection, batching, Phase B, aggregation, and the verdict;
    it directly dispatches only the registry-declared lanes.
 4. Reconcile all implementer reports and reviews, including changed paths
-   against each task's hard `Files` allowlist. A task is releasable only after
-   a passing per-child review, or an explicit @oracle adjudication that
-   resolves the review under the existing escalation rules. Append each
-   completed task to the ledger.
+   against each task's hard `Files` allowlist. Preserve each validation
+   start/terminal event in order and distinguish `passed` from `skipped`,
+   `unavailable`, `failed`, and not-run. A task is releasable only after a
+   passing per-child review, or an explicit @oracle adjudication that resolves
+   the review under the existing escalation rules; validation not-run or not
+   passed must remain visible and cannot be converted to passed. Append each
+   completed task to the ledger with its validation evidence.
 5. Start a dependent batch only after every required predecessor is releasable.
    Unrelated ready tasks may continue through their own batches while a
    predecessor is blocked or being fixed; dependent tasks remain queued.
@@ -145,6 +161,10 @@ The dispatch payload includes, verbatim:
 - Selected model tier — Pro (xhigh) or Flash (cost-efficient)
 - A report file path: `~/developer/planning-docs/{{repository-name}}/.planning/reports/<plan-basename>-task-<N>.md`
 
+Also require the fixer to include, for each validation category, the exact
+command, validation-start event, one terminal event, status, observed exit
+status when available, and reason/error whenever status is not passed.
+
 Also instruct the agent not to run `git commit` or `git push` autonomously.
 
 **Commit steps in plan tasks:** If the plan includes `- [ ] Commit` steps, exclude them from the dispatched `Steps` and append: `Commits are orchestrator-owned — do not commit.` The fixer implements and reports; only the orchestrator stages and commits after review.
@@ -160,16 +180,17 @@ The implementer returns a structured status report:
 <summary>Brief summary</summary>
 <changes>- file1.ts: Changed X to Y</changes>
 <verification>
-- Tests passed: [yes/no/skip reason]
-- Lint: [passed/failed/autofixed — list files if autofixed]
-- Validation: [passed/failed/skip reason]
+- Validation events: per-category command, start event, exactly one terminal event, status, exit status when observed, and reason/error when not passed
+- Tests: [terminal status for unit-test/integration-test; never call skipped/not-run/unavailable passed]
+- Lint: [terminal status and check-only/autofix mode]
+- Overall validation: [passed only when every required category passed; otherwise not passed with statuses]
 </verification>
 <concerns>- [any concerns or "none"]</concerns>
 ```
 
 | Status | Action |
 |---|---|
-| DONE | All steps completed with passing validation — proceed to review |
+| DONE | All implementation steps completed and every required validation category has exactly one terminal outcome; proceed to review with non-passed outcomes still visible |
 | NEEDS_CONTEXT | Handoff missing required fields or ambiguous acceptance criteria — provide missing info, re-dispatch. Do not adjust the task scope; the plan is authoritative. |
 | BLOCKED | Plan or environment prevents completion (stale paths, missing dependencies, incompatible constraints). Assess: fixable context gap → provide context and re-dispatch. Task exceeds fixer bounds → escalate to @oracle. Plan wrong → report to user. |
 
