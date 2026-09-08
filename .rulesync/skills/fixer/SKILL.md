@@ -115,7 +115,7 @@ files. Return `DONE` only for your own allowlisted changes and validation.
 
 **Pro (DeepSeek V4 Pro, xhigh)**: May receive bounded multi-file changes when the plan names every file and acceptance criterion. Task scope is still bounded — one cohesive outcome across explicitly listed files.
 
-**Flash (DeepSeek V4 Flash, cost-efficient)**: Single-file or single-concept work only. Complex refactors and multi-area changes must be split by the Orchestrator before dispatch.
+**Flash (DeepSeek V4 Flash)**: Single-file or single-concept work only. Complex refactors and multi-area changes must be split by the Orchestrator before dispatch.
 
 **Scope check (do before implementation):** Compare the handoff's `Files` and `Steps` against the task's stated `Goal`. If the task combines unrelated concerns or exceeds the stated scope, return `NEEDS_CONTEXT` with a proposed split rather than starting broad exploration. Do not use a fixed token count or duration budget — assess scope by concept boundaries.
 

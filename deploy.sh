@@ -16,7 +16,6 @@ set -euo pipefail
 MV_BIN="${MV_BIN:-mv}"
 
 MODE="deploy"
-MODEL_PROFILE="default"
 FORCE=false
 
 SRCDIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
@@ -85,13 +84,9 @@ while [[ $# -gt 0 ]]; do
       FORCE=true
       shift
       ;;
-    --model-profile=*)
-      MODEL_PROFILE="${1#*=}"
-      shift
-      ;;
     --help|-h)
       cat <<'EOF'
-Usage: ./deploy.sh [--check | --compatibility-check | --force | --model-profile=<name>]
+Usage: ./deploy.sh [--check | --compatibility-check | --force]
 
   --force  Reinstall the pinned OMO package and replace the live OpenCode
            configuration with the validated staged payload. Force is deploy-only
@@ -1190,15 +1185,9 @@ build_staged_payload() {
   STAGE_ROOT="$(cd -P "$STAGE_ROOT" && pwd -P)"
   chmod 700 "$STAGE_ROOT"
   local payload="$STAGE_ROOT/payload"
-  local profile_stage="$STAGE_ROOT/profile"
   local rulesync_output="$STAGE_ROOT/rulesync"
 
-  mkdir -p "$payload" "$profile_stage"
-  cp "$SRCDIR/oh-my-opencode-slim.json" "$profile_stage/oh-my-opencode-slim.json"
-  cp -R "$SRCDIR/profiles" "$profile_stage/profiles"
-  if ! "$PYTHON_BIN" "$SRCDIR/scripts/apply-model-profile.py" "$profile_stage" "$MODEL_PROFILE" >/dev/null; then
-    return 1
-  fi
+  mkdir -p "$payload"
 
   stage_rulesync_output "$rulesync_output" || return 1
   [[ -f "$rulesync_output/AGENTS.md" ]] || {
@@ -1219,7 +1208,7 @@ build_staged_payload() {
   }
 
   cp "$SRCDIR/opencode.json" "$payload/opencode.json"
-  cp "$profile_stage/oh-my-opencode-slim.json" "$payload/oh-my-opencode-slim.json"
+  cp "$SRCDIR/oh-my-opencode-slim.json" "$payload/oh-my-opencode-slim.json"
   cp "$SRCDIR/rulesync.jsonc" "$payload/rulesync.jsonc"
   cp "$rulesync_output/AGENTS.md" "$payload/AGENTS.md"
   cp "$rulesync_output/opencode.jsonc" "$payload/opencode.jsonc"
@@ -1235,7 +1224,7 @@ build_staged_payload() {
   validate_jsonc_file "$payload/rulesync.jsonc" || return 1
   validate_jsonc_file "$payload/opencode.jsonc" || return 1
   "$PYTHON_BIN" "$SRCDIR/scripts/validate-ai-rules.py" \
-    --root "$SRCDIR" --payload "$payload" --profile "$MODEL_PROFILE" || return 1
+    --root "$SRCDIR" --payload "$payload" || return 1
   validate_tracked_worktrunk_config || {
     fail "tracked Worktrunk config is not canonical"
     return 1

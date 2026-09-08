@@ -168,7 +168,7 @@ batch:
 
 Randomize arm order within each workload where practical. Keep prompts and
 fixtures fixed, record the context-plan version and hashes, and preserve the
-exact model/profile, cache state, concurrency, approval behavior, and tool
+exact model/variant, cache state, concurrency, approval behavior, and tool
 permissions. The reporter must run after the timed operation, not inside it.
 
 ### Measurements

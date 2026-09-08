@@ -19,7 +19,6 @@ flowchart LR
     MCPJ[".rulesync/mcp.jsonc"]
     CMD[".rulesync/commands/"]
     APPEND[".rulesync/oh-my-opencode-slim/"]
-    PROF["profiles/models/"]
   end
 
   subgraph DOT["Sibling dotfiles (outside repo)"]
@@ -31,7 +30,6 @@ flowchart LR
 
   subgraph GEN["Generated (staged payload)"]
     RSGEN["rulesync generate\n(AGENTS.md / opencode.jsonc /\nagents / skills)"]
-    PATCH["apply-model-profile.py"]
     PAYLOAD["staged payload/"]
     MANIFEST[".ai-rules.manifest.json"]
   end
@@ -93,10 +91,7 @@ flowchart LR
   APPEND -->|copied directly| PAYLOAD
   RSYNC -->|copied directly| PAYLOAD
 
-  PROF -->|model IDs| PATCH
-  OMO -->|base config| PATCH
-
-  PATCH --> PAYLOAD
+  OMO -->|model routing| PAYLOAD
   OC --> PAYLOAD
   RSGEN --> PAYLOAD
 

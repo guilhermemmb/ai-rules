@@ -102,8 +102,6 @@ EXPECTED_MCP_ASSIGNMENTS = {
     "librarian": ("websearch", "context7", "gh_grep", "linear", "cortex"),
 }
 NON_MCP_OVERVIEW_ACCESS = frozenset({"agent-browser CLI", "pup CLI"})
-PROFILE_SCHEMA_VERSION = 1
-REQUIRED_PROFILES = ("default", "cost-efficient")
 REVIEWER_CONTRACT_FIELDS = (
     '"critical"',
     '"important"',
@@ -1277,9 +1275,7 @@ class Validator:
         self,
         artifact: Artifact,
         agents: dict[str, dict[str, Any]],
-        profile_data: dict[str, dict[str, Any]],
         model_catalog: set[str],
-        selected_profile: str | None,
     ) -> None:
         for agent_id, specification in agents.items():
             model = specification.get("model")
@@ -1290,27 +1286,6 @@ class Validator:
                     key=agent_id,
                     text=artifact.text,
                 )
-            if selected_profile and selected_profile in profile_data:
-                expected_spec = profile_data[selected_profile].get(agent_id)
-                if isinstance(expected_spec, dict):
-                    expected_model = expected_spec.get("model")
-                    if expected_model != model:
-                        self.add_error(
-                            artifact.path,
-                            f"agents.{agent_id}.model {model!r} does not match profile {selected_profile!r} ({expected_model!r})",
-                            key=agent_id,
-                            text=artifact.text,
-                        )
-                    # Validate variant preservation
-                    expected_variant = expected_spec.get("variant")
-                    actual_variant = specification.get("variant")
-                    if expected_variant is not None and actual_variant != expected_variant:
-                        self.add_error(
-                            artifact.path,
-                            f"agents.{agent_id}.variant {actual_variant!r} does not match profile {selected_profile!r} ({expected_variant!r})",
-                            key=agent_id,
-                            text=artifact.text,
-                        )
 
     @staticmethod
     def _unsupported_parameter_paths(value: Any, path: str) -> list[str]:
@@ -1337,26 +1312,11 @@ class Validator:
     def validate_fixer_model_contract(
         self,
         omo_artifact: Artifact,
-        profiles: dict[str, dict[str, Any]],
         opencode_artifact: Artifact | None,
         model_catalog: set[str],
         overview_artifact: Artifact | None = None,
     ) -> None:
         """Validate GPT-5.6 Luna fixer model wiring under the bf-o provider."""
-
-        for profile_name in REQUIRED_PROFILES:
-            profile = profiles.get(profile_name)
-            if profile is None:
-                continue
-            fixer_spec = profile.get("fixer")
-            fixer_model = fixer_spec.get("model") if isinstance(fixer_spec, dict) else None
-            if fixer_model != FIXER_MODEL:
-                profile_path = self.root / "profiles" / "models" / f"{profile_name}.yml"
-                self.add_error(
-                    profile_path,
-                    f"profile {profile_name!r}.fixer must be {FIXER_MODEL!r}",
-                    key="fixer",
-                )
 
         omo = self.require_mapping(omo_artifact, "oh-my-opencode-slim.json")
         if omo is not None:
@@ -1637,149 +1597,6 @@ class Validator:
                         key="interleaved",
                         text=opencode_artifact.text,
                     )
-
-    def validate_profiles(
-        self,
-        profile_artifacts: dict[str, Artifact],
-        overview_artifact: Artifact | None,
-        configured_agents: set[str],
-        model_catalog: set[str],
-    ) -> dict[str, dict[str, Any]]:
-        profiles: dict[str, dict[str, Any]] = {}
-        for profile_name, artifact in profile_artifacts.items():
-            data = self.require_mapping(artifact, f"model profile {profile_name!r}")
-            if data is None:
-                continue
-            version = data.get("version")
-            if version != PROFILE_SCHEMA_VERSION:
-                self.add_error(
-                    artifact.path,
-                    f"profile {profile_name!r} schema version must be "
-                    f"{PROFILE_SCHEMA_VERSION}, got {version!r}",
-                    key="version",
-                    text=artifact.text,
-                )
-                continue
-            agents = data.get("agents")
-            if not isinstance(agents, dict):
-                self.add_error(
-                    artifact.path,
-                    f"profile {profile_name!r}.agents must be a mapping",
-                    key="agents",
-                    text=artifact.text,
-                )
-                continue
-            profile_agents: dict[str, Any] = {}
-            # Validate every agent entry
-            for agent_id, spec in agents.items():
-                if not isinstance(agent_id, str) or not agent_id:
-                    self.add_error(
-                        artifact.path,
-                        f"profile {profile_name!r} agent keys must be non-empty strings",
-                        key=str(agent_id),
-                        text=artifact.text,
-                    )
-                    continue
-                if not isinstance(spec, dict):
-                    self.add_error(
-                        artifact.path,
-                        f"profile {profile_name!r}.{agent_id} must be a mapping",
-                        key=agent_id,
-                        text=artifact.text,
-                    )
-                    continue
-                model = spec.get("model")
-                if not isinstance(model, str) or not model:
-                    self.add_error(
-                        artifact.path,
-                        f"profile {profile_name!r}.{agent_id}.model must be a non-empty string",
-                        key=agent_id,
-                        text=artifact.text,
-                    )
-                    continue
-                if model not in model_catalog:
-                    self.add_error(
-                        artifact.path,
-                        f"profile {profile_name!r}.{agent_id}.model references unknown model {model!r}",
-                        key=agent_id,
-                        text=artifact.text,
-                    )
-                profile_agents[agent_id] = {
-                    "model": model,
-                }
-                if "variant" in spec:
-                    variant = spec["variant"]
-                    if not isinstance(variant, str) or not variant:
-                        self.add_error(
-                            artifact.path,
-                            f"profile {profile_name!r}.{agent_id}.variant "
-                            f"must be a non-empty string or absent, got {variant!r}",
-                            key=agent_id,
-                            text=artifact.text,
-                        )
-                    else:
-                        profile_agents[agent_id]["variant"] = variant
-            profiles[profile_name] = profile_agents
-            self.compare_sets(
-                artifact.path,
-                f"profile {profile_name!r} agent keys",
-                configured_agents,
-                profile_agents.keys(),
-                text=artifact.text,
-            )
-
-        self.compare_sets(
-            self.root / "profiles" / "models",
-            "required model profiles",
-            REQUIRED_PROFILES,
-            profiles.keys(),
-        )
-
-        overview = (
-            self.require_mapping(overview_artifact, "agents-overview/data.yaml")
-            if overview_artifact
-            else {}
-        )
-        if overview is None:
-            overview = {}
-        overview_path = (
-            overview_artifact.path
-            if overview_artifact
-            else self.root / "agents-overview" / "data.yaml"
-        )
-        overview_text = overview_artifact.text if overview_artifact else None
-        overview_profiles = overview.get("profiles")
-        if not isinstance(overview_profiles, dict):
-            self.add_error(
-                overview_path,
-                "profiles must be a mapping",
-                key="profiles",
-                text=overview_text,
-            )
-        else:
-            self.compare_sets(
-                overview_path,
-                "overview profile names",
-                profiles.keys(),
-                overview_profiles.keys(),
-                text=overview_text,
-            )
-            for profile_name, expected in profiles.items():
-                actual = overview_profiles.get(profile_name)
-                # overview emits {agent_id: model_name} from the new schema.
-                # Build expected overview shape: agent_id -> model string.
-                expected_overview = {
-                    agent_id: info["model"]
-                    for agent_id, info in expected.items()
-                }
-                if actual != expected_overview:
-                    self.add_error(
-                        overview_path,
-                        f"profiles.{profile_name} does not match profiles/models/{profile_name}.yml",
-                        key=profile_name,
-                        text=overview_text,
-                    )
-        return profiles
 
     def validate_source_subagents(
         self,
@@ -3277,7 +3094,7 @@ class Validator:
                 path, location, values, source_skill_names, payload_skill_names, text
             )
 
-    def run(self, profile_name: str | None) -> None:
+    def run(self) -> None:
         review_registry = self.validate_review_pipeline_registry()
         mcp_artifact = self.load_json(self.root / ".rulesync" / "mcp.jsonc", jsonc=True)
         server_names, disabled_server_names = self.validate_mcp_names(mcp_artifact)
@@ -3340,37 +3157,16 @@ class Validator:
         )
         self.validate_opencode_mcp(opencode_jsonc_artifact, mcp_artifact)
 
-        profile_artifacts: dict[str, Artifact] = {}
-        profiles_dir = self.root / "profiles" / "models"
-        for path in sorted((*profiles_dir.glob("*.yml"), *profiles_dir.glob("*.yaml"))):
-            artifact = self.load_yaml(path)
-            if artifact is not None:
-                profile_artifacts[path.stem] = artifact
-
         overview_path = self.root / "agents-overview" / "data.yaml"
         overview_artifact = self.load_yaml(overview_path)
-        profiles = self.validate_profiles(
-            profile_artifacts, overview_artifact, set(agents), model_catalog
-        )
         self.validate_fixer_model_contract(
             omo_artifact,
-            profiles,
             opencode_artifact,
             model_catalog,
             overview_artifact,
         )
 
-        selected_profile = profile_name
-        if selected_profile is None and self.payload is None:
-            selected_profile = "default"
-        if selected_profile and selected_profile not in profiles:
-            self.add_error(
-                self.root / "profiles" / "models",
-                f"selected model profile {selected_profile!r} is not available",
-            )
-        self.validate_models(
-            omo_artifact, agents, profiles, model_catalog, selected_profile
-        )
+        self.validate_models(omo_artifact, agents, model_catalog)
 
         reviewer_lanes: list[str] = list(REVIEWER_LANES)
         reviewer_contracts = []
@@ -3573,11 +3369,6 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="staged deployment payload to validate against the repository source",
     )
     parser.add_argument(
-        "--profile",
-        default=None,
-        help="profile applied to a staged payload (used to verify its effective model assignments)",
-    )
-    parser.add_argument(
         "--opencode-config",
         type=Path,
         default=None,
@@ -3590,7 +3381,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     root = (args.root or Path(__file__).resolve().parents[1]).resolve()
     validator = Validator(root, args.payload, args.opencode_config)
-    validator.run(args.profile)
+    validator.run()
     if validator.errors:
         for error in validator.errors:
             print(f"ERROR: {error}", file=sys.stderr)

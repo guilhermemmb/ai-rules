@@ -1,7 +1,7 @@
 #!/bin/zsh
 cd "$(dirname "$0")"
 
-# Update data.yaml from source profiles and opencode.json
+# Update data.yaml from the active OMO configuration and opencode.json
 echo "🔄 Updating data.yaml..."
 python3 ../scripts/update-agents-overview-data.py
 

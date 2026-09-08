@@ -138,7 +138,7 @@ Defined in [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) under
 | Explorer | DeepSeek V4 Flash | Codebase reconnaissance |
 | Librarian | `bf-o/gpt-5.6-luna` | Knowledge retrieval |
 | Designer | `bf/huggingface/together/zai-org/GLM-5.2` | UI/UX |
-| Fixer | Novita DeepSeek V4 Pro | Implementation |
+| Fixer | `bf-o/gpt-5.6-luna` | Implementation |
 | Observer | Gemini 3 Flash | Visual analysis |
 
 ### Custom agents
@@ -177,7 +177,6 @@ All under [`scripts/`](../scripts/).
 | Script | Purpose |
 | :--- | :--- |
 | `validate-ai-rules.py` | Repository validator (static validation of rules/config) |
-| `apply-model-profile.py` | Apply a model profile to OMO config |
 | `update-agents-overview-data.py` | Regenerate `agents-overview/data.yaml` |
 | `opencode-latency-report.py` | OpenCode latency telemetry reporting |
 | `review_pipeline_contract.py` | Deterministic review packet, lane-result, and verdict contract helpers |
@@ -187,23 +186,15 @@ Deployment logic itself is [`deploy.sh`](../deploy.sh) at the repo root.
 
 ---
 
-## 5. Model profiles
+## 5. Models and providers
 
-| Profile | Strategy | Path |
-| :--- | :--- | :--- |
-| default | Balanced (speed/quality/cost) | [`profiles/models/default.yml`](../profiles/models/default.yml) |
-| cost-efficient | Cost-efficient (balanced) | [`profiles/models/cost-efficient.yml`](../profiles/models/cost-efficient.yml) |
-
-**Optional variant profiles.** The `default` and `cost-efficient` profiles
-are the two versioned YAML profiles under `profiles/models/`. Each is optional:
-the deployment installs and applies the selected profile, not both. Profile
-application is performed by
-[`scripts/apply-model-profile.py`](../scripts/apply-model-profile.py). Both
-profiles route Fixer to Novita DeepSeek V4 Pro. Profiles use schema version 1:
-each agent entry carries a required `model` and an optional `variant`; a profile
-entry that omits `variant` leaves that agent's existing variant unchanged. Model
-IDs and provider definitions live in [`opencode.json`](../opencode.json) (`bf`,
-`bf-a`, `bf-o`).
+Model routing lives directly in [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json),
+which is the sole model configuration. Built-in agents resolve from the active
+`bifrost` preset and custom agents are declared under `agents.*`, with their
+model and variant values kept together. The provider catalog remains in
+[`opencode.json`](../opencode.json) (`bf`, `bf-a`, `bf-o`) and only defines
+available providers/models. The review-pipeline `model_profile_key` remains a
+stable lane identifier and is not a deploy profile.
 
 ---
 

@@ -32,36 +32,6 @@
     margin-bottom: 20px;
   }
 
-  .profile-selector {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: rgba(251, 191, 36, 0.05);
-    padding: 6px 12px;
-    border-radius: 8px;
-    border: 1px solid rgba(251, 191, 36, 0.15);
-  }
-
-  .profile-selector label {
-    font-size: 0.7rem;
-    color: #94a3b8;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .profile-selector select {
-    background: rgba(15, 23, 42, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #fbbf24;
-    padding: 3px 6px;
-    border-radius: 5px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
-    outline: none;
-  }
-
   .main-card {
     background: rgba(96,165,250,0.1);
     border: 2px solid #60a5fa;
@@ -121,7 +91,6 @@
       <h1>AI Rules Architecture — OMO Slim</h1>
       <div id="agent-count-sub" class="sub">Loading agents...</div>
     </div>
-    <div id="profile-container"></div>
   </div>
 
   <div id="main-content">
@@ -138,8 +107,6 @@
   <script>
     let AVATARS = {};
     let MODEL_NAMES = {};
-    let PROFILES = {};
-    let currentProfile = 'default';
     let rawData = null;
 
     fetch('./data.yaml')
@@ -149,7 +116,6 @@
         rawData = data;
         AVATARS = data.avatars || {};
         MODEL_NAMES = data.model_names || {};
-        PROFILES = data.profiles || {};
         render();
       })
       .catch(e => {
@@ -176,31 +142,12 @@
       document.getElementById('agent-count-sub').textContent = 
         `${orchestrator ? 'Orchestrator + ' : ''}${agents.length - (orchestrator ? 1 : 0)} specialized subagents · ${agents.length} agents total`;
 
-      // Render profile selector
-      const profileContainer = document.getElementById('profile-container');
-      profileContainer.innerHTML = `
-        <div class="profile-selector">
-          <label for="profile-select">Model Map</label>
-          <select id="profile-select">
-            ${Object.keys(PROFILES).map(p => `
-              <option value="${p}" ${p === currentProfile ? 'selected' : ''}>
-                ${p.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-              </option>
-            `).join('')}
-          </select>
-        </div>
-      `;
-      document.getElementById('profile-select').addEventListener('change', (e) => {
-        currentProfile = e.target.value;
-        render();
-      });
-
       // Render Main Content
       let html = '';
 
       // 1. Orchestrator Card
       if (orchestrator) {
-        const orchModel = PROFILES[currentProfile]['orchestrator'] || orchestrator.model;
+        const orchModel = orchestrator.model;
         html += `
           <div class="main-card">
             <div class="name">${AVATARS.orchestrator || ''} ${orchestrator.label} <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">— ${orchestrator.role}</span></div>
@@ -222,7 +169,7 @@
       
       // Built-ins
       builtins.forEach(a => {
-        const model = PROFILES[currentProfile][a.id] || a.model;
+        const model = a.model;
         html += `
           <div class="card">
             <div class="name">${AVATARS[a.id] || ''} ${a.label}</div>
@@ -237,7 +184,7 @@
 
       // Custom
       custom.forEach(a => {
-        const model = PROFILES[currentProfile][a.id] || a.model;
+        const model = a.model;
         html += `
           <div class="card custom">
             <div class="name">${AVATARS[a.id] || ''} ${a.label}</div>

@@ -158,7 +158,7 @@ The dispatch payload includes, verbatim:
 - `Lint Autofix` — (optional) if lint autofix is desired, list permitted files. Omit to default to check-only.
 - `Stop Conditions` — conditions requiring early escalation (if present in plan)
 - Global Constraints — copied from the plan header
-- Selected model tier — Pro (xhigh) or Flash (cost-efficient)
+- Selected model tier — Pro (xhigh) or Flash
 - A report file path: `~/developer/planning-docs/{{repository-name}}/.planning/reports/<plan-basename>-task-<N>.md`
 
 Also require the fixer to include, for each validation category, the exact

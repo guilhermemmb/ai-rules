@@ -62,43 +62,6 @@
             align-items: center;
         }
 
-        .profile-selector {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            background: rgba(251, 191, 36, 0.05);
-            padding: 0.4rem 0.85rem;
-            border-radius: 10px;
-            border: 1px solid rgba(251, 191, 36, 0.1);
-        }
-
-        .profile-selector label {
-            font-size: 0.75rem;
-            color: #94a3b8;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-        }
-
-        .profile-selector select {
-            background: rgba(15, 15, 25, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fbbf24;
-            padding: 0.25rem 0.5rem;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            cursor: pointer;
-            outline: none;
-            transition: all 0.2s;
-        }
-
-        .profile-selector select:hover {
-            border-color: #fbbf24;
-            background: rgba(15, 15, 25, 1);
-        }
-
         .stat {
             display: flex;
             align-items: center;
@@ -474,8 +437,6 @@
 
         let AVATARS = {};
         let MODEL_NAMES = {};
-        let PROFILES = {};
-        let currentProfile = 'default';
 
         function prettifyModel(modelId) {
             if (MODEL_NAMES[modelId]) return MODEL_NAMES[modelId];
@@ -491,7 +452,6 @@
             .then(data => {
                 AVATARS = data.avatars || {};
                 MODEL_NAMES = data.model_names || {};
-                PROFILES = data.profiles || {};
                 render(data);
             })
             .catch(e => { document.getElementById('main').innerHTML = `<div class="error">${e.message}</div>`; });
@@ -507,26 +467,13 @@
             const pantheon = agents.filter(a => a.parent === 'orchestrator' || a.id === 'orchestrator');
             const custom = agents.filter(a => !pantheon.includes(a));
 
-            // Stats & Profile Selector
+            // Stats
             document.getElementById('stats').innerHTML = `
                 <div class="stat"><span class="stat-value">${agents.length}</span> agents</div>
                 <div class="stat"><span class="stat-value">${nodes.filter(n => n.type === 'mcp').length}</span> MCPs</div>
                 <div class="stat"><span class="stat-value">${nodes.filter(n => n.type === 'skill').length}</span> skills</div>
                 <div class="stat"><span class="stat-value">${nodes.filter(n => n.type === 'infra').length}</span> infra</div>
-                <div class="profile-selector">
-                    <label for="profile-select">Model Profile</label>
-                    <select id="profile-select">
-                        ${Object.keys(PROFILES).map(p => `<option value="${p}" ${p === currentProfile ? 'selected' : ''}>${p.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>`).join('')}
-                    </select>
-                </div>
             `;
-
-            const profileSelect = document.getElementById('profile-select');
-            profileSelect.value = currentProfile;
-            profileSelect.addEventListener('change', (e) => {
-                currentProfile = e.target.value;
-                render(data);
-            });
 
             // Pantheon section
             const orch = nodes.find(n => n.id === 'orchestrator');
@@ -644,8 +591,7 @@
             const hasMCPS = mcps && mcps.trim();
             const hasSkills = skillsList && skillsList.trim();
             
-            const profileModel = (PROFILES[currentProfile] || {})[agent.id];
-            const modelDisplay = profileModel ? prettifyModel(profileModel) : agent.model;
+            const modelDisplay = agent.model;
 
             // Header
             let headerHTML = `<div class="agent-header">`;

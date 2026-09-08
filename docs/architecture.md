@@ -2,7 +2,7 @@
 
 > **Status:** Documentation only. This page describes the `ai-rules` system as
 > recorded in tracked source and generated artifacts. It does not change runtime
-> behavior, agent prompts, permissions, model profiles, deployment code, or MCP
+> behavior, agent prompts, permissions, deployment code, or MCP
 > configuration. Source rules and configuration remain authoritative; this page
 > links to them instead of reproducing long policy text.
 
@@ -17,7 +17,7 @@ source.
 - [Agents](#agents)
 - [MCP declaration versus assignment](#mcp-declaration-versus-assignment)
 - [Code intelligence lifecycle](#code-intelligence-lifecycle)
-- [Model profiles and providers](#model-profiles-and-providers)
+- [Models and providers](#models-and-providers)
 - [Deployment and evidence](#deployment-and-evidence)
 - [Interactive visualization](#interactive-visualization)
 - [Graph](#graph)
@@ -31,8 +31,8 @@ fourth is observed at runtime and cannot be proven from source alone.
 
 | Layer | What it is | Authoritative source |
 | :--- | :--- | :--- |
-| **Source** | Files tracked in this repository define rules, agents, skills, commands, MCPs, model profiles, and deployment logic. Sibling dotfiles provide only Worktrunk integration/deployment inputs. | This repository + `$DOTFILES_DIR` |
-| **Generated** | Artifacts produced by `deploy.sh` + Rulesync + `apply-model-profile.py` into a private staging payload, then installed to `~/.config/opencode/`. | [`deploy.sh`](../deploy.sh) |
+| **Source** | Files tracked in this repository define rules, agents, skills, commands, MCPs, the OMO model routing, and deployment logic. Sibling dotfiles provide only Worktrunk integration/deployment inputs. | This repository + `$DOTFILES_DIR` |
+| **Generated** | Artifacts produced by `deploy.sh` + Rulesync into a private staging payload, then installed to `~/.config/opencode/`. | [`deploy.sh`](../deploy.sh) |
 | **Installed** | Live configuration under `~/.config/opencode/`, the RTK plugin, the wt-orca/worktree-state adapters and Worktrunk config, and OMO/SDK/plugin packages. | Generated payload + observed install state |
 | **Observed** | `--check`/`--compatibility-check` output and OMO-inside-Orca probe results. | [`deploy.sh`](../deploy.sh) for `--check`/`--compatibility-check`; installed runtime state for OMO-inside-Orca probes |
 
@@ -49,8 +49,7 @@ fourth is observed at runtime and cannot be proven from source alone.
 | [`.rulesync/oh-my-opencode-slim/`](../.rulesync/oh-my-opencode-slim/) | Per-agent appended prompts (`{agent}_append.md`). |
 | [`.rulesync/skills/`](../.rulesync/skills/) | Rulesync-owned skills distributed by Rulesync. |
 | [`.rulesync/mcp.jsonc`](../.rulesync/mcp.jsonc) | MCP server declarations (endpoints, enable flags). |
-| [`profiles/models/`](../profiles/models/) | Model profiles (`default.yml`, `cost-efficient.yml`) — schema version 1 with a required per-agent `model` and an optional `variant`. |
-| [`scripts/`](../scripts/) | Cross-artifact validator, profile applier, and latency-reporting utilities. |
+| [`scripts/`](../scripts/) | Cross-artifact validator and latency-reporting utilities. |
 | [`deploy.sh`](../deploy.sh) | Deployment/check/rollback entry point; source of truth for generated configuration. |
 | [`agents-overview/`](../agents-overview/) | Interactive visualization (`data.yaml` + `index.html`). |
 | [`skills-lock.json`](../skills-lock.json) | Pinned/locked external skills, including `agent-browser` from `vercel-labs/agent-browser`. |
@@ -79,9 +78,7 @@ installer that owns the config:
 1. `rulesync generate --targets opencode` produces `AGENTS.md`,
    `opencode.jsonc`, `.opencode/agents/*`, and `.opencode/skills/*` into a
    private staging directory. (Rulesync does **not** generate commands.)
-2. [`apply-model-profile.py`](../scripts/apply-model-profile.py) patches
-   `oh-my-opencode-slim.json` with the selected profile's model IDs.
-3. The payload combines `opencode.json`, `oh-my-opencode-slim.json`,
+2. The payload combines `opencode.json`, `oh-my-opencode-slim.json`,
    `rulesync.jsonc`, the Rulesync-generated `AGENTS.md`/`opencode.jsonc`/agents/
    skills, the `{agent}_append.md` files, and commands. The
    `{agent}_append.md` files and commands are **copied directly** into the
@@ -98,7 +95,7 @@ hashes). The payload is also validated by
 | Path | Notes |
 | :--- | :--- |
 | `~/.config/opencode/opencode.json` | Installed from payload. |
-| `~/.config/opencode/oh-my-opencode-slim.json` | Installed after profile patch. |
+| `~/.config/opencode/oh-my-opencode-slim.json` | Installed directly from the tracked OMO configuration. |
 | `~/.config/opencode/AGENTS.md` | Rulesync-generated global instructions. |
 | `~/.config/opencode/agents/`, `skills/` | Installed from Rulesync-generated output. |
 | `~/.config/opencode/commands/` | **Directly copied** from [`.rulesync/commands/`](../.rulesync/commands/) (`copy_tree`), not Rulesync-generated. |
@@ -238,20 +235,16 @@ configuration is deferred because Worktrunk worktrees require no changes inside
 that nested repository. Serena is not managed by Worktrunk hooks; its dashboard
 and browser remain disabled, and VS Code integration is deferred.
 
-### Model profile application
+### Model routing
 
-- [`opencode.json`](../opencode.json) sets a top-level `model` and `small_model`.
-- [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) sets per-agent models.
-- [`profiles/models/*.yml`](../profiles/models/) uses schema version 1: each agent
-  entry carries a required `model` and an optional `variant`. A profile entry that
-  omits `variant` leaves that agent's existing variant unchanged during
-  application.
-- [`apply-model-profile.py`](../scripts/apply-model-profile.py) merges a profile into
-  `oh-my-opencode-slim.json` at deploy time.
-
-**Ambiguous** the precedence between the top-level `opencode.json` model and the
-per-agent OMO model when a profile is applied. Source records both but no single
-rule orders them.
+- [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) is the sole model
+  configuration. Its active `bifrost` preset and custom agents declare each
+  model and reasoning variant directly.
+- [`opencode.json`](../opencode.json) remains the provider catalog and native
+  OpenCode configuration; it lists available providers/models and does not
+  select OMO agent routing.
+- `deploy.sh` copies the tracked OMO configuration directly into the staged
+  payload before validation.
 
 ## Agents
 
@@ -306,22 +299,15 @@ per-MCP assignment table, see [`../README.md`](../README.md) "MCP & Browser CLI
 Inventory"; that table is a derived document and is not authoritative over the
 two sources above.
 
-## Model profiles and providers
+## Models and providers
 
-Both profiles use schema version 1: each agent entry carries a required `model`
-and an optional `variant`; a profile entry that omits `variant` leaves that
-agent's existing variant unchanged. Profiles are optional: deployment installs
-and applies the selected profile, not both (see `deploy.sh --model-profile=<name>`).
-Profile application is performed by `scripts/apply-model-profile.py`.
+Model routing lives directly in [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json).
+The provider catalog in [`opencode.json`](../opencode.json) defines the available
+`bf`, `bf-a`, and `bf-o` providers and their models, while OMO selects the model
+for each active built-in or custom agent. The review-pipeline registry retains
+`model_profile_key` as a stable lane identifier; it is not a deploy profile.
 
-| Profile | Source |
-| :--- | :--- |
-| `default` | [`../profiles/models/default.yml`](../profiles/models/default.yml) |
-| `cost-efficient` | [`../profiles/models/cost-efficient.yml`](../profiles/models/cost-efficient.yml) |
-
-Providers `bf` (OpenAI-compatible), `bf-a` (Anthropic), and `bf-o` (OpenAI) are
-defined in [`opencode.json`](../opencode.json) under `provider` and enabled via
-`enabled_providers`. Auth uses
+Providers are enabled via `enabled_providers`. Auth uses
 `{file:~/.config/gorgias-ai/bifrost-virtual-key}` (a file reference, not a
 literal secret).
 
@@ -363,7 +349,7 @@ convergence):
 
 1. **Payload gate** — [`validate-ai-rules.py`](../scripts/validate-ai-rules.py),
    invoked inside `build_staged_payload` as
-   `validate-ai-rules.py --root <source> --payload <payload> --profile <name>`.
+   `validate-ai-rules.py --root <source> --payload <payload>`.
    Its scope is the **tracked source tree and the staged payload** — it does
    **not** validate the live installed directory.
 2. **Deployment-input preflight** — `scan_deployment_inputs` (secret-like

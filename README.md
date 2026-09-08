@@ -1,6 +1,6 @@
 # ai-rules — OpenCode Agent Configuration
 
-Source of truth for OpenCode agent rules, custom agents, skills, and commands. Used by [Oh My OpenCode Slim](https://ohmyopencodeslim.com/) with [Bifrost](https://bifrost.ops.gorgias.io) model routing. Supports multiple model profiles (default vs cost-efficient).
+Source of truth for OpenCode agent rules, custom agents, skills, commands, and the single OMO model configuration. Used by [Oh My OpenCode Slim](https://ohmyopencodeslim.com/) with [Bifrost](https://bifrost.ops.gorgias.io) model routing.
 
 ## Documentation atlas
 
@@ -10,7 +10,7 @@ Concise navigation into the `ai-rules` system documentation:
 | :--- | :--- | :--- |
 | **Architecture** | [`docs/architecture.md`](docs/architecture.md) | Source/generated/installed layers, authority boundaries, and agent categories |
 | **Workflows** | [`docs/workflows.md`](docs/workflows.md) | Task sizing, SDD flow, discovery, fixer/reviewer pipelines, and deployment lifecycle |
-| **Reference** | [`docs/reference.md`](docs/reference.md) | Compact registries of rules, skills, subagents, scripts, profiles, and MCPs |
+| **Reference** | [`docs/reference.md`](docs/reference.md) | Compact registries of rules, skills, subagents, scripts, models, and MCPs |
 | **Review & proposals** | [`docs/review-and-improvements.md`](docs/review-and-improvements.md) | Independently reviewed improvement proposals, severities, and roadmap |
 | **Mermaid graphs** | [`architecture`](docs/graphs/architecture.mmd) · [`dispatch-and-review`](docs/graphs/dispatch-and-review.mmd) · [`workspace-lifecycle`](docs/graphs/workspace-lifecycle.mmd) | Flow and layer diagrams (`.mmd` source) |
 | **Interactive agents** | [`agents-overview/README.md`](agents-overview/README.md) | Interactive agent visualization (data + HTML) |
@@ -25,9 +25,6 @@ Concise navigation into the `ai-rules` system documentation:
 # drift in only opencode.json / opencode.jsonc. Deploy-only, no snapshot/rollback
 # backup — a later failure may require manual recovery (other safety checks stay strict)
 ./deploy.sh --force
-
-# Deploy cost-efficient profile (DeepSeek V4 + Gemini Flash)
-./deploy.sh --model-profile=cost-efficient
 
 # Inside OpenCode
 ping all agents
@@ -175,100 +172,25 @@ invariants; they do not replace runtime smoke. `deploy.sh --check` can report
 known RTK/live-manifest drift, which remains a limitation rather than proof of
 runtime or deployment parity.
 
-## Model Profiles
+## Model Routing
 
-Model routing is **balanced across speed, quality, and cost** — neither profile
-makes a performance-first or percentage-savings claim. Each profile assigns a
-per-agent model and an optional `variant`; the same two profiles are applied to
-the OMO config (`oh-my-opencode-slim.json`) and to the versioned YAML files
-below.
+Model routing lives directly in [`oh-my-opencode-slim.json`](oh-my-opencode-slim.json),
+which is the sole model configuration. The active `bifrost` preset and custom
+agent entries declare each agent's model and reasoning variant. The provider
+catalog remains in [`opencode.json`](opencode.json); it defines available
+providers and models but does not select agent routing. Deploy copies the OMO
+configuration directly into the validated payload.
 
-| Profile            | Strategy                      | Key models                                                                  | Location                             |
-| :----------------- | :---------------------------- | :-------------------------------------------------------------------------- | :----------------------------------- |
-| **default**        | Balanced (speed/quality/cost) | GPT-5.6 Luna/Terra, Novita DeepSeek V4 Pro, DeepSeek V4 Flash, Gemini 3 Flash, GLM 5.2 | `profiles/models/default.yml`        |
-| **cost-efficient** | Cost-efficient (balanced)     | Novita DeepSeek V4 Pro, DeepSeek V4 Flash/Pro, Gemini 3 Flash, GPT-5.6 Terra, GLM 5.2 | `profiles/models/cost-efficient.yml` |
-
-**Profile schema:** version 1 — each agent entry carries a required `model` and
-an optional `variant`. A profile entry that omits `variant` leaves that agent's
-existing variant unchanged during application; variants are drawn from the OMO
-agent configuration, never invented here. Both profiles route Fixer to the
-Novita DeepSeek V4 Pro thinking model (`high`), preserved unchanged.
-
-**Neutral tiers.** Routing places each agent on one of three tiers — a `high`
-reasoning tier (Luna/Terra), a balanced `medium` tier (Luna/Terra/GLM 5.2/
-DeepSeek Pro), and a fast `low`/flash tier (DeepSeek V4 Flash/Gemini 3 Flash).
-These tiers trade speed, quality, and cost without claiming a measurable speedup
-or cost reduction; no unmeasured performance or savings percentage is reported
-anywhere in this configuration.
+The current routing uses GPT-5.6 Luna/Terra, DeepSeek V4 Flash, Gemini 3 Flash,
+and GLM 5.2 across the built-in and custom agents. Fixer is configured directly
+as `bf-o/gpt-5.6-luna` with the preserved `high` variant. The review-pipeline
+registry retains its `model_profile_key` field as a lane identifier; it is not a
+deploy-time model profile.
 
 ## Agent Pantheon
 
-### Built-in (7 — OMO Slim)
-
-| Agent            | Model (Default profile)   | Model (Cost-efficient profile) | Role                            |
-| :--------------- | :---------------- | :--------------------- | :------------------------------ |
-| **Orchestrator** | GPT-5.6 Luna      | Gemini 3 Flash         | Master delegator & coordinator  |
-| **Oracle**       | GPT-5.6 Terra     | GPT-5.6 Terra          | Strategic advisor, architecture |
-| **Explorer**     | DeepSeek V4 Flash | DeepSeek V4 Flash      | Codebase reconnaissance         |
-| **Librarian**    | GPT-5.6 Luna      | DeepSeek V4 Flash      | Knowledge retrieval             |
-| **Designer**     | GLM 5.2           | GLM 5.2                | UI/UX excellence                |
-| **Fixer**        | DeepSeek V4 Pro via Novita (high) | DeepSeek V4 Pro via Novita (high) | Implementation specialist |
-| **Observer**     | Gemini 3 Flash    | Gemini 3 Flash         | Visual analysis                 |
-
-### Custom (13)
-
-| Agent                       | Model (Default profile)   | Model (Cost-efficient profile) | Dispatch when                                              |
-| :-------------------------- | :---------------- | :--------------------- | :--------------------------------------------------------- |
-| **Navigator**               | Gemini 3 Flash    | Gemini 3 Flash         | agent-browser CLI, snapshots/refs, screenshots, extraction |
-| **Detective**               | GPT-5.6 Luna      | DeepSeek V4 Flash      | Production errors, logs, metrics                           |
-| **Sage**                    | GPT-5.6 Terra     | GPT-5.6 Terra          | Gorgias metrics, schemas, rules                            |
-| **Reviewer lanes (10)**     | Mixed: Luna, Terra, DeepSeek V4 Flash, Gemini 3 Flash | Mixed: DeepSeek V4 Flash, DeepSeek V4 Pro, GPT-5.6 Terra | Orchestrator-managed `review-pipeline` |
-| **reviewer-code**           | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | CLAUDE.md compliance, bugs                                 |
-| **reviewer-test**           | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Behavioral test coverage                                   |
-| **reviewer-errors**         | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Silent failures, error handling                            |
-| **reviewer-types**          | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Type encapsulation, invariants                             |
-| **reviewer-security**       | GPT-5.6 Terra (medium) | GPT-5.6 Terra          | Security boundaries, secrets, input safety                 |
-| **reviewer-performance**    | GPT-5.6 Luna (medium) | DeepSeek V4 Pro        | Algorithms, I/O, queries, hot paths                        |
-| **reviewer-data-integrity** | GPT-5.6 Terra (medium) | GPT-5.6 Terra          | Persistence, transactions, state integrity                 |
-| **reviewer-accessibility**  | Gemini 3 Flash    | DeepSeek V4 Flash      | WCAG and UI accessibility                                  |
-| **reviewer-comments**       | DeepSeek V4 Flash | DeepSeek V4 Flash      | Comment and documentation accuracy                         |
-| **reviewer-simplifier**     | DeepSeek V4 Flash | DeepSeek V4 Flash      | Post-Phase-A clarity and maintainability pass              |
-
-**Council** disabled. Observer auto-routes images from Orchestrator. The
-orchestrator is the OpenCode review manager and directly owns the ten registry
-lanes through the on-demand `review-pipeline` skill. The lanes are read-only;
-there is no intermediary review agent and no active `@reviewer` compatibility
-coordinator.
-
-**Model Profiles Rationale:** routing is **neutral across speed, quality, and
-cost**. Both profiles use Novita DeepSeek V4 Pro for the Fixer with the preserved
-`high` variant and route reasoning through `reasoning_content`; sampling
-overrides (`temperature`, `top_p`, and `top_k`) are not configured because this
-thinking model does not support them. Both profiles route Oracle and Sage to
-GPT-5.6 Terra and Designer to GLM 5.2. The **default profile** routes Librarian
-and Detective to GPT-5.6 Luna and uses a balanced mix for the reviewer lanes.
-The `cost-efficient` profile routes the orchestrator to Gemini 3 Flash and uses
-a lower-cost Flash/Pro mix for the subagents and reviewer lanes. No unmeasured
-performance or percentage-savings claim is made for either profile.
-
-### Novita Fixer compatibility
-
-The source configuration uses the exact model ID
-`bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro` in both profiles and the
-OMO `bifrost.fixer` assignment. The matching Bifrost provider entry enables
-`interleaved.field = reasoning_content` and preserves its existing fallback
-chain and credential reference. The provider catalog confirms the model entry;
-the Bifrost grant, `high` variant acceptance, and multi-turn reasoning/tool-use
-round trip remain runtime compatibility checks rather than static guarantees.
-The source profiles and provider configuration record this assignment, while
-runtime compatibility remains an operational concern rather than a static
-guarantee.
-
-After deployment, restart OpenCode in a fresh process before relying on the
-configuration. Treat a missing grant, unsupported variant/parameters,
-reasoning-content round-trip error, or `finish_reason: length` observed during
-independent runtime verification as a compatibility failure—not a successful
-fallback.
+The agent overview and the active OMO configuration are the authoritative
+references for each agent's declared model, variant, role, and capabilities.
 
 ## Directory Map
 

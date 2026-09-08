@@ -1,6 +1,4 @@
-# Agent model labels describe the default profile for display. YAML profiles are
-# schema version 1: each agent entry carries a required model and an optional
-# variant; an omitted variant leaves the agent's existing variant unchanged.
+# Agent model labels describe the active OMO configuration.
 nodes:
   - id: orchestrator
     label: Orchestrator
@@ -710,30 +708,6 @@ nodes:
       • /opt/homebrew/bin/rtk
 
       "
-  - id: model-profiles
-    label: Model Profiles
-    type: infra
-    role: Cost vs Performance Switching
-    color: "#f472b6"
-    parent: null
-    config:
-      "• Profiles: default, cost-efficient • Location: profiles/models/*.yml •
-      Deploy: ./deploy.sh --model-profile=<name> • Schema: version 1 — each agent entry
-      carries a required model and an optional variant; an omitted variant leaves the
-      agent's existing variant unchanged •
-      Balanced routing across speed, quality, and cost; no performance-first or
-      percentage-savings claims •
-      Shared both profiles: GPT-5.6 Luna (Fixer, high), GPT-5.6 Terra
-      (Oracle/Sage + security/data-integrity reviewers), GLM 5.2 (Designer),
-      DeepSeek V4 Flash, Gemini 3 Flash •
-      default: GPT-5.6 Luna for orchestrator/detective/most reviewer lanes; DeepSeek V4
-      Flash for explorer/librarian-low-tier and low-tier reviewer lanes; Gemini 3 Flash
-      for observer/navigator/reviewer-accessibility •
-      cost-efficient: Gemini 3 Flash orchestrator; DeepSeek V4 Flash/Pro for detective
-      and reviewer lanes •
-      Novita Fixer uses interleaved reasoning_content; sampling overrides
-      temperature/top_p/top_k are unsupported •
-      Implementation: scripts/apply-model-profile.py patches oh-my-opencode-slim.json "
   - id: bifrost
     label: Bifrost
     type: infra
@@ -896,9 +870,6 @@ links:
   - source: opencode
     target: omo-slim
     label: plugin
-  - source: model-profiles
-    target: omo-slim
-    label: configures models
   - source: omo-slim
     target: bifrost
     label: models via
@@ -908,49 +879,27 @@ links:
   - source: rtk
     target: tool-bash
     label: wraps
-profiles:
-  cost-efficient:
-    orchestrator: bf/gemini/gemini-3-flash-preview
-    oracle: bf-o/gpt-5.6-terra
-    explorer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    librarian: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    fixer: bf-o/gpt-5.6-luna
-    designer: bf/huggingface/together/zai-org/GLM-5.2
-    observer: bf/gemini/gemini-3-flash-preview
-    navigator: bf/gemini/gemini-3-flash-preview
-    sage: bf-o/gpt-5.6-terra
-    detective: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    reviewer-code: bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro
-    reviewer-comments: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    reviewer-test: bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro
-    reviewer-errors: bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro
-    reviewer-types: bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro
-    reviewer-security: bf-o/gpt-5.6-terra
-    reviewer-performance: bf/huggingface/novita/deepseek-ai/DeepSeek-V4-Pro
-    reviewer-data-integrity: bf-o/gpt-5.6-terra
-    reviewer-simplifier: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    reviewer-accessibility: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-  default:
-    orchestrator: bf-o/gpt-5.6-luna
-    oracle: bf-o/gpt-5.6-terra
-    explorer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    librarian: bf-o/gpt-5.6-luna
-    fixer: bf-o/gpt-5.6-luna
-    designer: bf/huggingface/together/zai-org/GLM-5.2
-    observer: bf/gemini/gemini-3-flash-preview
-    navigator: bf/gemini/gemini-3-flash-preview
-    sage: bf-o/gpt-5.6-terra
-    detective: bf-o/gpt-5.6-luna
-    reviewer-code: bf-o/gpt-5.6-luna
-    reviewer-comments: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    reviewer-test: bf-o/gpt-5.6-luna
-    reviewer-errors: bf-o/gpt-5.6-luna
-    reviewer-types: bf-o/gpt-5.6-luna
-    reviewer-security: bf-o/gpt-5.6-terra
-    reviewer-performance: bf-o/gpt-5.6-luna
-    reviewer-data-integrity: bf-o/gpt-5.6-terra
-    reviewer-simplifier: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-    reviewer-accessibility: bf/gemini/gemini-3-flash-preview
+models:
+  orchestrator: bf-o/gpt-5.6-luna
+  oracle: bf-o/gpt-5.6-terra
+  explorer: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+  librarian: bf-o/gpt-5.6-luna
+  designer: bf/huggingface/together/zai-org/GLM-5.2
+  fixer: bf-o/gpt-5.6-luna
+  observer: bf/gemini/gemini-3-flash-preview
+  navigator: bf/gemini/gemini-3-flash-preview
+  detective: bf-o/gpt-5.6-luna
+  sage: bf-o/gpt-5.6-terra
+  reviewer-code: bf-o/gpt-5.6-luna
+  reviewer-comments: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+  reviewer-test: bf-o/gpt-5.6-luna
+  reviewer-errors: bf-o/gpt-5.6-luna
+  reviewer-types: bf-o/gpt-5.6-luna
+  reviewer-security: bf-o/gpt-5.6-terra
+  reviewer-performance: bf-o/gpt-5.6-luna
+  reviewer-data-integrity: bf-o/gpt-5.6-terra
+  reviewer-simplifier: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+  reviewer-accessibility: bf/gemini/gemini-3-flash-preview
 model_names:
   bf/gemini/gemini-2.5-flash: Gemini 2.5 Flash
   bf/gemini/gemini-2.5-pro: Gemini 2.5 Pro

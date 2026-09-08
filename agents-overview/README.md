@@ -127,18 +127,10 @@ comes from the complete packet and native RTK/OpenCode reads.
 
 ## Model Routing and Reasoning Variants
 
-The model values shown in this overview describe the **default profile**. YAML
-profiles use schema version 1 with a required per-agent `model` and an optional
-`variant`; a profile entry that omits `variant` leaves the agent's existing
-variant unchanged. The default profile uses a balanced speed/quality/cost mix:
-GPT-5.6 Luna for orchestration and most reviewer lanes, GPT-5.6 Terra for
-Oracle/Sage and security/data-integrity reviewers, DeepSeek V4 Flash for
-exploration and low-tier reviewer lanes, Gemini 3 Flash for
-observer/navigator/reviewer-accessibility, and GLM 5.2 for Designer. The
-`cost-efficient` profile routes the orchestrator to Gemini 3 Flash and uses a
-lower-cost Flash/Pro mix. Neither profile makes a performance-first or
-percentage-savings claim. Both profiles keep Fixer on Novita DeepSeek V4 Pro
-(high), unchanged.
+The model values shown in this overview are declared directly in the active
+`bifrost` preset and custom agents in `oh-my-opencode-slim.json`. That file is
+the sole model configuration; `opencode.json` remains the provider catalog.
+Each agent's model and optional reasoning variant are kept together in OMO.
 
 ## Using the Visualization
 
@@ -159,7 +151,7 @@ percentage-savings claim. Both profiles keep Fixer on Novita DeepSeek V4 Pro
 ## Updating the Architecture
 
 The source configuration is authoritative; `data.yaml` is generated output.
-After changing agents, MCP assignments, or model profiles, regenerate it with:
+After changing agents, MCP assignments, or OMO model assignments, regenerate it with:
 
 ```sh
 python3 scripts/update-agents-overview-data.py
@@ -410,7 +402,7 @@ the selected visualization fields.
 
 - **OpenCode** — Entry point, OMO Slim plugin host
 - **Oh My OpenCode Slim** — Agent orchestration (preset: bifrost)
-- **Model Profiles** — Switch between `default` and `cost-efficient` profiles via `deploy.sh --model-profile=<name>`. Routing is balanced across speed, quality, and cost; no performance-first or percentage-savings claim is made.
+- **OMO model routing** — Agent models and variants are declared directly in `oh-my-opencode-slim.json`; `opencode.json` supplies the provider catalog.
 - **Bifrost** — Model gateway (https://bifrost.ops.gorgias.io)
 - **RTK** — Token optimization plugin (~60-90% reduction)
 - **zsh Environment** — Shell config (VOLTA_HOME, GORGIAS_ROOT, aliases)

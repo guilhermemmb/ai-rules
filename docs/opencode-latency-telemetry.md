@@ -90,7 +90,7 @@ zero.
 
 ## Measurement procedure
 
-Use repeatable prompts and record the exact model profile, reasoning setting,
+Use repeatable prompts and record the exact OMO model, reasoning setting,
 repository state, machine state, and selected session IDs alongside each run.
 Keep the reporter outside the timed operation.
 
@@ -113,7 +113,7 @@ Keep the reporter outside the timed operation.
 
 Run equivalent cold and warm batches in two conditions: a direct OpenCode
 agent invocation and the same task through the orchestrator. Keep the task,
-repository, profile, approval behavior, and concurrency policy constant. Use
+repository, model, approval behavior, and concurrency policy constant. Use
 the session-level wall/TTFT values for end-to-end comparison; use tool/MCP
 counts and overlap fields to explain orchestration overhead. Do not claim the
 model duration approximation is a provider latency measurement.

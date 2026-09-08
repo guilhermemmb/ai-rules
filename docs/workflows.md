@@ -106,9 +106,9 @@ RTK is also an OpenCode plugin that transparently rewrites ordinary commands
 
 ### Agent delegation map
 
-Intent-to-agent routing. Models are `Current` as declared in
-[`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) and the
-[`profiles/models/`](../profiles/models/) profiles.
+Intent-to-agent routing. Models are `Current` as declared directly in
+[`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json), the sole model
+configuration. Provider availability remains cataloged in `opencode.json`.
 
 | Intent | Agent | Notes |
 | :--- | :--- | :--- |
@@ -278,7 +278,6 @@ Source: [`deploy.sh`](../deploy.sh) and the
 | `./deploy.sh --force` | Reinstall the pinned OMO package + deploy |
 | `./deploy.sh --check` | Dry-run: validate ownership, report drift, no mutation |
 | `./deploy.sh --compatibility-check` | Read-only host/plugin/OMO compatibility evidence |
-| `./deploy.sh --model-profile=<name>` | Deploy a named profile (`default` \| `cost-efficient`) |
 | `./deploy.sh --help` | Usage |
 
 `deploy.sh` writes `~/.config/opencode/.ai-rules.manifest.json` (owner, version,
@@ -388,6 +387,6 @@ python3 scripts/validate-ai-rules.py
 
 Reviewed improvement proposals are recorded separately in
 [`review-and-improvements.md`](./review-and-improvements.md) (authority
-precedence, Detective capability isolation, Claude alignment, profile
+precedence, Detective capability isolation, Claude alignment, model-routing
 authority, validator consolidation, provenance). The two graphs here reflect
 `Current` behavior, not those proposals.

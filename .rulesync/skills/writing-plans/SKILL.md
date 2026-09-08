@@ -235,7 +235,7 @@ dependent. Missing or ambiguous metadata stays serial.
 
 **Pro (xhigh)** — may receive bounded multi-file changes when every file and acceptance criterion is named in the plan. Cohesive outcome across explicitly listed files; still a single concept.
 
-**Flash (cost-efficient)** — single-file or single-concept work. Complex refactors, integration changes, and multi-area work must be split into separate tasks before dispatch. A Flash task that touches 4+ unrelated files or combines concepts is a planning bug.
+**Flash** — single-file or single-concept work. Complex refactors, integration changes, and multi-area work must be split into separate tasks before dispatch. A Flash task that touches 4+ unrelated files or combines concepts is a planning bug.
 
 Split unrelated areas at plan time — do not rely on the fixer to discover the split. When in doubt, prefer smaller Flash tasks over fewer Pro tasks.
 

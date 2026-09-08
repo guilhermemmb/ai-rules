@@ -2,7 +2,7 @@
 
 > **Status:** Documentation only. This page records a static source/configuration
 > review and a documentation audit. It proposes remediation but changes nothing:
-> no runtime configuration, agent prompts, permissions, model profiles,
+> no runtime configuration, agent prompts, permissions,
 > deployment code, scripts, MCP configuration, or generated outputs are modified
 > by this document. Proposals are **future work**, not implemented changes.
 >
@@ -113,7 +113,7 @@ history; open findings remain proposals.
 | F2 Competing agent authorities | **Partially resolved** | Detective `tools`/`mcps`/permissions reconciled; broader single-authority model + validator drift check remains open. |
 | F3 Detective isolation | **Resolved** | Mutation-capable skills removed from detective (frontmatter + OMO); read-only diagnostics retained. |
 | F4 Claude Code alignment | **Resolved (obsolete)** | `claudecode` target removed; repository is OpenCode-only. |
-| F5 Model-profile authority | **Resolved** | Profiles are schema version 1 with per-agent `model` + optional `variant`; applier validates and applies both. |
+| F5 Model-routing authority | **Resolved** | OMO directly declares each agent's model and variant; deploy copies it without a profile layer. |
 | F6 Two-config precedence | **Open** | `opencode.json` top-level model vs OMO per-agent precedence still unrecorded. |
 | F7 Lint autofix wording | **Resolved** | Converged to check-only-by-default across `custom-rules.md`, `orchestrator_append.md`, `fixer_append.md`. |
 | F8 `clonedeps`/Git wording | **Resolved** | `clonedeps` now applies the confirmation rule to clone/fetch/`ls-remote`. |
@@ -254,34 +254,21 @@ This is **Unverified** at runtime.
 and remove the `claudecode` target so the source no longer claims unmanaged
 alignment.
 
-### F5. Partially controlled model profiles — **High** → **Resolved**
+### F5. Model-routing authority — **Resolved**
 
-**Status:** Resolved. Profiles are schema version 1 with per-agent `model` plus
-optional `variant`; [`apply-model-profile.py`](../scripts/apply-model-profile.py)
-validates and applies both, and focused profile tests were added.
+**Status:** Resolved. Model routing is declared directly in the active OMO
+configuration, with each built-in and custom agent carrying its model and
+variant. `deploy.sh` copies that configuration directly into the staged payload;
+there is no deploy-time profile selector or profile filesystem.
 
 **Evidence**
 
-- [`profiles/models/default.yml`](../profiles/models/default.yml) and
-  [`profiles/models/cost-efficient.yml`](../profiles/models/cost-efficient.yml)
-  contain model IDs only (no variants, skills, MCPs, or permissions).
-- [`README.md:121-126`](../README.md): "model profiles contain model IDs only;
-  reasoning variants are defined by OMO agent configuration and are not stored in
-  the YAML profiles."
-- [`scripts/apply-model-profile.py:26-44`](../scripts/apply-model-profile.py)
-  patches only the `model` field; `variant`, `skills`, `mcps`, `permission` are
-  left untouched.
-- [`oh-my-opencode-slim.json:10,38,50,62,103,201`](../oh-my-opencode-slim.json)
-  carries `variant` (`high`/`medium`/`low`) outside the profiles.
-
-**Impact** — `--model-profile=<name>` only swaps model IDs. The reasoning variant,
-skills, MCP assignment, and permissions remain governed by OMO config that is not
-validated against the active profile, so "profile" and "effective model routing"
-can drift apart. **Unverified** which combination actually takes effect.
-
-**Proposed remediation** — Make profiles authoritative for every model attribute
-(including `variant`), have `apply-model-profile.py` write all of them, and add a
-validator check that the active profile matches the installed OMO config.
+- [`oh-my-opencode-slim.json`](../oh-my-opencode-slim.json) contains the active
+  preset and custom-agent model/variant assignments.
+- [`opencode.json`](../opencode.json) remains the provider catalog and does not
+  select OMO agent routing.
+- The review-pipeline `model_profile_key` field remains a stable lane identifier,
+  not a deploy profile.
 
 ### F6. Two-config OpenCode precedence — **Medium** → **Open**
 
@@ -445,7 +432,7 @@ without implying they resolve the authority risks.
 
 | Track | Findings | Nature |
 | :--- | :--- | :--- |
-| **Safety / correctness** | F1 (MCP availability), F2 (agent authorities), F3 (Detective isolation), F4 (Claude alignment), F5 (profile authority), F6 (config precedence) | Authority and capability boundaries; changing these alters agent behavior or permissions and needs care + approval. |
+| **Safety / correctness** | F1 (MCP availability), F2 (agent authorities), F3 (Detective isolation), F4 (Claude alignment), F5 (model-routing authority), F6 (config precedence) | Authority and capability boundaries; changing these alters agent behavior or permissions and needs care + approval. |
 | **Speed / maintenance** | F7 (lint autofix wording), F8 (clonedeps/Git wording), F9 (validator/test consolidation), F10 (preflight splitting), F11 (provenance/locking) | Wording reconciliation, test/tooling hygiene, and performance; lower risk, mostly mechanical or additive. |
 
 ## Prioritized roadmap
@@ -461,8 +448,8 @@ resolved in tracked source; the rest remain **Proposed**.
    removed; detective `tools`/`mcps`/permissions reconciled.
 3. **Claude Code alignment** (F4) — **done**: `claudecode` descoped; repository is
    OpenCode-only.
-4. **Profile authority** (F5) — **done**: profiles are schema version 1 with
-   per-agent `model` + optional `variant`; applier validates and applies both.
+4. **Model-routing authority** (F5) — **done**: OMO directly declares
+   per-agent `model` + optional `variant`; deploy copies the configuration directly.
 5. **Validator/preflight coverage** (F9) — **partial**: the validator and deploy
    checks remain the repository's validation mechanisms without dedicated
    automated coverage.
@@ -481,7 +468,7 @@ does it need user approval, or is it out of scope for this documentation pass?
 | Single agent-authority model + validator drift check (F2, F6) | Safety | No | **Yes** (effective tools/permissions are runtime) | **Yes** | Yes |
 | Detective skill isolation (F3) | Safety | No | **Yes** (confirm no mutation path) | **Yes** | Yes |
 | Claude Code alignment or descope (F4) | Safety | No | **Yes** (if deployed) | **Yes** | Yes |
-| Profile authority + variant validation (F5) | Safety | No | **Yes** (effective model check) | **Yes** | Yes |
+| Model-routing authority + variant validation (F5) | Safety | No | **Yes** (effective model check) | **Yes** | Yes |
 | Lint autofix wording (F7) | Speed | **Yes** (docs/rules text only) | No | No | Yes |
 | `clonedeps`/Git wording (F8) | Speed | **Yes** (docs/rules text only) | No | No | Yes |
 | Validator/preflight test coverage (F9) | Speed | No — adds tests | No | No | Yes |

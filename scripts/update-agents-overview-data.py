@@ -7,7 +7,7 @@ import yaml
 from yaml.events import AliasEvent
 from yaml.nodes import MappingNode, ScalarNode, SequenceNode
 
-GENERATED_SECTIONS = ("profiles", "model_names", "avatars")
+GENERATED_SECTIONS = ("models", "model_names", "avatars")
 
 
 def _make_hashable(value):
@@ -233,16 +233,9 @@ def _validate_generated_section_schemas(data):
                 f"generated data.yaml section {section_name!r} must be a mapping"
             )
 
-    for profile_name, profile in data["profiles"].items():
-        if not isinstance(profile_name, str) or not isinstance(profile, dict):
-            raise TypeError("generated data.yaml profiles must map names to mappings")
-        if any(
-            not isinstance(agent_name, str) or not isinstance(model, str)
-            for agent_name, model in profile.items()
-        ):
-            raise TypeError(
-                f"generated data.yaml profile {profile_name!r} must map agents to model names"
-            )
+    for agent_name, model in data["models"].items():
+        if not isinstance(agent_name, str) or not isinstance(model, str):
+            raise TypeError("generated data.yaml models must map agent IDs to model IDs")
 
     for model_id, model_name in data["model_names"].items():
         if not isinstance(model_id, str) or not isinstance(model_name, str):
@@ -306,6 +299,27 @@ def get_model_names(opencode_path):
                 name = name.replace("Gpt", "GPT")
             names[full_id] = name
     return names
+
+
+def get_agent_models(omo_path):
+    """Return the effective model mapping from the active OMO configuration."""
+    with open(omo_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    models = {}
+    preset_name = data.get("preset", "bifrost")
+    presets = data.get("presets", {})
+    active_preset = presets.get(preset_name, {}) if isinstance(presets, dict) else {}
+    if isinstance(active_preset, dict):
+        for agent_name, specification in active_preset.items():
+            if isinstance(specification, dict) and isinstance(specification.get("model"), str):
+                models[agent_name] = specification["model"]
+    custom_agents = data.get("agents", {})
+    if isinstance(custom_agents, dict):
+        for agent_name, specification in custom_agents.items():
+            if isinstance(specification, dict) and isinstance(specification.get("model"), str):
+                models[agent_name] = specification["model"]
+    return models
 
 
 def replace_generated_sections(data_yaml_path, generated_sections):
@@ -402,8 +416,8 @@ def replace_generated_sections(data_yaml_path, generated_sections):
 def main():
     src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     data_yaml_path = os.path.join(src_dir, "agents-overview", "data.yaml")
-    profiles_dir = os.path.join(src_dir, "profiles", "models")
     opencode_path = os.path.join(src_dir, "opencode.json")
+    omo_path = os.path.join(src_dir, "oh-my-opencode-slim.json")
 
     print(f"🔄 Updating {data_yaml_path}...")
 
@@ -411,22 +425,8 @@ def main():
     with open(data_yaml_path, "r") as f:
         data = yaml.safe_load(f)
 
-    # 2. Load profiles (versioned schema: agents.{id}.{model, variant})
-    profiles = {}
-    for filename in sorted(os.listdir(profiles_dir)):
-        if filename.endswith(".yml"):
-            name = filename[:-4]
-            with open(os.path.join(profiles_dir, filename), "r") as f:
-                raw = yaml.safe_load(f)
-            # Emit the existing flat shape for data.yaml compatibility:
-            # agent_id -> model string.  The full {model, variant} spec
-            # is the source of truth in the profile files.
-            if isinstance(raw, dict) and isinstance(raw.get("agents"), dict):
-                profiles[name] = {
-                    agent_id: spec.get("model", "")
-                    for agent_id, spec in raw["agents"].items()
-                    if isinstance(spec, dict)
-                }
+    # 2. Get the effective agent model mapping directly from OMO.
+    agent_models = get_agent_models(omo_path)
 
     # 3. Get model names from opencode.json
     model_names = get_model_names(opencode_path)
@@ -466,13 +466,13 @@ def main():
     replace_generated_sections(
         data_yaml_path,
         {
-            "profiles": profiles,
+            "models": agent_models,
             "model_names": model_names,
             "avatars": avatars,
         },
     )
 
-    print("✅ data.yaml updated with profiles, model names, and avatars.")
+    print("✅ data.yaml updated with OMO model names and avatars.")
 
 
 if __name__ == "__main__":
