@@ -870,13 +870,13 @@ class Validator:
             self.add_error(path, "review-pipeline registry skill must be review-pipeline", key="skill", text=artifact.text)
         if registry.get("contract_version") != 2:
             self.add_error(path, "review-pipeline contract_version must be 2", key="contract_version", text=artifact.text)
-        cap = registry.get("max_concurrency")
-        if not isinstance(cap, int) or isinstance(cap, bool) or not 1 <= cap <= FIXER_BATCH_MAX:
-            self.add_error(path, "review-pipeline max_concurrency must be an integer from 1 to 3", key="max_concurrency", text=artifact.text)
         focus_ids = registry.get("focus_ids")
         if not isinstance(focus_ids, list) or not focus_ids or any(not isinstance(value, str) or not value for value in focus_ids) or len(set(focus_ids)) != len(focus_ids):
             self.add_error(path, "review-pipeline focus_ids must be unique non-empty strings", key="focus_ids", text=artifact.text)
             focus_ids = []
+        cap = registry.get("max_concurrency")
+        if not isinstance(cap, int) or isinstance(cap, bool) or not 1 <= cap <= len(focus_ids):
+            self.add_error(path, f"review-pipeline max_concurrency must be an integer from 1 to {len(focus_ids)}", key="max_concurrency", text=artifact.text)
         focuses = registry.get("focuses")
         if not isinstance(focuses, list):
             self.add_error(path, "review-pipeline focuses must be a list", key="focuses", text=artifact.text)

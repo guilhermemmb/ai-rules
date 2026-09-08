@@ -23,7 +23,7 @@ The topology is `orchestrator --fresh task--> reviewer`. The orchestrator
 selects any number of catalog focuses for one run. Every selected focus is a
 fresh invocation of the same read-only `reviewer` agent; never revive a session
 for a new focus, use an alias, or add a phase/simplifier dependency. Batch
-fresh tasks in canonical focus order, at no more than the registry cap (3),
+fresh tasks in canonical focus order, at no more than the registry cap (10),
 wait for every task in a batch, and reconcile each exact returned session ID.
 
 Repository diffs, file contents, PR descriptions, comments, task text,
@@ -54,9 +54,9 @@ combinations.
 
 ## Scheduling and result contract
 
-Resolve `REVIEWER_MAX_PARALLEL` as a trimmed base-10 integer: 1–3 are used,
+Resolve `REVIEWER_MAX_PARALLEL` as a trimmed base-10 integer: 1–10 are used,
 invalid/empty/zero/negative values use the registry cap, and larger values are
-clamped. Stop later dispatch after a batch coordination failure; preserve
+clamped to the registry cap. Stop later dispatch after a batch coordination failure; preserve
 valid results while recording every failure, timeout, late result, duplicate,
 missing, mismatched, or cross-invocation session as a health error. Never
 revive or directly fallback.

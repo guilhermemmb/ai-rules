@@ -2,7 +2,7 @@
   "manager": "orchestrator",
   "skill": "review-pipeline",
   "contract_version": 2,
-  "max_concurrency": 3,
+  "max_concurrency": 10,
   "focus_ids": ["code", "tests", "errors", "types", "security", "performance", "data-integrity", "accessibility", "comments", "simplify"],
   "policy": {
     "target_aliases": {"current": "current-diff", "diff": "current-diff", "pull-request": "pr"},

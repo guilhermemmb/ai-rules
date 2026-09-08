@@ -28,7 +28,7 @@ dispatches one fresh read-only `reviewer` invocation for each selected focus.
 Focuses are `code`, `tests`, `errors`, `types`, `security`, `performance`,
 `data-integrity`, `accessibility`, `comments`, and `simplify`. A run may select
 many focuses; each invocation has a unique `review_invocation_id`, runs in
-batches of at most three, and is reconciled by exact session ID. Never revive a
+batches of at most ten, and is reconciled by exact session ID. Never revive a
 session for a new focus and do not introduce a phase dependency.
 
 The orchestrator owns packet validation, policy normalization, focus selection,
@@ -44,7 +44,7 @@ fix. Health failures yield `Degraded/inconclusive` regardless of content.
 Review policy remains target-aware: current diff/task defaults to `auto`, branch,
 entire branch, and PR to `full`; explicit tagged `auto`, `full`, or `aspects`
 overrides defaults, and textual `all` normalizes to `full`. `REVIEWER_MAX_PARALLEL`
-accepts 1–3, defaults invalid values to 3, and clamps larger values to 3.
+accepts 1–10, defaults invalid values to 10, and clamps larger values to 10.
 
 ### OpenCode multi-fixer scheduler
 

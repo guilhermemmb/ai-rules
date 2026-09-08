@@ -36,15 +36,15 @@ def _registry_errors(registry: Any) -> list[str]:
         errors.append("registry skill must be review-pipeline")
     if registry.get("contract_version") != 2:
         errors.append("registry contract_version must be 2")
-    cap = registry.get("max_concurrency")
-    if not isinstance(cap, int) or isinstance(cap, bool) or not 1 <= cap <= 3:
-        errors.append("registry max_concurrency must be an integer from 1 to 3")
     focus_ids = registry.get("focus_ids")
     if not isinstance(focus_ids, list) or not focus_ids or any(not isinstance(focus, str) or not focus for focus in focus_ids):
         errors.append("registry focus_ids must be a non-empty string array")
         focus_ids = []
     elif len(set(focus_ids)) != len(focus_ids):
         errors.append("registry focus_ids must be unique")
+    cap = registry.get("max_concurrency")
+    if not isinstance(cap, int) or isinstance(cap, bool) or not 1 <= cap <= len(focus_ids):
+        errors.append(f"registry max_concurrency must be an integer from 1 to {len(focus_ids)}")
     focuses = registry.get("focuses")
     if not isinstance(focuses, list) or not focuses:
         errors.append("registry focuses must be a non-empty array")
@@ -127,6 +127,8 @@ def normalize_policy(request: Any, target_kind: str, registry: dict[str, Any] | 
     if not isinstance(policy, dict) or "kind" not in policy:
         raise ValueError("policy must contain kind")
     kind = policy["kind"]
+    if not isinstance(kind, str):
+        raise ValueError("policy kind must be a string")  # noqa: TRY004
     if kind in {"auto", "full"}:
         if set(policy) != {"kind"}:
             raise ValueError(f"{kind} policy must contain exactly kind")
@@ -160,8 +162,21 @@ def _target_from_packet(target: Any) -> str:
     if isinstance(target, str):
         return target
     if isinstance(target, dict):
-        return target.get("kind") or target.get("type") or "current-diff"
+        return target.get("kind") or target.get("type") or ""
     return "current-diff"
+
+
+def _packet_target_errors(target: Any) -> list[str]:
+    if isinstance(target, str):
+        return [] if target.strip() else ["packet target must be a non-empty string or object"]
+    if not isinstance(target, dict):
+        return ["packet target must be a non-empty string or object"]
+    present = [field for field in ("kind", "type") if field in target]
+    if not present:
+        return ["packet target object must contain kind or type"]
+    if any(not isinstance(target[field], str) or not target[field].strip() for field in present):
+        return ["packet target kind and type must be non-empty strings"]
+    return []
 
 
 def validate_packet(packet: Any, registry: dict[str, Any]) -> dict[str, Any]:
@@ -171,6 +186,8 @@ def validate_packet(packet: Any, registry: dict[str, Any]) -> dict[str, Any]:
     for field in registry.get("required_packet_fields", []):
         if field not in packet:
             errors.append(f"missing packet field: {field}")
+    target_errors = _packet_target_errors(packet.get("target")) if "target" in packet else []
+    errors.extend(target_errors)
     for field in ("target", "scope", "implementer_report", "plan_context", "guidelines"):
         if field in packet and not _is_non_empty(packet[field]):
             errors.append(f"packet field must be non-empty: {field}")
@@ -185,11 +202,11 @@ def validate_packet(packet: Any, registry: dict[str, Any]) -> dict[str, Any]:
     metadata = packet.get("diff_metadata")
     if not isinstance(metadata, dict) or not isinstance(metadata.get("status"), str) or not metadata["status"].strip():
         errors.append("diff_metadata.status is required")
-    if "policy" in packet:
+    if "policy" in packet and not target_errors:
         try:
             if normalize_policy(packet["policy"], _target_from_packet(packet.get("target")), registry) != packet["policy"]:
                 errors.append("policy is not normalized")
-        except ValueError as error:
+        except (TypeError, ValueError) as error:
             errors.append(f"invalid policy: {error}")
     for field in ("review_run_id", "review_invocation_id", "packet_digest"):
         if field in packet and (not isinstance(packet[field], str) or not packet[field].strip()):
@@ -225,10 +242,13 @@ def _validate_detailed_report(report: Any, changed_paths: list[str]) -> list[str
     for field in ("scope", "approach", "assessment"):
         if field in report and (not isinstance(report[field], str) or not report[field].strip()):
             errors.append(f"report field must be a non-empty string: {field}")
+    report_bounds = {"checks_performed": 8, "limitations": 5, "unknowns": 5}
     for field in ("checks_performed", "limitations", "unknowns"):
         value = report.get(field)
         if not isinstance(value, list) or any(not isinstance(item, str) or not item.strip() for item in value):
             errors.append(f"report field must be a string array: {field}")
+        elif len(value) > report_bounds[field]:
+            errors.append(f"report field exceeds maximum length: {field}")
     detailed_findings = report.get("findings")
     if not isinstance(detailed_findings, list):
         errors.append("report field must be an array: findings")
@@ -245,8 +265,15 @@ def _validate_detailed_report(report: Any, changed_paths: list[str]) -> list[str
             errors.append(f"{prefix}.file must be changed")
         if not isinstance(line, int) or isinstance(line, bool) or line <= 0:
             errors.append(f"{prefix}.line must be a positive integer")
-        if not isinstance(side, str) or not side.strip() or not isinstance(hunk, str) or not hunk.strip():
+        if side != "changed" or not isinstance(hunk, str) or not hunk.strip():
             errors.append(f"{prefix} requires changed-side and hunk evidence")
+        if not isinstance(finding.get("issue"), str) or not finding["issue"].strip():
+            errors.append(f"{prefix}.issue must be non-empty")
+        confidence = finding.get("confidence")
+        if not isinstance(confidence, int) or isinstance(confidence, bool) or not 0 <= confidence <= 100:
+            errors.append(f"{prefix}.confidence must be an integer from 0 to 100")
+        if not isinstance(finding.get("fix"), str) or not finding["fix"].strip():
+            errors.append(f"{prefix}.fix must be non-empty")
         for field in ("narrative", "evidence_basis", "reasoning", "impact", "remediation"):
             if not isinstance(finding.get(field), str) or not finding[field].strip():
                 errors.append(f"{prefix}.{field} must be non-empty")
@@ -308,7 +335,7 @@ def validate_reviewer_result(result: Any, changed_paths: list[str], expected_run
                     reason = "finding file must be changed"
                 elif not isinstance(line, int) or isinstance(line, bool) or line <= 0:
                     reason = "finding line must be a positive integer"
-                elif not isinstance(side, str) or not side.strip() or not isinstance(hunk, str) or not hunk.strip():
+                elif side != "changed" or not isinstance(hunk, str) or not hunk.strip():
                     reason = "finding requires changed-side and hunk evidence"
                 elif not isinstance(raw.get("issue"), str) or not raw["issue"].strip():
                     reason = "finding issue must be non-empty"
@@ -324,11 +351,12 @@ def validate_reviewer_result(result: Any, changed_paths: list[str], expected_run
             findings.append(normalized)
     if isinstance(result.get("errors"), list) and result["errors"]:
         errors.append("reviewer errors array must be empty")
+    report_present = "report" in result
     report = result.get("report")
-    if report is not None:
+    if report_present:
         errors.extend(_validate_detailed_report(report, changed_paths))
     validation = {"valid": not errors, "errors": errors, "findings": findings, "reviewer": reviewer, "review_run_id": result.get("review_run_id"), "review_invocation_id": result.get("review_invocation_id"), "focus": focus}
-    if report is not None:
+    if report_present:
         validation["report"] = copy.deepcopy(report)
     return validation
 
@@ -346,6 +374,10 @@ def deduplicate_findings(findings: list[dict[str, Any]]) -> list[dict[str, Any]]
     for finding in findings:
         if not isinstance(finding, dict) or not isinstance(finding.get("issue"), str):
             raise TypeError("finding must contain a string issue")
+        if "confidence" in finding:
+            confidence = finding["confidence"]
+            if not isinstance(confidence, int) or isinstance(confidence, bool) or not 0 <= confidence <= 100:
+                continue
         key = (finding.get("file"), finding.get("line"), finding.get("severity"), " ".join(finding["issue"].split()).casefold())
         unique.setdefault(key, copy.deepcopy(finding))
         source = (finding.get("source_focus"), finding.get("source_invocation_id"))
@@ -376,7 +408,14 @@ def compute_verdict(health: Any, findings: list[dict[str, Any]]) -> str:
         return "inconclusive"
     if not isinstance(findings, list):
         raise TypeError("findings must be an array")
-    severities = {finding.get("severity", "").casefold() for finding in findings if isinstance(finding, dict)}
+    severities = set()
+    for finding in findings:
+        if not isinstance(finding, dict):
+            continue
+        severity = finding.get("severity", "")
+        if not isinstance(severity, str):
+            raise ValueError("finding severity is invalid")  # noqa: TRY004
+        severities.add(severity.casefold())
     if not severities <= {"critical", "important", "suggestions"}:
         raise ValueError("finding severity is invalid")
     if "critical" in severities:

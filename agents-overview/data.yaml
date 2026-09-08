@@ -307,7 +307,7 @@ nodes:
     parent: orchestrator
     model: GPT-5.6 Luna (medium)
     mcp_access: serena, context7, gh_grep
-    trigger: Fresh read-only invocation for each selected review focus; at most 3 per batch
+    trigger: Fresh read-only invocation for each selected review focus; at most 10 per batch
     constraints: Untrusted evidence; native RTK/OpenCode reads authoritative; strict JSON; no writes
     responsibilities: "• code, tests, errors, types, security, performance, data-integrity, accessibility, comments, and simplify focus catalog\n\n      • Echo review run and invocation correlation\n\n      • Findings require changed file, positive line, side, hunk, confidence, issue, and fix\n\n      "
   - id: context7-mcp
@@ -661,7 +661,7 @@ links:
     label: dispatches
   - source: orchestrator
     target: reviewer
-    label: fresh focus invocation (max 3 per batch)
+    label: fresh focus invocation (max 10 per batch)
   - source: sage
     target: cortex-mcp
     label: uses

@@ -61,6 +61,8 @@ class ReviewPipelineContractTests(unittest.TestCase):
             "findings": [{
                 "severity": "important", "file": "app.py", "line": 12,
                 "side": "changed", "hunk": "@@ -11,1 +12,1 @@",
+                "issue": "The changed value is used without validation.", "confidence": 90,
+                "fix": "Validate the value before the downstream operation.",
                 "narrative": "The changed value is used without validation.",
                 "evidence_basis": "The changed line is the first unchecked use.",
                 "reasoning": "The unchecked use creates a path for invalid input.",
@@ -78,7 +80,7 @@ class ReviewPipelineContractTests(unittest.TestCase):
 
     def test_registry_has_v2_focus_catalog(self):
         self.assertEqual(self.registry["contract_version"], 2)
-        self.assertEqual(self.registry["max_concurrency"], 3)
+        self.assertEqual(self.registry["max_concurrency"], 10)
         self.assertEqual(self.registry["focus_ids"], ["code", "tests", "errors", "types", "security", "performance", "data-integrity", "accessibility", "comments", "simplify"])
         self.assertEqual({focus["target"] for focus in self.registry["focuses"]}, {"reviewer"})
         self.assertNotIn("lanes", self.registry)
@@ -95,8 +97,15 @@ class ReviewPipelineContractTests(unittest.TestCase):
         self.assertEqual(normalize_policy({"policy": {"kind": "aspects", "values": ["security", "errors"]}}, "task", self.registry), {"policy": {"kind": "aspects", "values": ["security", "errors"]}})
         with self.assertRaises(ValueError):
             normalize_policy({"policy": {"kind": "aspects", "values": ["unknown"]}}, "task", self.registry)
-        self.assertEqual([resolve_concurrency(value, self.registry) for value in (None, "", "oops", "0", "-1")], [3] * 5)
-        self.assertEqual([resolve_concurrency(value, self.registry) for value in (" 1 ", "2", 3, "99")], [1, 2, 3, 3])
+        for kind in (1, [], {}):
+            with self.assertRaises(ValueError):
+                normalize_policy({"policy": {"kind": kind}}, "task", self.registry)
+        with self.assertRaises(ValueError):
+            normalize_policy(None, "unknown-target", self.registry)
+        self.assertEqual([resolve_concurrency(value, self.registry) for value in (None, "", "oops", "0", "-1")], [10] * 5)
+        self.assertEqual([resolve_concurrency(value, self.registry) for value in (" 1 ", "2", 3, 10, "99")], [1, 2, 3, 10, 10])
+        custom_registry = {**self.registry, "max_concurrency": 3}
+        self.assertEqual(resolve_concurrency("99", custom_registry), 3)
 
     def test_packet_contract_requires_invocation(self):
         self.assertEqual(validate_packet(self.packet(), self.registry), {"valid": True, "errors": []})
@@ -106,6 +115,14 @@ class ReviewPipelineContractTests(unittest.TestCase):
         packet = self.packet()
         packet["diff"]["complete"] = False
         self.assertIn("diff must be complete and contain content", validate_packet(packet, self.registry)["errors"])
+        for target in (1, [], {"kind": {"invalid": True}}, {"type": ["invalid"]}, {"name": "task"}):
+            malformed = self.packet()
+            malformed["target"] = target
+            validation = validate_packet(malformed, self.registry)
+            self.assertFalse(validation["valid"])
+        malformed = self.packet()
+        malformed["target"] = "unknown-target"
+        self.assertFalse(validate_packet(malformed, self.registry)["valid"])
 
     def test_result_correlation_focus_and_evidence(self):
         report = validate_reviewer_result(self.result(critical=[self.finding()]), ["app.py"], self.expected(), self.registry)
@@ -122,6 +139,12 @@ class ReviewPipelineContractTests(unittest.TestCase):
         self.assertEqual(validation["report"], report)
         invalid = self.detailed_report(findings=[{"severity": "important", "file": "other.py", "line": 12, "side": "changed", "hunk": "@@", "narrative": "Unsupported.", "evidence_basis": "Unsupported.", "reasoning": "Unsupported.", "impact": "Unsupported.", "remediation": "Unsupported."}])
         self.assertFalse(validate_reviewer_result(self.result(report=invalid), ["app.py"], self.expected(), self.registry)["valid"])
+        for finding in (
+            {**self.detailed_report()["findings"][0], "side": "context"},
+            {key: value for key, value in self.detailed_report()["findings"][0].items() if key not in {"confidence", "issue", "fix"}},
+        ):
+            invalid = self.detailed_report(findings=[finding])
+            self.assertFalse(validate_reviewer_result(self.result(report=invalid), ["app.py"], self.expected(), self.registry)["valid"])
 
     def test_legacy_result_without_detailed_report_remains_valid(self):
         self.assertTrue(validate_reviewer_result(self.result(), ["app.py"], self.expected(), self.registry)["valid"])
@@ -131,6 +154,9 @@ class ReviewPipelineContractTests(unittest.TestCase):
         self.assertFalse(report["valid"])
         report = validate_reviewer_result(self.result(critical=[self.finding(line=0)]), ["app.py"], self.expected(), self.registry)
         self.assertFalse(report["valid"])
+        for side in ("context", "deleted"):
+            report = validate_reviewer_result(self.result(critical=[self.finding(side=side)]), ["app.py"], self.expected(), self.registry)
+            self.assertFalse(report["valid"])
 
     def test_deduplication_keeps_highest_confidence_and_sources(self):
         low = self.finding(confidence=60, issue="Unsafe   VALUE", source_focus="code", source_invocation_id="inv-1")
@@ -139,12 +165,25 @@ class ReviewPipelineContractTests(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["confidence"], 95)
         self.assertEqual(result[0]["source_focuses"], ["code", "security"])
+        malformed = {**low, "confidence": "not-a-number"}
+        result = deduplicate_findings([{**low, "severity": "critical"}, {**malformed, "severity": "critical"}])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["confidence"], 60)
+
+    def test_detailed_report_bounds_and_explicit_null(self):
+        for field, count in (("checks_performed", 9), ("limitations", 6), ("unknowns", 6)):
+            report = self.detailed_report(**{field: [f"Entry {index}." for index in range(count)]})
+            validation = validate_reviewer_result(self.result(report=report), ["app.py"], self.expected(), self.registry)
+            self.assertFalse(validation["valid"])
+        self.assertFalse(validate_reviewer_result(self.result(report=None), ["app.py"], self.expected(), self.registry)["valid"])
 
     def test_verdict_health_first(self):
         finding = {"severity": "critical"}
         self.assertEqual(compute_verdict("degraded", [finding]), "inconclusive")
         self.assertEqual(compute_verdict("healthy", [finding]), "blocked")
         self.assertEqual(compute_verdict("healthy", []), "approved")
+        with self.assertRaises(ValueError):
+            compute_verdict("healthy", [{"severity": []}])
 
 
 if __name__ == "__main__":
