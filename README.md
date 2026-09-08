@@ -2,19 +2,6 @@
 
 Source of truth for OpenCode agent rules, custom agents, skills, commands, and the single OMO model configuration. Used by [Oh My OpenCode Slim](https://ohmyopencodeslim.com/) with [Bifrost](https://bifrost.ops.gorgias.io) model routing.
 
-## Documentation atlas
-
-Concise navigation into the `ai-rules` system documentation:
-
-| Area | Document | Description |
-| :--- | :--- | :--- |
-| **Architecture** | [`docs/architecture.md`](docs/architecture.md) | Source/generated/installed layers, authority boundaries, and agent categories |
-| **Workflows** | [`docs/workflows.md`](docs/workflows.md) | Task sizing, SDD flow, discovery, fixer/reviewer pipelines, and deployment lifecycle |
-| **Reference** | [`docs/reference.md`](docs/reference.md) | Compact registries of rules, skills, subagents, scripts, models, and MCPs |
-| **Review & proposals** | [`docs/review-and-improvements.md`](docs/review-and-improvements.md) | Independently reviewed improvement proposals, severities, and roadmap |
-| **Mermaid graphs** | [`architecture`](docs/graphs/architecture.mmd) · [`dispatch-and-review`](docs/graphs/dispatch-and-review.mmd) · [`workspace-lifecycle`](docs/graphs/workspace-lifecycle.mmd) | Flow and layer diagrams (`.mmd` source) |
-| **Interactive agents** | [`agents-overview/README.md`](agents-overview/README.md) | Interactive agent visualization (data + HTML) |
-
 ## Quick Start
 
 ```bash
@@ -217,8 +204,6 @@ S/M post-implementation reviewer gate.
 | 2. Plan                              | `writing-plans`   | — (orchestrator writes the S/M combined plan or L/XL plan)                              |
 | 3. Execute                           | S/M combined-plan; `executing-plans` for L/XL | @fixer (code), @designer (UI/UX), OpenCode orchestrator (execution lead; manages review gates), @oracle (escalation) |
 | 4. Review (optional; user-confirmed) | `reviewing-plans` | OpenCode orchestrator (`review-pipeline`; up to 10 applicable reviewer-* specialists, only after opt-in) |
-
-See `docs/sdd-workflow.md` for the full flowchart and agent usage matrix.
 
 ## Agent output paths
 
