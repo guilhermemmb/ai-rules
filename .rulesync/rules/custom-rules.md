@@ -103,17 +103,20 @@ and dispatch multiple fresh specialist lanes in the same turn:
 For each batch, dispatch only ready tasks whose required predecessors passed
 review. Record the exact returned session ID and job ID for every background
 dispatch; wait for all tasks in that same batch, then reconcile with
-`task_result` using those exact session IDs rather than aliases. Review each
-`DONE` lane within the available reviewer cap, queueing excess reviews; this
-cap applies only to reviewer scheduling. Arbitrary conversational tool-call
-parallelism remains disallowed. Do not start a dependent batch until every
-required predecessor has a successful implementer result and a passing
-per-child review (or an explicit @oracle adjudication resolves it).
+`task_result` using those exact session IDs rather than aliases. After every task
+in a completed fixer batch is reconciled, produce one combined review report for
+the batch within the available reviewer cap. Arbitrary conversational tool-call
+parallelism remains disallowed. Do not start a dependent batch until the
+combined report is reconciled; a degraded or inconclusive review health result
+holds the dependent or requires an explicit @oracle adjudication. Findings are
+report-only: the user chooses whether to fix, defer, or accept them, with no
+automatic fix, automatic acceptance, or required acceptance metadata.
 Unrelated ready work may finish while a failed predecessor is fixed or
 escalated, but dependent work waits. `NEEDS_CONTEXT`, `BLOCKED`, timeout,
 failure, missing, or malformed reports hold dependents and are surfaced
-explicitly. After the batch's lanes finish, reconcile
-their terminal reports against the complete plan and combined diff:
+explicitly. After the batch's lanes finish, reconcile their terminal reports
+against the complete plan and combined diff, then attach the combined review
+report to the ledger:
 
 1. Map every planned item to a completed specialist result or an explicit
    escalation; do not silently treat partial work as complete.
@@ -123,6 +126,13 @@ their terminal reports against the complete plan and combined diff:
    designer-to-fixer handoff constraints.
 4. Inspect the combined result for missing work, unaddressed concerns, and
    regressions before running final validation.
+5. Record the batch review report and its health status without converting
+   findings into automatic remediation or acceptance decisions.
+
+After all L/XL batches are complete, require one mandatory final branch review
+report before final handoff or commit authorization. The final review cannot be
+skipped. Its findings remain report-only and the user controls any remediation
+choice.
 
 If an ownership overlap or dependency conflict is discovered after dispatch,
 stop the affected lanes before conflicting writes continue and escalate for

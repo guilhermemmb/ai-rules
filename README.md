@@ -56,12 +56,16 @@ lockfile, or ordered work serializes.
 
 The orchestrator waits for every child in the same batch, reconciles each
 result with `task_result` using the exact returned session ID (never an alias),
-then runs a separate reviewer gate for every `DONE` child before releasing its
-dependents. `NEEDS_CONTEXT`, `BLOCKED`, timeout, failure, missing, or malformed
-results hold dependents and are surfaced. OpenCode has no dynamic per-task path
-ACL, so the fixer allowlist is cooperative prompt enforcement backed by
-changed-path verification; unowned changes fail closed. Reviewer
-concurrency remains a separate review-workflow setting.
+then creates one combined review packet and consolidated report for the
+completed batch before releasing its dependents. `NEEDS_CONTEXT`, `BLOCKED`,
+timeout, failure, missing, or malformed results hold dependents and are
+surfaced. After all batches are reconciled, one mandatory full-branch review
+report is required before handoff or commit authorization. Review findings are
+report-only: the user chooses whether to fix, defer, or accept them; the
+orchestrator does not decide automatically. OpenCode has no dynamic per-task
+path ACL, so the fixer allowlist is cooperative prompt enforcement backed by
+changed-path verification; unowned changes fail closed. Reviewer concurrency
+remains a separate registry-driven review-workflow setting.
 
 ### OpenCode deployment ownership
 
@@ -103,7 +107,9 @@ configuration directly into the validated payload.
 
 The current routing uses GPT-5.6 Luna/Terra, DeepSeek V4 Flash, Gemini 3 Flash,
 and GLM 5.2 across the built-in and custom agents. Fixer is configured directly
-as `bf-o/gpt-5.6-luna` with the preserved `high` variant. The review pipeline\nuses one `reviewer` model with focus supplied per fresh invocation; focus definitions\ndo not select alternate model profiles.
+as `bf-o/gpt-5.6-luna` with the preserved `high` variant. The review pipeline
+uses one `reviewer` model with focus supplied per fresh invocation; focus
+definitions do not select alternate model profiles.
 
 ## Agent Pantheon
 
@@ -159,20 +165,21 @@ S/M work uses one concise merged SDD + implementation plan, one approval, and
 implementation dispatched to `@fixer` for code or `@designer` for UI/UX as
 appropriate. It then always runs exactly one automatic post-implementation
 review gate managed directly by the orchestrator through `review-pipeline`;
-it does not use `executing-plans`, a ledger, or per-task reviews, and does not
-ask the user to choose whether to review.
+it does not use `executing-plans` or a ledger, and does not ask the user to
+choose whether to review.
 
-L/XL work keeps the full SDD and `executing-plans` flow, including its required
-per-task reviews. Its final comprehensive `reviewing-plans` pass remains
-optional and requires explicit user opt-in; this is separate from the required
-S/M post-implementation reviewer gate.
+L/XL work keeps the full SDD and `executing-plans` flow, including one
+consolidated review report per completed fixer batch. Its mandatory
+comprehensive `reviewing-plans` pass produces the full-branch report required
+before final handoff or commit authorization; findings remain report-only and
+the user chooses whether to fix, defer, or accept them.
 
 | Phase                                | Skill             | Key agents                                                                              |
 | ------------------------------------ | ----------------- | --------------------------------------------------------------------------------------- |
 | 1. Brainstorm                        | `brainstorming`   | @explorer, @librarian, @oracle, @designer                                               |
 | 2. Plan                              | `writing-plans`   | — (orchestrator writes the S/M combined plan or L/XL plan)                              |
 | 3. Execute                           | S/M combined-plan; `executing-plans` for L/XL | @fixer (code), @designer (UI/UX), OpenCode orchestrator (execution lead; manages review gates), @oracle (escalation) |
-| 4. Review (optional; user-confirmed) | `reviewing-plans` | OpenCode orchestrator (`review-pipeline`; fresh reviewer invocations by focus, only after opt-in) |
+| 4. Review (mandatory final report for L/XL) | `reviewing-plans` | OpenCode orchestrator (`review-pipeline`; fresh reviewer invocations by focus, registry cap preserved) |
 
 ## Agent output paths
 

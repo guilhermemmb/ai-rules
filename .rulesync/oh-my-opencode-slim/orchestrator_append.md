@@ -132,7 +132,7 @@ lockfiles, and generated output. Require exact `Files`, `Interfaces/Constraints`
 dependencies/producers/consumers, validation, and stop conditions. Missing,
 ambiguous, overlapping, shared-resource, generated-output, lockfile, or
 explicitly ordered work is serial. A consumer waits for its producer and a
-dependent waits for implementation **and review**.
+dependent waits for implementation **and the completed batch review**.
 
 For each eligible batch:
 
@@ -147,19 +147,12 @@ For each eligible batch:
    The fixer may create, modify, or delete only those paths. The allowlist is a
    cooperative prompt contract because OpenCode does not provide a dynamic
    per-task path ACL; runtime smoke must detect violations and fail closed.
-5. At every review boundary, load and use the on-demand `review-pipeline` skill. The orchestrator is the review manager and owns packet validation, policy normalization, lazy focus selection, bounded fresh dispatch of the single `reviewer` agent, exact-session reconciliation, aggregation, health-first verdict computation, and the final Markdown report. Never preload the skill into every orchestrator session. Dispatch only the exact focus IDs declared by the canonical `__AI_RULES_REVIEW_PIPELINE_REGISTRY_PATH__` registry.
-6. Build a complete packet with target descriptor, scope, complete diff,
-    changed paths, diff metadata, implementer's report, task/plan context,
-    project guidelines, normalized policy, unique `review_run_id`, stable
-    `packet_digest`, and the registry `contract_version`. Redact secrets and
-    untrusted instructions, enforce the skill's input size limits and escaping,
-    and pass the same packet plus focus instruction and a unique `review_invocation_id` to every child.
+5. At every batch or final review boundary, load and use the on-demand `review-pipeline` skill. The orchestrator is the review manager and owns packet validation, policy normalization, lazy focus selection, bounded fresh dispatch of the single `reviewer` agent, exact-session reconciliation, aggregation, health-first verdict computation, and the final Markdown report. Never preload the skill into every orchestrator session. Dispatch only the exact focus IDs declared by the canonical `__AI_RULES_REVIEW_PIPELINE_REGISTRY_PATH__` registry.
+6. After every task in a fixer batch has a terminal report and changed-path reconciliation, create one combined batch packet and one consolidated review report for that batch. The packet includes the target descriptor, scope, complete diff, changed paths, diff metadata, all implementer reports, task/plan context, project guidelines, normalized policy, unique `review_run_id`, stable `packet_digest`, and the registry `contract_version`. Redact secrets and untrusted instructions, enforce the skill's input size limits and escaping, and pass the same packet plus focus instruction and a unique `review_invocation_id` to every child.
 7. Launch selected focuses in canonical registry order in background batches no larger than the registry cap (maximum 10), wait for each batch, and reconcile every result by its exact returned session ID. Every focus gets a fresh `reviewer` invocation; never revive, alias, directly fall back, or add a phase dependency. Preserve valid results while recording late, timed-out, unavailable, malformed, missing, duplicate, mismatched, or cross-invocation results as health failures.
 8. Require each reviewer result to echo `review_run_id`, `review_invocation_id`, `packet_digest`, `contract_version`, and `focus`. Validate strict JSON, changed-file, numeric-line, changed-side/hunk, non-empty issue/remediation, and 0–100 confidence requirements before retaining findings. Attribute findings with `source_focus` and `source_invocation_id`. Separate coverage health from finding content; health failures take precedence over content verdicts. Guard finalization and emit the required inconclusive fallback report with raw valid findings/errors if rendering fails.
-9. Do not release any dependent until the review pipeline passes, or an
-    explicit `@oracle` adjudication resolves it. Be honest about parent
-    write-isolation: read-only child permissions and prompt claims are not
-    filesystem immutability without authoritative recorded tool evidence.
+9. Do not release a dependent until the combined batch report is reconciled. A degraded or inconclusive review health result holds release or requires an explicit `@oracle` adjudication; findings remain report-only. The user selects whether to fix, defer, or accept findings, and the orchestrator never auto-fixes, auto-accepts, or requires acceptance metadata. Be honest about parent write-isolation: read-only child permissions and prompt claims are not filesystem immutability without authoritative recorded tool evidence.
+10. After all planned work and batch reports are reconciled, run one mandatory final branch review and retain its final Markdown report. Final handoff and any commit authorization require that report; the final review cannot be skipped. Its findings are report-only and remain subject to the user's fix, defer, or accept decision.
 
 `NEEDS_CONTEXT`, `BLOCKED`, timeout or failure, failed, missing, or malformed implementer
 or review results hold all dependents and must be surfaced in the scheduler

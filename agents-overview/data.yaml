@@ -22,12 +22,12 @@ nodes:
     fixer_scheduler:
       max_concurrent_children: 3
       dispatch: "OpenCode-only: up to 3 independent @fixer children with background=true"
-      lifecycle: "Wait for the same batch, reconcile exact returned session IDs, then review each DONE child before dependent release"
+      lifecycle: "Wait for the same batch, reconcile exact returned session IDs, then produce one combined review report before dependent release"
       dependency_policy: "Overlapping, ambiguous, shared, generated, lockfile, and ordered work serializes"
       failure_policy: "NEEDS_CONTEXT, BLOCKED, timeout, failure, or malformed results hold dependents and are surfaced"
       ownership_policy: "Fixer Files are hard write allowlists; unowned changes fail closed"
     mcp_access: github
-    review_ownership: "OpenCode: orchestrator is the review manager; it loads review-pipeline at review boundaries, dispatches fresh reviewer invocations by focus, reconciles sessions, aggregates findings, computes the verdict, and renders the report."
+    review_ownership: "OpenCode: orchestrator is the review manager; it loads review-pipeline at batch and final boundaries, dispatches fresh reviewer invocations by focus, reconciles sessions, aggregates findings, computes the health-first verdict, and renders the reports."
     constraints:
       "Hard-enforced at tool/config level: no sentry/rootly MCP access (unavailable in Detective),
 

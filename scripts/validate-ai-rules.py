@@ -2151,7 +2151,9 @@ class Validator:
         source_paths = (
             self.root / ".rulesync" / "oh-my-opencode-slim" / "orchestrator_append.md",
             self.root / ".rulesync" / "rules" / "custom-rules.md",
+            self.root / ".rulesync" / "rules" / "planning-state.md",
             self.root / ".rulesync" / "skills" / "executing-plans" / "SKILL.md",
+            self.root / ".rulesync" / "skills" / "reviewing-plans" / "SKILL.md",
             self.root / ".rulesync" / "skills" / "fixer" / "SKILL.md",
             self.root / ".rulesync" / "skills" / "writing-plans" / "SKILL.md",
             self.root / ".rulesync" / "skills" / "deepwork" / "SKILL.md",
@@ -2212,8 +2214,20 @@ class Validator:
                 "scheduler guidance must hold dependents for timeout and failure",
             ),
             (
-                re.compile(r"every.{0,80}done.{0,100}review|per-child review"),
-                "scheduler guidance must require a review gate for every DONE child",
+                re.compile(r"one.{0,80}(?:combined|consolidated).{0,80}review report.{0,80}batch|combined batch report"),
+                "scheduler guidance must require one combined review report per completed fixer batch",
+            ),
+            (
+                re.compile(r"mandatory.{0,80}final (?:branch )?review|final (?:branch )?review.{0,80}mandatory"),
+                "scheduler guidance must require a mandatory final review",
+            ),
+            (
+                re.compile(r"final review.{0,120}(?:handoff|commit authorization)|commit authorization.{0,120}final review"),
+                "scheduler guidance must require the final review before handoff or commit authorization",
+            ),
+            (
+                re.compile(r"findings.{0,100}report-only|report-only.{0,100}findings"),
+                "scheduler guidance must keep review findings report-only",
             ),
         )
         if not texts:
@@ -2223,6 +2237,32 @@ class Validator:
             )
         for pattern, message in requirements:
             if pattern.search(combined) is None:
+                path = texts[0][0] if texts else self.root / ".rulesync"
+                self.add_error(path, message)
+
+        cadence_paths = {
+            self.root / ".rulesync" / "oh-my-opencode-slim" / "orchestrator_append.md",
+            self.root / ".rulesync" / "rules" / "custom-rules.md",
+            self.root / ".rulesync" / "rules" / "planning-state.md",
+            self.root / ".rulesync" / "skills" / "executing-plans" / "SKILL.md",
+            self.root / ".rulesync" / "skills" / "reviewing-plans" / "SKILL.md",
+        }
+        cadence_combined = "\n".join(
+            text for path, text in texts if path in cadence_paths or path.name == "AGENTS.md"
+        ).casefold()
+        stale_claims = (
+            (
+                re.compile(r"per[- ]task[ \t]+review|per[- ]child[ \t]+review|review[ \t]+(?:each|every)[ \t]+.{0,20}(?:child|task|lane)"),
+                "scheduler guidance must not require a separate review for each fixer task",
+            ),
+            (
+                re.compile(r"final (?:branch )?review\s+(?:is\s+)?(?:optional|skipped|opt[- ]in)|(?:user opts in|ask the user whether to run).{0,80}(?:final review|reviewing-plans)"),
+                "scheduler guidance must not make the final review optional or skippable",
+            ),
+        )
+        for pattern, message in stale_claims:
+            match = pattern.search(cadence_combined)
+            if match is not None:
                 path = texts[0][0] if texts else self.root / ".rulesync"
                 self.add_error(path, message)
 

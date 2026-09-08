@@ -1,6 +1,6 @@
 ---
 name: executing-plans
-description: Use only for approved L/XL SDD implementation plans — dispatches fresh agent per task with dependency-aware batching and review after each
+description: Use only for approved L/XL SDD implementation plans — dispatches fresh agents with dependency-aware batching, one review report per completed batch, and mandatory final review
 ---
 
 # Executing Plans
@@ -10,8 +10,8 @@ Follow `.rulesync/rules/planning-state.md` for canonical paths, approval gates,
 ledger authority, and resume behavior. XS and S/M use their own workflows.
 
 The scheduler runs a fresh fixer per task, batches only proven-independent work,
-reviews every completed task, reconciles state, and continues until completion
-or a genuine blocker.
+produces one combined review report after each completed fixer batch, reconciles
+state, and continues until completion or a genuine blocker.
 
 Before any transition or dispatch, verify the plan exists and its persisted
 metadata says `status: approved` with non-null approver, approval timestamp, and
@@ -64,13 +64,16 @@ For each ready batch:
    `@fixer` per task with non-overlapping ownership and the full task handoff.
 2. Wait for every report in the batch. Reconcile each result using its exact
    returned session ID and job ID, not an alias or ordering assumption.
-3. Send every `DONE` task to exactly one orchestrator-managed
-   `review-pipeline`, preserving the existing per-task review boundary.
-4. Reconcile reports, review verdicts, and changed paths against each task's
-   hard `Files` allowlist. A task is releasable only after a passing review or
-   explicit @oracle adjudication. Append validation evidence and task state to
-   the ledger.
-5. Release dependent tasks only after all required predecessors are releasable;
+3. After every task in the batch is reconciled, send one combined packet for
+   the completed fixer batch to exactly one orchestrator-managed
+   `review-pipeline`, producing one consolidated Markdown report for the batch.
+4. Reconcile the batch report, its health status, and changed paths against
+   every task's hard `Files` allowlist. A degraded or inconclusive report holds
+   release or requires explicit @oracle adjudication. Findings are report-only:
+   the user chooses whether to fix, defer, or accept them; never auto-fix,
+   auto-accept, or require acceptance metadata. Append validation evidence,
+   batch-review evidence, and task state to the ledger.
+5. Release dependent tasks only after the completed batch report is reconciled;
    unrelated ready tasks may continue.
 
 ### Dispatch contract
@@ -93,33 +96,36 @@ specified by the plan. Tell every implementer not to commit or push. If a task
 is ambiguous, exceeds its `Files` allowlist, or combines unrelated concerns,
 hold it for refinement or escalation rather than guessing.
 
-If a review requests changes, allow at most three fix rounds: re-dispatch the
-same implementer for rounds 1–2, a fresh fixer for round 3, then escalate to
-@oracle if still unresolved. Re-review every fix.
+If the user selects remediation from a batch report, allow at most three fix
+rounds for the selected task(s): re-dispatch the same implementer for rounds 1–2,
+a fresh fixer for round 3, then escalate to @oracle if still unresolved. Reconcile
+the resulting batch and produce one combined re-review report. Never auto-fix or
+auto-accept findings from a report.
 
 ## Final handoff
 
-After all tasks are complete, commit the ledger file and ask the user whether to
-run the final comprehensive review. This is a mandatory user-choice gate. Do
-not load `reviewing-plans` or `review-pipeline` unless the user explicitly
-chooses to run the review.
+After all tasks and batch reports are complete, load `reviewing-plans` and run one
+mandatory final comprehensive branch review. The orchestrator loads
+`review-pipeline` at the boundary with the plan, ledger, full branch diff, target
+descriptor, review mode, and Global Constraints. Retain the final Markdown report
+and reconcile its health before final handoff or commit authorization. The final
+review cannot be skipped.
 
-- If the user opts in, load `reviewing-plans`; the orchestrator then loads
-  `review-pipeline` at the boundary with the plan, ledger, full branch diff,
-  target descriptor, review mode, and Global Constraints.
-- If the user skips it, append `Handoff: final review skipped by user` to the
-  ledger and state that the merge-readiness review was not run.
+Final findings are report-only: the user selects what to fix, defer, or accept.
+Do not auto-fix, auto-accept, or require acceptance metadata. Git commits remain
+user-authorized and still require the existing security scan.
 
 ## Ledger format
 
 ```text
 # Execution Ledger — plan: canonical planning `plans/2026-07-29-feature.md`
 
-Task 1: complete (commits a1b2c3d..d4e5f6a, review clean)
-Task 2: fix round 1/3 (2 addressed, 0 open, review pending)
-Task 2: complete (commits d4e5f6a..b7c8d9e, review clean)
-Task 3: queued (blocked by Task 2)
-Handoff: final review skipped by user
+Batch 1: complete (tasks 1–2 reconciled; combined review report recorded)
+Task 1: complete (implementer report recorded)
+Task 2: complete (implementer report recorded)
+Batch 2: queued (blocked by Batch 1 health)
+Final review: mandatory branch report recorded (findings report-only)
+Handoff: awaiting user remediation decisions and commit authorization
 ```
 
 The ledger survives context compaction. On resume, trust the approved plan,

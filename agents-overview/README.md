@@ -27,8 +27,6 @@ The visualization follows the current tool boundary:
 
 - **RTK/native OpenCode tools** — default and authoritative for exact text/files,
   shell, tests, Git, configuration, documentation, and edits.
-- **RTK/native OpenCode tools** — authoritative for exact local inspection,
-  shell commands, tests, configuration, documentation, and edits.
 - **Assigned MCPs and CLIs** — available only to the agents listed in the
   runtime configuration; this overview does not infer unlisted access.
 
@@ -83,18 +81,22 @@ flowchart TD
 OpenCode implementation scheduling is bounded separately from reviewer
 scheduling: the orchestrator may dispatch at most **3** independent
 `@fixer` children with `background=true` in one batch. It waits for the same
-batch, reconciles exact returned child session IDs with `task_result`, and
-requires a passing review for every `DONE` child before releasing dependents.
-Overlapping, ambiguous, shared, generated, lockfile, and ordered work remains
-serial. Each fixer receives a hard `Files` write allowlist; because OpenCode
-does not expose dynamic per-task path ACLs, changed-path smoke evidence rejects
-unowned writes. Failed, timed-out, `NEEDS_CONTEXT`, `BLOCKED`, missing, or
-malformed results hold dependents and are surfaced.
+batch, reconciles exact returned child session IDs with `task_result`, and then
+produces one combined review report for the completed batch before releasing
+dependents. Overlapping, ambiguous, shared, generated, lockfile, and ordered
+work remains serial. Each fixer receives a hard `Files` write allowlist; because
+OpenCode does not expose dynamic per-task path ACLs, changed-path smoke
+evidence rejects unowned writes. Failed, timed-out, `NEEDS_CONTEXT`,
+`BLOCKED`, missing, or malformed results hold dependents and are surfaced.
+After all batches, one mandatory full-branch final review report is required
+before handoff or commit authorization. Findings are report-only; the user
+chooses whether to fix, defer, or accept them. A separate Git security scan is
+still required before a commit.
 
 The OpenCode orchestrator delegates the complete review packet to the
 orchestrator-owned `review-pipeline`; it does not preload the skill in ordinary
 sessions. It dispatches a fresh read-only `reviewer` invocation for each
-selected focus in independent batches of at most three, with a unique
+selected focus in independent batches of at most ten, with a unique
 `review_invocation_id`. A run may select many focuses; there is no phase or
 simplifier dependency, and sessions are never revived for a new focus. Failed,
 timed-out, unavailable, malformed, or incomplete results make Review Health
@@ -401,7 +403,7 @@ determines whether work is immediate, uses a merged plan, or follows full SDD.
   post-implementation review gate (the orchestrator-owned `review-pipeline`) and run proportionate
   validation.
   Do not create a separate spec, load `executing-plans`, create a ledger, run a
-  per-task review, or prompt for a review choice.
+  an additional L/XL execution loop or prompt for a review choice.
 - **L** — multi-area/cross-system work or material uncertainty.
 - **XL** — architecture, migration, security/data-integrity, production-impact,
   or major external-dependency work.
@@ -432,7 +434,7 @@ flowchart TD
         SM4{"Approve plan once?"}
         SM5["Dispatch implementation\n@fixer (code) / @designer (UI/UX)"]
         SM6["Run exactly one review gate\nOpenCode: review-pipeline\npost-implementation"]
-        SM8["Proportionate validation\n(no separate spec, executing-plans, ledger,\nor per-task review or review-choice prompt)"]
+        SM8["Proportionate validation\n(no separate spec, executing-plans, ledger,\nor review-choice prompt)"]
         SM7["Revise, clarify, or defer"]
 
         SM1 --> SM2
@@ -477,31 +479,27 @@ flowchart TD
 
     subgraph P3["⚡ L/XL — Phase 3: Executing Plans"]
         direction TB
-        E1[Dispatch fresh agent\n@fixer code / @designer UI] --> E2{Report status?}
-        E2 -->|NEEDS_CONTEXT| E1
-        E2 -->|BLOCKED, context issue| E1
-        E2 -->|BLOCKED, too hard| E5[Escalate to @oracle]
-        E2 -->|DONE| E3[Run review gate\nOpenCode: review-pipeline\nspec compliance + quality]
-        E3 --> E4{Review passed?}
-        E4 -->|no, up to 3 rounds| E1
-        E4 -->|yes| E6{More tasks\nin plan?}
-        E7{"Run optional final review?"}
-        E6 -->|yes| E1
-        E6 -->|no, all tasks done/parked| E7
+        E1[Dispatch ready fixer batch\n@fixer code / @designer UI] --> E2{All batch reports\nreconciled?}
+        E2 -->|no| E1
+        E2 -->|yes| E3[Run one combined batch review report\nOpenCode: review-pipeline]
+        E3 --> E4{Batch health\nreconciled?}
+        E4 -->|degraded/inconclusive| E5[Hold dependents or\nescalate to @oracle]
+        E4 -->|yes| E6[User chooses fix, defer, or accept findings]
         E5 --> E6
-        E7 -->|yes| R1
-        E7 -->|no| Done
+        E6 --> E7{More tasks\nin plan?}
+        E7 -->|yes| E1
+        E7 -->|no, all tasks done/parked| R1
     end
 
     subgraph P4["🔍 L/XL — Phase 4: Reviewing Plans"]
         direction TB
-        R1[Gather plan + ledger\n+ full branch diff] --> R2[Run review gate\nOpenCode: review-pipeline\nfull comprehensive review]
-        R2 --> R3{Critical issues\n= 0?}
+        R1[Gather plan + ledger\n+ full branch diff] --> R2[Run mandatory final review\nOpenCode: review-pipeline\nfull comprehensive report]
+        R2 --> R3[Retain final report\nfindings are report-only]
+        R3 --> R4[User chooses fix, defer, or accept findings]
     end
 
-    R3 -->|yes| Success([Plan executed with success\nready for merge/PR])
-    R3 -->|no| Report[Report Critical issues\nto user — do NOT signal success]
-    Report -.fix & re-review.-> R1
+    R4 -->|fix| R1
+    R4 -->|defer or accept| Success([Final report retained\nready for handoff; commit also needs Git security scan])
 ```
 
 **Key rules baked into the flow:**
@@ -516,17 +514,20 @@ flowchart TD
   `@designer` for UI/UX as appropriate. It then runs exactly one
   automatic post-implementation review gate (the orchestrator-owned `review-pipeline`) and runs
   proportionate validation.
-  It skips a separate spec, `executing-plans`, a ledger, per-task review, and
-  the review-choice prompt.
+  It skips a separate spec, `executing-plans`, a ledger, and the review-choice
+  prompt.
 - L/XL work is full SDD: show and approve the separate design/spec in
   `~/developer/planning-docs/{{repository-name}}/.planning/specs/` before writing the implementation plan in
   `~/developer/planning-docs/{{repository-name}}/.planning/plans/`, then retain plan approval and the existing
   execution/review flow.
 - The fix loop in Phase 3 is capped at **3 rounds** before escalating to
   `@oracle`.
-- Phase 4 is an **optional** final merge gate for L/XL work: any
-  Critical issue blocks the "success" signal, regardless of how many tasks
-  completed.
+- Each completed fixer batch receives one combined review report before its
+  dependents can be released; findings remain report-only and the user chooses
+  whether to fix, defer, or accept them.
+- Phase 4 is a **mandatory** full-branch final review report for L/XL work
+  before handoff or commit authorization. A separate Git security scan remains
+  required before a commit.
 
 ## Constraints
 

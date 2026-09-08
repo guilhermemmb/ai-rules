@@ -56,13 +56,15 @@ the artifact, not conversation-only state.
 - **Writing-plans:** consumes the selected mode and required approved inputs,
   then writes one plan in `plans/`.
 - **Executing-plans:** consumes only an approved L/XL plan, dispatches work,
-  records reports and ledger state, reviews each task, and hands off.
+  records reports and ledger state, produces one combined review report per
+  completed fixer batch, produces the mandatory final review report, and hands
+  off.
 - **Fixer/designer:** implement dispatched tasks and report validation; they do
   not choose workflow mode or commit/push autonomously.
 
 S/M is one approved combined-plan flow: no separate spec, execution ledger, or
 per-task execution loop. L/XL is the gated flow
-`approved spec -> approved plan -> ledger-backed execution -> per-task review -> handoff`.
+`approved spec -> approved plan -> ledger-backed execution -> batch review reports -> mandatory final review report -> handoff`.
 XS executes immediately and does not enter these artifacts.
 
 ## Resume and gate rules
@@ -75,4 +77,9 @@ Never advance from a missing, malformed, or pending spec/plan. For execution,
 the plan and its required L/XL spec must be approved before any task dispatch.
 The ledger remains authoritative for completed, fixing, reviewing, and queued
 tasks; preserve validation events and never convert skipped, unavailable,
-failed, or not-run validation into passed.
+failed, or not-run validation into passed. A completed fixer batch is not
+releasable until its single combined review report is reconciled. Final handoff
+or commit authorization is not available until the mandatory final branch review
+report exists; the final review cannot be skipped. Review findings are
+report-only, and the user chooses whether to fix, defer, or accept them without
+automatic remediation or required acceptance metadata.
