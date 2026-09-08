@@ -35,6 +35,7 @@ RTK_PLUGIN_PATH="${OPENDIR}/plugins/rtk.ts"
 REVIEW_PIPELINE_SKILL="review-pipeline"
 REVIEW_PIPELINE_SKILL_PATH="skills/${REVIEW_PIPELINE_SKILL}/SKILL.md"
 REVIEW_PIPELINE_REGISTRY_PATH="skills/${REVIEW_PIPELINE_SKILL}/pipeline.json"
+REVIEW_PIPELINE_REGISTRY_MARKER="__AI_RULES_REVIEW_PIPELINE_REGISTRY_PATH__"
 
 # Rulesync is a repository-recorded convergence input. OMO always resolves the
 # latest published release.
@@ -683,6 +684,36 @@ validate_review_pipeline_payload() {
   }
 }
 
+materialize_review_pipeline_registry_path() {
+  local payload="$1"
+  local runtime_registry_path="$OPENDIR/$REVIEW_PIPELINE_REGISTRY_PATH"
+
+  "$PYTHON_BIN" - "$payload" "$runtime_registry_path" "$REVIEW_PIPELINE_REGISTRY_MARKER" <<'PY'
+from pathlib import Path
+import sys
+
+payload = Path(sys.argv[1])
+runtime_registry_path = Path(sys.argv[2])
+marker = sys.argv[3]
+if not runtime_registry_path.is_absolute():
+    raise SystemExit(f"configured OpenCode registry path is not absolute: {runtime_registry_path}")
+
+runtime_files = (
+    payload / "AGENTS.md",
+    payload / "commands" / "review-pr.md",
+    payload / "oh-my-opencode-slim" / "orchestrator_append.md",
+    payload / "skills" / "review-pipeline" / "SKILL.md",
+)
+for path in runtime_files:
+    if path.is_symlink() or not path.is_file():
+        raise SystemExit(f"runtime text file is missing or not regular: {path}")
+    text = path.read_text(encoding="utf-8")
+    if marker not in text:
+        raise SystemExit(f"review-pipeline registry marker is missing from: {path}")
+    path.write_text(text.replace(marker, str(runtime_registry_path)), encoding="utf-8")
+PY
+}
+
 copy_tree() {
   local source="$1"
   local destination="$2"
@@ -778,6 +809,8 @@ build_staged_payload() {
   copy_tree "$SRCDIR/.rulesync/oh-my-opencode-slim" "$payload/oh-my-opencode-slim"
   copy_tree "$SRCDIR/.rulesync/commands" "$payload/commands"
   validate_review_pipeline_payload "$payload" || return 1
+  # Build a validation manifest before materialization so source/staged byte
+  # comparisons can run against the marker-bearing payload.
   manifest_tool build "$payload" "$payload/$OPENCODE_MANIFEST_NAME"
 
   validate_json_file "$payload/opencode.json" || return 1
@@ -802,6 +835,10 @@ build_staged_payload() {
     fail "Worktrunk installer is missing or not executable"
     return 1
   }
+  materialize_review_pipeline_registry_path "$payload" || return 1
+  # Materialization changes runtime text after source validation; rebuild the
+  # manifest so hashes describe the final deployed payload.
+  manifest_tool build "$payload" "$payload/$OPENCODE_MANIFEST_NAME"
   scan_deployment_inputs "$payload" "$WT_ORCA_SOURCE" "$WORKTREE_STATE_SOURCE" \
     "$WORKTRUNK_CONFIG_SOURCE" "$WORKTRUNK_INSTALLER" || return 1
 }

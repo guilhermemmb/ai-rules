@@ -7,7 +7,8 @@ description: On-demand orchestrator-managed review pipeline for PR, branch, diff
 
 This is an on-demand protocol. The `orchestrator` is the review manager. At
 the start of every review, read and validate
-`.rulesync/skills/review-pipeline/pipeline.json`; it is the only source of
+`__AI_RULES_REVIEW_PIPELINE_REGISTRY_PATH__`;
+it is the only source of
 truth for contract version, focus IDs, triggers, instructions, policy aliases,
 defaults, output fields, and the concurrency cap.
 

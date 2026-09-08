@@ -50,7 +50,7 @@ or artifact requirements.
 - **OpenCode:** At review boundaries, the orchestrator loads the on-demand
   `review-pipeline` skill and is the sole review manager. It validates the
   complete packet, selects and directly dispatches the exact ten `reviewer-*`
-  lanes from `.rulesync/skills/review-pipeline/pipeline.json`, runs bounded
+  lanes from `__AI_RULES_REVIEW_PIPELINE_REGISTRY_PATH__`, runs bounded
   Phase A and conditional sequential Phase B, reconciles exact sessions,
   aggregates findings, computes the health-first verdict, and owns the final
   report. The full protocol stays out of the always-loaded orchestrator append;

@@ -147,7 +147,7 @@ For each eligible batch:
    The fixer may create, modify, or delete only those paths. The allowlist is a
    cooperative prompt contract because OpenCode does not provide a dynamic
    per-task path ACL; runtime smoke must detect violations and fail closed.
-5. At every review boundary, load and use the on-demand `review-pipeline` skill. The orchestrator is the review manager and owns packet validation, policy normalization, lazy focus selection, bounded fresh dispatch of the single `reviewer` agent, exact-session reconciliation, aggregation, health-first verdict computation, and the final Markdown report. Never preload the skill into every orchestrator session. Dispatch only the exact focus IDs declared by the canonical `.rulesync/skills/review-pipeline/pipeline.json` registry.
+5. At every review boundary, load and use the on-demand `review-pipeline` skill. The orchestrator is the review manager and owns packet validation, policy normalization, lazy focus selection, bounded fresh dispatch of the single `reviewer` agent, exact-session reconciliation, aggregation, health-first verdict computation, and the final Markdown report. Never preload the skill into every orchestrator session. Dispatch only the exact focus IDs declared by the canonical `__AI_RULES_REVIEW_PIPELINE_REGISTRY_PATH__` registry.
 6. Build a complete packet with target descriptor, scope, complete diff,
     changed paths, diff metadata, implementer's report, task/plan context,
     project guidelines, normalized policy, unique `review_run_id`, stable

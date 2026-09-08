@@ -1,7 +1,15 @@
 # Review Reference
 
-The canonical review contract is
-`.rulesync/skills/review-pipeline/pipeline.json`. Packets correlate
+The repository source for the canonical review contract is
+`.rulesync/skills/review-pipeline/pipeline.json`. The deployed OpenCode runtime
+instructions use the marker
+`__AI_RULES_REVIEW_PIPELINE_REGISTRY_PATH__`. During deployment, `deploy.sh`
+materializes that marker in the staged runtime text as the absolute path
+`$OPENDIR/skills/review-pipeline/pipeline.json`, where `OPENDIR` is derived from
+`OPENCODE_CONFIG_DIR` (or its default). The deployed runtime therefore reads the
+configured registry location while repository-only validators continue to read
+`.rulesync/skills/review-pipeline/pipeline.json`.
+Packets correlate
 `review_run_id`, `review_invocation_id`, `packet_digest`, and
 `contract_version`. Results identify `reviewer` and `focus`; findings identify
 `source_focus` and `source_invocation_id` and must cite a changed file,
