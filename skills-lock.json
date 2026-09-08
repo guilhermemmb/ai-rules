@@ -151,13 +151,13 @@
       "sourceType": "local",
       "provenance": "unknown",
       "skillPath": ".rulesync/skills/oh-my-opencode-slim/SKILL.md",
-      "computedHash": "d6c83f7bec18efbbd3fee43e18e0ec563d127afb1350f0a070a3e942969fafcf"
+      "computedHash": "1306c7e8d1981266d59dd98f15e0d08fe26297a9da03f92d284efe93111d1967"
     },
     "reflect": {
       "sourceType": "local",
       "provenance": "unknown",
       "skillPath": ".rulesync/skills/reflect/SKILL.md",
-      "computedHash": "2ac9432f2f2757a6af536ece80506969f54c19166a2abb7a6f39c2c9e1bcb1c6"
+      "computedHash": "9c2f85590ff90b30e020703662aa105e37b5d164bbc50befffc8853bb57be577"
     },
     "review-pipeline": {
       "sourceType": "local",
@@ -181,7 +181,7 @@
       "sourceType": "local",
       "provenance": "unknown",
       "skillPath": ".rulesync/skills/simplify/SKILL.md",
-      "computedHash": "2a1dc9428b004c27729a7354fe0a0305d4025d35031d7ac7d4f955f626aac58a"
+      "computedHash": "c135130d0642ab10449c763941f6e067f1fae8579068f6c85aa5faa59fa70032"
     },
     "traces": {
       "sourceType": "local",
@@ -193,7 +193,7 @@
       "sourceType": "local",
       "provenance": "unknown",
       "skillPath": ".rulesync/skills/verification-planning/SKILL.md",
-      "computedHash": "cb51d85d6fc4be791769caf6c10f1e2c24a4449092165facb981be080724f9b5"
+      "computedHash": "59d52887002f643fbae911bd8ad21dbbafde867e907981a86e7d72532125958c"
     },
     "writing-plans": {
       "sourceType": "local",

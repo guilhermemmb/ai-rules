@@ -219,46 +219,15 @@ preflight_rtk() {
 }
 
 initialize_rtk_plugin() {
-  local standard_plugin_path="${HOME}/.config/opencode/plugins/rtk.ts"
-  local plugin_directory="$(dirname "$RTK_PLUGIN_PATH")"
-
   cyan "  ⚡ initializing the RTK OpenCode plugin..."
   if ! "$RTK_BIN" init -g --opencode --auto-patch; then
     fail "could not initialize the RTK OpenCode plugin"
     return 1
   fi
-
-  if [[ "$RTK_PLUGIN_PATH" = "$standard_plugin_path" ]]; then
-    if [[ -L "$RTK_PLUGIN_PATH" || ! -f "$RTK_PLUGIN_PATH" ]]; then
-      fail "RTK initialization did not create a regular plugin file at $RTK_PLUGIN_PATH"
-      return 1
-    fi
-  elif [[ ! -L "$standard_plugin_path" && -f "$standard_plugin_path" ]]; then
-    if [[ -L "$RTK_PLUGIN_PATH" || ( -e "$RTK_PLUGIN_PATH" && ! -f "$RTK_PLUGIN_PATH" ) ]]; then
-      fail "RTK plugin target is not a regular file: $RTK_PLUGIN_PATH"
-      return 1
-    fi
-    if ! mkdir -p "$plugin_directory"; then
-      fail "could not create RTK plugin directory: $plugin_directory"
-      return 1
-    fi
-    if [[ -L "$plugin_directory" || ! -d "$plugin_directory" ]]; then
-      fail "RTK plugin directory is not a regular directory: $plugin_directory"
-      return 1
-    fi
-    if ! cp -p "$standard_plugin_path" "$RTK_PLUGIN_PATH"; then
-      fail "could not copy the standard RTK plugin to $RTK_PLUGIN_PATH"
-      return 1
-    fi
-    if [[ -L "$RTK_PLUGIN_PATH" || ! -f "$RTK_PLUGIN_PATH" ]]; then
-      fail "copied RTK plugin is not a regular file: $RTK_PLUGIN_PATH"
-      return 1
-    fi
-  elif [[ -L "$RTK_PLUGIN_PATH" || ! -f "$RTK_PLUGIN_PATH" ]]; then
-    fail "neither the standard RTK plugin nor the configured target is a regular file: $standard_plugin_path, $RTK_PLUGIN_PATH"
+  if [[ -L "$RTK_PLUGIN_PATH" || ! -f "$RTK_PLUGIN_PATH" ]]; then
+    fail "RTK initialization did not create a regular plugin file at $RTK_PLUGIN_PATH"
     return 1
   fi
-
   green "  ✅ initialized the RTK OpenCode plugin at $RTK_PLUGIN_PATH"
 }
 

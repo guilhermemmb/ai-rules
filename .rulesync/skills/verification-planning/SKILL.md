@@ -5,6 +5,12 @@ description: Verification planning for non-trivial coding work. Use before imple
 
 # Verification Planning
 
+For approved L/XL work managed through `writing-plans`, record the resulting
+evidence path in that plan's `## Verification Plan` section. Use the template's
+fields for the claim, evidence path, owner, uncertainty/limitations, and
+validation budget rather than duplicating the full plan here. Use this skill
+standalone for non-plan work.
+
 ## Build an evidence path
 
 Before changing a non-trivial system, build an **evidence path**: a

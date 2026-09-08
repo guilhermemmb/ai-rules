@@ -25,6 +25,14 @@ this section.]
 
 ---
 
+## Verification Plan
+
+- **Claim:** [What the implementation must establish]
+- **Evidence path:** [Preferred evidence and the system boundary it covers]
+- **Owner:** [Who establishes or refutes the claim]
+- **Uncertainty/limitations:** [Known gaps, assumptions, and important failure modes]
+- **Validation budget:** [Minimum non-duplicative checks and when to broaden them]
+
 ## File Structure
 
 Map the files created or modified and each responsibility before defining tasks.

@@ -35,6 +35,11 @@ repeated patterns, friction, and improvement opportunities.
 
 ### Session Discovery
 
+Before running any SQLite query, verify that Bun is available in the current
+environment (for example, with `command -v bun` or `bun --version`). If Bun is
+unavailable, report the dependency as unavailable and stop session-database
+inspection; do not silently switch runtimes or expose raw database content.
+
 1. **Load recent session metadata by default** - Query the SQLite database
    directly, selecting only the metadata needed to choose and summarize
    sessions:
