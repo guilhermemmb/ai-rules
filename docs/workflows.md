@@ -266,35 +266,31 @@ lane-result, and verdict invariants are listed in the reference registry.
 
 ## 5. Deployment and workspace lifecycle
 
-### Deployment, check, and rollback
+### Force-only deployment lifecycle
 
-`./deploy.sh` is the source of truth for generated OpenCode configuration.
-Source: [`deploy.sh`](../deploy.sh) and the
-[README](../README.md#quick-start).
+`./deploy.sh` is the only deployment path. Source: [`deploy.sh`](../deploy.sh)
+and the [README](../README.md#quick-start).
 
-| Command | Effect |
+| Invocation | Effect |
 | :--- | :--- |
-| `./deploy.sh` | Deploy (refreshes the repository-recorded OMO package when needed) |
-| `./deploy.sh --force` | Reinstall the pinned OMO package + deploy |
-| `./deploy.sh --check` | Dry-run: validate ownership, report drift, no mutation |
-| `./deploy.sh --compatibility-check` | Read-only host/plugin/OMO compatibility evidence |
-| `./deploy.sh --help` | Usage |
+| `./deploy.sh` | Force-replace the live OpenCode directory from the validated staged payload and resolve latest OMO |
+| `./deploy.sh --force` | Equivalent to `./deploy.sh` |
+| `./deploy.sh --help` / `-h` | Print usage without deployment |
+| unknown flags | Rejected before deployment, including `--check` and `--compatibility-check` |
 
-`deploy.sh` writes `~/.config/opencode/.ai-rules.manifest.json` (owner, version,
-timestamp, managed paths, SHA-256s) atomically with the generated config, and
-includes it in transaction snapshots and rollback. On failure it restores the
-previous configuration and preserves recovery artifacts (see the
-`cleanup_stage` / rollback logic in `deploy.sh`).
+The staged payload is validated, secret-scanned, and given an ownership
+manifest before installation. Full replacement never merges unknown live files.
+A durable, ownership/permission-checked transaction marker records `prepared`,
+`old_moved`, and `committed` phases while `.opencode.deploy.$$` and
+`.opencode.previous.$$` are used for the incoming and displaced trees.
+Interrupted transactions are recovered on the next run. Marker and displaced
+path cleanup happens only after successful completion; no backup is retained.
 
-**RTK initialization** (performed by `deploy.sh` when RTK is missing):
+RTK is initialized after the replacement and its resulting regular plugin file
+is verified in the final live OpenCode directory. Sidecars are installed after
+RTK and have no cross-component rollback.
 
-```bash
-rtk init -g --opencode --auto-patch
-```
-
-The manual prerequisite is `brew install rtk-ai/tap/rtk` (Homebrew only when
-RTK is absent). Test with `git status` — RTK rewrites it transparently.
-
+### Code intelligence lifecycle
 ### Code intelligence lifecycle
 
 Deployment and review use native RTK/OpenCode inspection. No indexed
@@ -372,8 +368,8 @@ wt remove --force                                # explicit Worktrunk-owned remo
 # Repository validator (static, from repo root)
 python3 scripts/validate-ai-rules.py
 
-# Deployment ownership dry-run
-./deploy.sh --check
+# Show deployment usage without mutating anything
+./deploy.sh --help
 ```
 
 ---
@@ -383,7 +379,7 @@ python3 scripts/validate-ai-rules.py
 - [`graphs/dispatch-and-review.mmd`](./graphs/dispatch-and-review.mmd) — sizing
   → implementation → review → escalation flow.
 - [`graphs/workspace-lifecycle.mmd`](./graphs/workspace-lifecycle.mmd) —
-  Worktrunk → Orca → OpenCode ownership and the deploy/check/rollback loop.
+  Worktrunk → Orca → OpenCode ownership and the force-only deployment and transient transaction-recovery loop.
 
 Reviewed improvement proposals are recorded separately in
 [`review-and-improvements.md`](./review-and-improvements.md) (authority

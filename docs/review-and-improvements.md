@@ -118,7 +118,7 @@ history; open findings remain proposals.
 | F7 Lint autofix wording | **Resolved** | Converged to check-only-by-default across `custom-rules.md`, `orchestrator_append.md`, `fixer_append.md`. |
 | F8 `clonedeps`/Git wording | **Resolved** | `clonedeps` now applies the confirmation rule to clone/fetch/`ls-remote`. |
 | F9 Validator/preflight coverage | **Narrowed** | The remaining validation is the cross-artifact validator plus deploy read-only checks; neither provides direct runtime coverage. |
-| F10 Compatibility preflight | **Resolved** | Normal deploy skips compatibility probing; `--compatibility-check` remains the explicit gate. |
+| F10 Compatibility preflight | **Resolved (historical)** | Historical compatibility execution path removed; current deploy is force-only and static/runtime evidence is documented separately. |
 | F11 Skill provenance | **Partially resolved** | `skills-lock.json` now covers all 34 tracked skills; validator lock coverage still not enforced. |
 
 ## Findings
@@ -360,9 +360,9 @@ behavior.
 
 - [`scripts/validate-ai-rules.py`](../scripts/validate-ai-rules.py) — 3,215 lines
   with ~51 top-level methods; it is the primary static safety evidence.
-- [`deploy.sh --check`](../deploy.sh) and
-  [`deploy.sh --compatibility-check`](../deploy.sh) — read-only ownership,
-  compatibility, and deployment-precondition diagnostics.
+- [`scripts/validate-ai-rules.py`](../scripts/validate-ai-rules.py) and the
+  force-only deployment preflight — static ownership, payload, and deployment-
+  precondition diagnostics.
 
 **Impact** — The remaining checks provide static/configuration and deployment
 precondition evidence, but not direct runtime evidence or dedicated automated
@@ -373,32 +373,16 @@ silently weaken future deployment assurance.
 deploy-check logic, and extract shared helpers where needed so the checks remain
 testable and maintainable.
 
-### F10. Expensive compatibility preflight — **Medium** → **Resolved**
+### F10. Expensive compatibility preflight — **Medium** → **Resolved (historical)**
 
-**Status:** Resolved. Normal deployment no longer probes host/package
-compatibility; the explicit, fail-closed gate is `--compatibility-check`.
+**Historical context:** The former implementation exposed a separate compatibility
+preflight and `--compatibility-check` gate. That execution path was removed when
+deployment became force-only. The current script performs the required static
+payload, dependency, manifest, and secret validation, while runtime compatibility
+claims remain outside the deployment script and require independent evidence.
 
-**Evidence**
-
-- [`deploy.sh`](../deploy.sh) `preflight_compatibility` (currently around line
-  1005) spawns `opencode --version` and reads the OMO, `@opencode-ai/plugin`,
-  and `@opencode-ai/sdk` package metadata plus an optional evidence file.
-- [`deploy.sh`](../deploy.sh) `run_compatibility_check` (around line 1587) is the
-  only fail-closed caller that blocks when `COMPATIBILITY_STATUS` is not
-  `matched`.
-- [`deploy.sh`](../deploy.sh) `run_deploy` (around line 1654) intentionally does
-  **not** call `preflight_compatibility`; the comment at that site records that
-  normal deployment skips host/package probing.
-- [`README.md`](../README.md) documents the preflight and the
-  `--compatibility-check` gate.
-
-**Impact** — Every deploy/check pays a host-version spawn plus three package-metadata
-reads for what is only read-only diagnostics. It is heavier than the cheap static
-checks and blocks the opt-in compatibility-check path on an unknown/skewed status.
-
-**Proposed remediation** — Split the preflight: keep the cheap static checks on the
-normal deploy path and run the expensive version probing only under
-`--compatibility-check`/`--force`, or cache the package-metadata reads.
+**Resolution:** No active compatibility mode, compatibility status variable, or
+normal-vs-force deployment branch remains in `deploy.sh`.
 
 ### F11. Incomplete skill provenance — **Low** → **Partially resolved**
 
@@ -433,7 +417,7 @@ without implying they resolve the authority risks.
 | Track | Findings | Nature |
 | :--- | :--- | :--- |
 | **Safety / correctness** | F1 (MCP availability), F2 (agent authorities), F3 (Detective isolation), F4 (Claude alignment), F5 (model-routing authority), F6 (config precedence) | Authority and capability boundaries; changing these alters agent behavior or permissions and needs care + approval. |
-| **Speed / maintenance** | F7 (lint autofix wording), F8 (clonedeps/Git wording), F9 (validator/test consolidation), F10 (preflight splitting), F11 (provenance/locking) | Wording reconciliation, test/tooling hygiene, and performance; lower risk, mostly mechanical or additive. |
+| **Speed / maintenance** | F7 (lint autofix wording), F8 (clonedeps/Git wording), F9 (validator/test consolidation), F10 (historical preflight removal), F11 (provenance/locking) | Wording reconciliation, test/tooling hygiene, and performance; lower risk, mostly mechanical or additive. |
 
 ## Prioritized roadmap
 
@@ -472,7 +456,6 @@ does it need user approval, or is it out of scope for this documentation pass?
 | Lint autofix wording (F7) | Speed | **Yes** (docs/rules text only) | No | No | Yes |
 | `clonedeps`/Git wording (F8) | Speed | **Yes** (docs/rules text only) | No | No | Yes |
 | Validator/preflight test coverage (F9) | Speed | No — adds tests | No | No | Yes |
-| Split compatibility preflight (F10) | Speed | No — edits `deploy.sh` | No | No | Yes |
 | Extend skill provenance/locking (F11) | Speed | Partially (metadata) | No | No | Yes |
 | Produce this review document | — | **Yes** (this file) | No | No | **No — this pass** |
 

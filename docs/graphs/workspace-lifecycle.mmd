@@ -1,4 +1,4 @@
-%% Workspace and deployment lifecycle (current behavior)
+%% Workspace and force-only deployment lifecycle (current behavior)
 %% See docs/workflows.md; source: README.md, deploy.sh
 
 flowchart TD
@@ -14,33 +14,32 @@ flowchart TD
 
     START --> PROVISION["wt-orca start<br/>(provisions checkout via Worktrunk)"]
     PROVISION --> READY{"Worktree state?"}
-
-
     READY -->|"ready"| ATTACH["wt-orca attach<br/>(reports Orca terminal handle)"]
     READY -->|"failed"| RETRY["Fix setup error → rerun<br/>worktree-setup.sh + attach"]
     READY -->|"degraded"| DEGRADED["attach --allow-degraded<br/>only if fallback acceptable"]
     READY -->|"timeout"| TIMEOUT["status + allow more time / retry<br/>(worktree not removed)"]
     RETRY --> READY
     DEGRADED --> ATTACH
-    ATTACH --> DEPLOY["deploy.sh (in OpenCode)"]
+    ATTACH --> DEPLOY["deploy.sh (only deployment path)"]
 
-    subgraph DEPLOYLOOP["Deploy / check / rollback"]
+    subgraph DEPLOYLOOP["Force-only deployment"]
         direction TB
-        D1["Stage tracked config"]
+        D1["Stage, validate, secret-scan payload"]
         D2{"Validation pass?"}
-        D3["Install manifest + config<br/>atomically"]
-        D4["Rollback via transaction snapshot<br/>preserve recovery artifacts"]
-        D5["--check dry-run<br/>ownership + drift (no mutation)"]
-        D6["--compatibility-check<br/>read-only host/plugin evidence"]
+        D3["Write durable marker<br/>prepared"]
+        D4["Move live → .opencode.previous.$$<br/>marker: old_moved"]
+        D5["Move .opencode.deploy.$$ → live<br/>marker: committed"]
+        D6["Initialize RTK; verify regular plugin"]
+        D7["Install sidecars; remove marker + displaced path"]
+        RECOVER["Next run recovers pending marker/artifacts"]
+        D1 --> D2
+        D2 -->|yes| D3 --> D4 --> D5 --> D6 --> D7
+        D2 -->|no| STOP["Abort before replacement"]
+        RECOVER --> D1
     end
 
-    DEPLOY --> D1 --> D2
-    D2 -->|"yes"| D3
-    D2 -->|"no"| D4
-    D4 --> D1
-    D3 --> D5 --> D6
-
-    D6 --> DETACH["wt-orca stop<br/>(detach → delegate remove)"]
+    DEPLOY --> D1
+    D7 --> DETACH["wt-orca stop<br/>(detach → delegate remove)"]
     DETACH --> REMOVE["wt remove --force<br/>(Worktrunk-owned removal)"]
     REMOVE --> CLEANUP["blocking pre-remove hook<br/>Serena cleanup while path exists"]
     CLEANUP --> PRESERVE["remove runtime .serena state<br/>preserve tracked .serena/project.yml"]

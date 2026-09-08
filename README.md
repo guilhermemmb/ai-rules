@@ -18,18 +18,22 @@ Concise navigation into the `ai-rules` system documentation:
 ## Quick Start
 
 ```bash
-# Deploy configuration; deploy.sh refreshes the repository-recorded OMO package when needed
+# Force-replace the live OpenCode configuration from a validated staged payload
 ./deploy.sh
 
-# Reinstall the pinned OMO package and deploy, overriding ownership-manifest hash
-# drift in only opencode.json / opencode.jsonc. Deploy-only, no snapshot/rollback
-# backup — a later failure may require manual recovery (other safety checks stay strict)
+# Equivalent explicit form
 ./deploy.sh --force
 
-# Inside OpenCode
-ping all agents
+# Show usage; unknown flags (including --check and --compatibility-check) are
+# rejected before any deployment work begins.
+./deploy.sh --help
 ```
 
+`deploy.sh` is the only deployment path. It resolves the latest
+`oh-my-opencode-slim` release, validates and secret-scans a staged payload, and
+force-replaces the live OpenCode directory without merging unknown live files.
+
+### Reviewer concurrency
 ### Reviewer concurrency
 
 Review is an on-demand, orchestrator-managed pipeline. At a review boundary the
@@ -104,73 +108,31 @@ concurrency remains a separate reviewer-workflow setting.
 ### OpenCode deployment ownership
 
 `deploy.sh` writes `~/.config/opencode/.ai-rules.manifest.json` with the
-deployment owner, manifest version, timestamp, exact managed files/directories,
-and SHA-256 values for managed files. The manifest is installed atomically with
-the generated OpenCode configuration and is included in transaction snapshots
-and rollback.
+owner, manifest version, timestamp, managed paths, and SHA-256 values for the
+validated staged payload. The manifest is built and installed as part of the
+full replacement.
 
-On a first deployment without a manifest, only existing files whose paths and
-contents exactly match the staged Rulesync payload are adopted. Unknown agents,
-skills, commands, directories, and other OpenCode configuration are preserved.
-Later deployments remove only paths recorded in the previous manifest; managed
-directories are removed only when empty, then the current payload and manifest
-are installed. Malformed manifests, path traversal, absolute paths, symlinks,
-missing managed paths, and changed managed files fail safely before replacement.
+Every run stages and validates the complete payload, then installs it into
+`.opencode.deploy.$$`. Before moving the live directory, deploy writes a
+permission- and ownership-checked durable marker at
+`~/.config/opencode.transaction` using the existing marker format. The marker
+records `prepared`, `old_moved`, and `committed` phases and pairs the incoming
+path with `.opencode.previous.$$`.
 
-`./deploy.sh --check` validates ownership without changing live configuration.
-It also reports a differing higher-priority reviewer shadow skill at
-`~/.agents/skills/reviewer/SKILL.md` (or an equivalent reviewer entry). Shadow
-entries are never deleted automatically; reconcile or remove them manually.
-Rulesync sources in this repository remain the source of truth.
-
-`./deploy.sh --force` re-installs the pinned OMO package and additionally
-overrides an ownership-manifest hash mismatch in **only** the two mutable
-usage/config artifacts `opencode.json` and `opencode.jsonc`. Every other check
-— malformed or missing manifests, unsafe/absolute/escaping paths, symlinks,
-missing or non-regular managed files, changed non-exempt managed files, a staged
-payload whose managed files/directories do not match the prior manifest, unknown
--file collisions, pending/ambiguous transactions, reviewer shadows, and payload
-validation — remains strict and fail-closed.
-
-Force is a deploy-only operation: it is rejected when combined with `--check`
-or `--compatibility-check`. The narrow override is validated after the staged
-payload is built and the prior manifest is captured, and before any live
-mutation. Force mode intentionally creates **no** snapshot or rollback backup
-state: it does not run `snapshot_live_configuration`, write a transaction
-marker, or create a rollback directory, and it replaces the live configuration
-atomically without retaining a backup. If a later operation fails, force mode
-reports that automatic rollback is unavailable and that manual recovery may be
-required. Normal `./deploy.sh` retains its full snapshot/rollback behavior.
+An interrupted or failed replacement leaves the marker and recoverable paths in
+place. The next run validates and recovers that transaction before doing new
+work. After the complete deployment succeeds, both the marker and displaced
+path are removed; no backup is retained. Force replacement never merges
+unknown live files and has no cross-component rollback for sidecars.
 
 ### OpenCode compatibility and runtime evidence
 
-The deployment preflight reads and prints the installed `opencode --version`,
-the repository-recorded OMO package reference, and the installed OMO,
-`@opencode-ai/plugin`, and `@opencode-ai/sdk` package metadata. This is
-read-only diagnostics: deployment does not infer or assert a compatible host /
-plugin pair from version numbers, and this task does not install, downgrade, or
-upgrade packages. The OMO package's SDK dependency is reported as a range when
-it is not itself pinned.
-
-An optional, operator-supplied compatibility evidence file can be selected with
-`OPENCODE_COMPATIBILITY_EVIDENCE`. It must be a regular JSON file containing
-`opencode_version`, `omo_version`, `plugin_version`, and `sdk_version`. A
-mismatch is reported as version skew; missing evidence remains unverified.
-Neither static validation nor a version match is a runtime Healthy claim.
-The opt-in compatibility check runs `./deploy.sh --compatibility-check` before
-starting OpenCode and blocks when this status is unknown or skewed, so no
-runtime report can claim Healthy from an unverified package pair.
-
-After deployment, start a fresh OpenCode process before relying on generated
-configuration. The repository's remaining validation mechanisms provide static,
-configuration, compatibility, and deployment-precondition evidence; they do not
-prove background-task parentage, reconciliation, effective permissions, or the
-absence of forbidden reviewer tool execution. Those runtime conclusions remain
-unverified without independent runtime evidence. The deterministic review
-contract tests cover registry, packet, lane-result, and health-first verdict
-invariants; they do not replace runtime smoke. `deploy.sh --check` can report
-known RTK/live-manifest drift, which remains a limitation rather than proof of
-runtime or deployment parity.
+The deployment path performs static source, payload, dependency, manifest, and
+secret validation. It does not provide `--check` or
+`--compatibility-check` execution paths, and it makes no runtime Healthy claim.
+Start a fresh OpenCode process after deployment when runtime evidence is
+needed. The unpinned OMO package reference lets each deployment resolve the
+latest published release.
 
 ## Model Routing
 
@@ -286,9 +248,6 @@ Restart OpenCode after the plugin is installed.
 For **code discovery**, use explicit RTK subcommands: `rtk grep`, `rtk read`, `rtk find`. See the `code-exploration` rule for the full RTK/native routing protocol.
 
 ```bash
-# Check for missing RTK/plugin or deployment drift without installing or mutating
-./deploy.sh --check
-
 # Manual prerequisite when RTK is absent (deploy.sh uses this automatically)
 brew install rtk-ai/tap/rtk
 ```
@@ -460,12 +419,12 @@ Before deploying Context7 configuration, complete this secret-free checklist:
 
 1. Revoke the historical Context7 credential.
 2. Provision or update the `CONTEXT7_API_TOKEN` environment secret.
-3. Run `python3 scripts/validate-ai-rules.py` and `./deploy.sh --check`. The
-   latter is a dry-run and does not perform authentication.
+3. Run `python3 scripts/validate-ai-rules.py`. Deployment itself performs the
+   staged validation and secret scan before replacement.
 4. Perform an authorized Context7 MCP request using the provisioned environment
    token; the request must return successfully.
 5. Consider deployment unblocked only after all four prerequisites—revocation,
-   environment provisioning, validation/dry-run, and a successful auth probe—are
+   environment provisioning, validation, and a successful auth probe—are
    complete.
 
 The tracked MCP configuration uses `{env:CONTEXT7_API_TOKEN}` and must never
