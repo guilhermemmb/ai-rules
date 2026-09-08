@@ -77,16 +77,7 @@ flowchart TD
     ORCH --> NAVIGATOR[Navigator]
     ORCH --> DETECTIVE[Detective]
     ORCH --> SAGE[Sage]
-    ORCH --> REVIEWERCODE["Reviewer Code (Phase A)"]
-    ORCH --> REVIEWERTEST["Reviewer Test (Phase A, if tests/behavior)"]
-    ORCH --> REVIEWERERRORS["Reviewer Errors (Phase A, if errors)"]
-    ORCH --> REVIEWERTYPES["Reviewer Types (Phase A, if types)"]
-    ORCH --> REVIEWERSECURITY["Reviewer Security (Phase A, if security)"]
-    ORCH --> REVIEWERPERFORMANCE["Reviewer Performance (Phase A, if performance)"]
-    ORCH --> REVIEWERDATA["Reviewer Data Integrity (Phase A, if data)"]
-    ORCH --> REVIEWERACCESSIBILITY["Reviewer Accessibility (Phase A, if UI)"]
-    ORCH --> REVIEWERCOMMENTS["Reviewer Comments (Phase A, if docs)"]
-    ORCH --> REVIEWERSIMPLIFIER["Reviewer Simplifier (Phase B, once sequentially)"]
+    ORCH --> REVIEWER[Reviewer (fresh focus invocation)]
 ```
 
 OpenCode implementation scheduling is bounded separately from reviewer
@@ -100,25 +91,15 @@ does not expose dynamic per-task path ACLs, changed-path smoke evidence rejects
 unowned writes. Failed, timed-out, `NEEDS_CONTEXT`, `BLOCKED`, missing, or
 malformed results hold dependents and are surfaced.
 
-The OpenCode orchestrator delegates the complete review packet to
-the orchestrator-owned `review-pipeline`; it does not preload the review-pipeline skill in ordinary sessions.
-The orchestrator dispatches applicable concern lanes in independent background
-batches. After Phase A completes, reviewer-simplifier runs exactly once
-sequentially only when selected/applicable—when the normalized diff contains a
-non-empty executable/source/config diff and the aspect filter permits it—and
-receives the consolidated Phase A findings. The runtime setting
-`REVIEWER_MAX_PARALLEL` controls each concern batch; unset or invalid values
-default to `3`, values from `1` through `3` are used, and values above `3`
-are clamped to `3`. Any non-empty lane `errors` array makes Review Health
-Degraded/inconclusive.
-OpenCode review commands run through the orchestrator-owned `review-pipeline`, which returns one
-inline Markdown report containing telemetry, triggered/skipped lanes,
-batches/session IDs, timing, native RTK/OpenCode tools status/fallback, Review Health, verdict,
-prioritized findings, strengths, and recommended action. The ten `reviewer-*`
-agents are read-only leaf lanes; they do not load the review-pipeline skill or
-dispatch further tasks. Failed, timed-out,
-unavailable, malformed, or incomplete results remain lane errors, while valid
-findings from other lanes are retained without invented citations.
+The OpenCode orchestrator delegates the complete review packet to the
+orchestrator-owned `review-pipeline`; it does not preload the skill in ordinary
+sessions. It dispatches a fresh read-only `reviewer` invocation for each
+selected focus in independent batches of at most three, with a unique
+`review_invocation_id`. A run may select many focuses; there is no phase or
+simplifier dependency, and sessions are never revived for a new focus. Failed,
+timed-out, unavailable, malformed, or incomplete results make Review Health
+Degraded/inconclusive while valid findings are retained without invented
+citations.
 
 Review policy defaults are target-aware: current diff/task uses `auto`; entire
 branch, branch, and PR uses `full`; explicit tagged `auto`, `full`, or `aspects`
@@ -300,17 +281,8 @@ No code needed—YAML drives everything.
 - **navigator** — Browser automation via the agent-browser CLI; snapshots/refs, navigation, screenshots, forms, extraction
 - **detective** — Production diagnostics; Datadog (pup CLI), GCP logs (gcloud), root cause analysis (Sentry/Rootly/Notion reported unavailable)
 - **sage** — Domain knowledge; Gorgias metrics, table schemas, business rules (cortex)
-- **review-pipeline** — orchestrator-owned review protocol; defines target-aware policy, ten-lane scheduling, aggregation, and verdict
-- **reviewer-code** — Always-on general correctness and project-guideline review
-- **reviewer-test** — Behavioral test coverage (test files or uncovered production behavior)
-- **reviewer-errors** — Error, retry, fallback, and failure-propagation review
-- **reviewer-types** — Type, interface, class, schema, and invariant review
-- **reviewer-security** — Authentication, authorization, secrets, input safety, and security boundaries
-- **reviewer-performance** — Algorithms, queries, I/O, allocations, concurrency, and hot paths
-- **reviewer-data-integrity** — Persistence, transactions, migrations, idempotency, and state integrity
-- **reviewer-accessibility** — WCAG and UI accessibility review
-- **reviewer-comments** — Comment, documentation, example, and explanatory-text review
-- **reviewer-simplifier** — Post-Phase-A clarity and maintainability pass
+- **review-pipeline** — orchestrator-owned review protocol; defines target-aware policy, focus selection, aggregation, and verdict
+- **reviewer** — One fresh, read-only reviewer invocation per selected focus: code, tests, errors, types, security, performance, data-integrity, accessibility, comments, or simplify
 
 ### MCPs (Model Context Protocol)
 
@@ -320,7 +292,7 @@ No code needed—YAML drives everything.
   configuration, documentation, and edits
 - **github** — GitHub CLI integration (PRs, issues, checks)
 
-**oracle / explorer / detective / reviewer-* lanes:**
+**oracle / explorer / detective / reviewer:**
 
 - **RTK/native OpenCode tools** — Exact local inspection and source confirmation
 
@@ -332,7 +304,7 @@ No code needed—YAML drives everything.
 
 - Native-only in the current OMO configuration; no MCP is assigned
 
-**reviewer-* lanes:**
+**reviewer:**
 
 - Read-only specialist lanes; native OpenCode tools remain authoritative for
   exact local work

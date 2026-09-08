@@ -41,35 +41,8 @@
     "sage": {
       "color": "primary"
     },
-    "reviewer-code": {
+    "reviewer": {
       "color": "error"
-    },
-    "reviewer-comments": {
-      "color": "secondary"
-    },
-    "reviewer-test": {
-      "color": "success"
-    },
-    "reviewer-errors": {
-      "color": "error"
-    },
-    "reviewer-types": {
-      "color": "accent"
-    },
-    "reviewer-security": {
-      "color": "error"
-    },
-    "reviewer-performance": {
-      "color": "info"
-    },
-    "reviewer-data-integrity": {
-      "color": "warning"
-    },
-    "reviewer-simplifier": {
-      "color": "info"
-    },
-    "reviewer-accessibility": {
-      "color": "warning"
     }
   },
   "model": "bf-o/gpt-5.6-luna",

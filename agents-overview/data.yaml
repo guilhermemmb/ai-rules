@@ -18,16 +18,7 @@ nodes:
       - navigator
       - detective
       - sage
-      - reviewer-code
-      - reviewer-test
-      - reviewer-errors
-      - reviewer-types
-      - reviewer-security
-      - reviewer-performance
-      - reviewer-data-integrity
-      - reviewer-accessibility
-      - reviewer-comments
-      - reviewer-simplifier
+      - reviewer
     fixer_scheduler:
       max_concurrent_children: 3
       dispatch: "OpenCode-only: up to 3 independent @fixer children with background=true"
@@ -36,7 +27,7 @@ nodes:
       failure_policy: "NEEDS_CONTEXT, BLOCKED, timeout, failure, or malformed results hold dependents and are surfaced"
       ownership_policy: "Fixer Files are hard write allowlists; unowned changes fail closed"
     mcp_access: github
-    review_ownership: "OpenCode: orchestrator is the review manager; it loads review-pipeline at review boundaries, dispatches all ten registry lanes, reconciles sessions, aggregates findings, computes the verdict, and renders the report."
+    review_ownership: "OpenCode: orchestrator is the review manager; it loads review-pipeline at review boundaries, dispatches fresh reviewer invocations by focus, reconciles sessions, aggregates findings, computes the verdict, and renders the report."
     constraints:
       "Hard-enforced at tool/config level: no sentry/rootly MCP access (unavailable in Detective),
 
@@ -308,102 +299,17 @@ nodes:
       • Explain Gorgias business domain concepts
 
       "
-  - id: reviewer-code
-    label: reviewer-code
+  - id: reviewer
+    label: reviewer
     type: agent
-    role: CLAUDE.md Compliance & Bugs
-    color: "#f87171"
-    parent: orchestrator
-    model: GPT-5.6 Luna (medium)
-    mcp_access: ""
-    trigger: Phase A; always selected unless excluded by aspects policy
-  - id: reviewer-comments
-    label: reviewer-comments
-    type: agent
-    role: Comment Accuracy & Rot
-    color: "#94a3b8"
-    parent: orchestrator
-    model: DeepSeek V4 Flash (low)
-    mcp_access: ""
-    trigger: Phase A; comments/docs changes in diff
-  - id: reviewer-test
-    label: reviewer-test
-    type: agent
-    role: Test Coverage Analysis
-    color: "#34d399"
-    parent: orchestrator
-    model: GPT-5.6 Luna (medium)
-    mcp_access: ""
-    trigger: Phase A; test file changes or behavior changed without matching behavioral coverage
-  - id: reviewer-errors
-    label: reviewer-errors
-    type: agent
-    role: Silent Failure Hunting
-    color: "#f87171"
-    parent: orchestrator
-    model: GPT-5.6 Luna (medium)
-    mcp_access: ""
-    trigger: Phase A; error handling changes in diff
-  - id: reviewer-types
-    label: reviewer-types
-    type: agent
-    role: Type Design Analysis
-    color: "#a78bfa"
-    parent: orchestrator
-    model: GPT-5.6 Luna (medium)
-    mcp_access: ""
-    trigger: Phase A; new types/interfaces in diff
-  - id: reviewer-security
-    label: reviewer-security
-    type: agent
-    role: Security Boundary Audit
-    color: "#f87171"
-    parent: orchestrator
-    model: GPT-5.6 Terra (medium)
-    mcp_access: ""
-    trigger:
-      Phase A; auth, secrets, validation, injection, permissions, crypto, network,
-      dependency, or sensitive-data changes
-  - id: reviewer-performance
-    label: reviewer-performance
-    type: agent
-    role: Performance & Scalability Audit
-    color: "#38bdf8"
-    parent: orchestrator
-    model: GPT-5.6 Luna (medium)
-    mcp_access: ""
-    trigger:
-      Phase A; algorithm, loop, query, cache, concurrency, I/O, rendering,
-      allocation, hot-path, or large-data changes
-  - id: reviewer-data-integrity
-    label: reviewer-data-integrity
-    type: agent
-    role: Persistence & State Integrity Audit
+    role: Focused Read-Only Review
     color: "#f59e0b"
     parent: orchestrator
-    model: GPT-5.6 Terra (medium)
-    mcp_access: ""
-    trigger:
-      Phase A; persistence, migration, transaction, serialization, idempotency,
-      event, state, synchronization, or invariant changes
-  - id: reviewer-simplifier
-    label: reviewer-simplifier
-    type: agent
-    role: Code Clarity & Simplification
-    color: "#38bdf8"
-    parent: orchestrator
-    model: DeepSeek V4 Flash (low)
-    mcp_access: ""
-    trigger: Phase B; exactly once after Phase A for executable/source/config diff
-  - id: reviewer-accessibility
-    label: reviewer-accessibility
-    type: agent
-    role: WCAG 2.2 AA Audit
-    color: "#f59e0b"
-    parent: orchestrator
-    model: Gemini 3 Flash Preview (medium)
-    mcp_access: ""
-    trigger: Phase A; UI files changed or rendering behavior changed
+    model: GPT-5.6 Luna (medium)
+    mcp_access: serena, context7, gh_grep
+    trigger: Fresh read-only invocation for each selected review focus; at most 3 per batch
+    constraints: Untrusted evidence; native RTK/OpenCode reads authoritative; strict JSON; no writes
+    responsibilities: "• code, tests, errors, types, security, performance, data-integrity, accessibility, comments, and simplify focus catalog\n\n      • Echo review run and invocation correlation\n\n      • Findings require changed file, positive line, side, hunk, confidence, issue, and fix\n\n      "
   - id: context7-mcp
     label: context7
     type: mcp
@@ -660,8 +566,8 @@ nodes:
 
       • 7 built-in agents (council disabled)
 
-      • 13 OpenCode custom agents (Navigator, Detective, Sage + 10 reviewer-* lanes)
-      • orchestrator owns the on-demand review-pipeline and directly dispatches all ten lanes
+      • 4 OpenCode custom agents (Navigator, Detective, Sage, Reviewer)
+      • orchestrator owns the on-demand review-pipeline and dispatches fresh reviewer focuses
 
       • 4 SDD skills (brainstorming, writing-plans, executing-plans, reviewing-plans)
       + review-pipeline skill loaded only at review boundaries
@@ -754,35 +660,8 @@ links:
     target: sage
     label: dispatches
   - source: orchestrator
-    target: reviewer-code
-    label: Phase A (always unless excluded)
-  - source: orchestrator
-    target: reviewer-test
-    label: Phase A (if tests/behavior)
-  - source: orchestrator
-    target: reviewer-errors
-    label: Phase A (if errors)
-  - source: orchestrator
-    target: reviewer-types
-    label: Phase A (if types)
-  - source: orchestrator
-    target: reviewer-security
-    label: Phase A (if security)
-  - source: orchestrator
-    target: reviewer-performance
-    label: Phase A (if performance)
-  - source: orchestrator
-    target: reviewer-data-integrity
-    label: Phase A (if data integrity)
-  - source: orchestrator
-    target: reviewer-accessibility
-    label: Phase A (if UI)
-  - source: orchestrator
-    target: reviewer-comments
-    label: Phase A (if docs)
-  - source: orchestrator
-    target: reviewer-simplifier
-    label: Phase B (once, sequentially)
+    target: reviewer
+    label: fresh focus invocation (max 3 per batch)
   - source: sage
     target: cortex-mcp
     label: uses
@@ -890,16 +769,7 @@ models:
   navigator: bf/gemini/gemini-3-flash-preview
   detective: bf-o/gpt-5.6-luna
   sage: bf-o/gpt-5.6-terra
-  reviewer-code: bf-o/gpt-5.6-luna
-  reviewer-comments: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-  reviewer-test: bf-o/gpt-5.6-luna
-  reviewer-errors: bf-o/gpt-5.6-luna
-  reviewer-types: bf-o/gpt-5.6-luna
-  reviewer-security: bf-o/gpt-5.6-terra
-  reviewer-performance: bf-o/gpt-5.6-luna
-  reviewer-data-integrity: bf-o/gpt-5.6-terra
-  reviewer-simplifier: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
-  reviewer-accessibility: bf/gemini/gemini-3-flash-preview
+  reviewer: bf-o/gpt-5.6-luna
 model_names:
   bf/gemini/gemini-2.5-flash: Gemini 2.5 Flash
   bf/gemini/gemini-2.5-pro: Gemini 2.5 Pro
@@ -933,13 +803,4 @@ avatars:
   navigator: 🌐
   detective: 🔍
   sage: 🧠
-  reviewer-security: 🔒
-  reviewer-performance: ⚡
-  reviewer-data-integrity: 🛡️
-  reviewer-code: 💻
-  reviewer-comments: 💬
-  reviewer-test: 🧪
-  reviewer-errors: 🚨
-  reviewer-types: 🧩
-  reviewer-simplifier: ✨
-  reviewer-accessibility: ♿
+  reviewer: 🔎

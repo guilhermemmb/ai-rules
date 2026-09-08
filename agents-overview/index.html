@@ -657,17 +657,7 @@
     ORCH --> NAVIGATOR[Navigator]
     ORCH --> DETECTIVE[Detective]
     ORCH --> SAGE[Sage]
-    ORCH --> REVIEWER[Reviewer]
-    REVIEWER --> REVIEWERCODE["Reviewer Code"]
-    REVIEWER --> REVIEWERCOMMENTS["Reviewer Comments (if docs)"]
-    REVIEWER --> REVIEWERTEST["Reviewer Test (if tests)"]
-    REVIEWER --> REVIEWERERRORS["Reviewer Errors (if errors)"]
-    REVIEWER --> REVIEWERTYPES["Reviewer Types (if types)"]
-    REVIEWER --> REVIEWERSECURITY["Reviewer Security (if security-sensitive)"]
-    REVIEWER --> REVIEWERPERFORMANCE["Reviewer Performance (if performance-sensitive)"]
-    REVIEWER --> REVIEWERDATA["Reviewer Data Integrity (if data-sensitive)"]
-    REVIEWER --> REVIEWERACCESSIBILITY["Reviewer Accessibility (if UI files)"]
-    REVIEWER --> REVIEWERSIMPLIFIER["Reviewer Simplifier (conditional, sequential after Phase A for source/config changes)"]`;
+    ORCH --> REVIEWER["Reviewer (fresh focus invocation)"]`;
 
         const GRAPH_CONTAINER_ID = 'dispatch-graph-container';
         const GRAPH_FALLBACK_TEXT = 'Dispatch graph unavailable.';

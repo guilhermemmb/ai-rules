@@ -443,16 +443,7 @@ def main():
         "navigator": "🌐",
         "detective": "🔍",
         "sage": "🧠",
-        "reviewer-security": "🔒",
-        "reviewer-performance": "⚡",
-        "reviewer-data-integrity": "🛡️",
-        "reviewer-code": "💻",
-        "reviewer-comments": "💬",
-        "reviewer-test": "🧪",
-        "reviewer-errors": "🚨",
-        "reviewer-types": "🧩",
-        "reviewer-simplifier": "✨",
-        "reviewer-accessibility": "♿",
+        "reviewer": "🔎",
     }
 
     # 5. Validate the existing document and replace only generated sections.

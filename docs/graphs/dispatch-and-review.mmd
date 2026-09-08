@@ -1,0 +1,7 @@
+flowchart TD
+    ORCH[Orchestrator] --> NAV[Navigator]
+    ORCH --> ORACLE[Oracle]
+    ORCH --> REVIEWER[Reviewer]
+    REVIEWER --> FOCUSES[Selected focus catalog]
+    FOCUSES --> INVOCATIONS[Fresh invocations, max 3 per batch]
+    INVOCATIONS --> REPORT[Health-first review report]

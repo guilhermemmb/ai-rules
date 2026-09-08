@@ -37,25 +37,10 @@ SUPPORTED_MCP_TRANSPORTS = frozenset({"local", "http", "sse"})
 REVIEW_MANAGER = "orchestrator"
 REVIEW_PIPELINE_SKILL = "review-pipeline"
 REVIEW_PIPELINE_REGISTRY = ".rulesync/skills/review-pipeline/pipeline.json"
-REVIEWER_LANES: tuple[str, ...] = (
-    "reviewer-code",
-    "reviewer-test",
-    "reviewer-errors",
-    "reviewer-types",
-    "reviewer-security",
-    "reviewer-performance",
-    "reviewer-data-integrity",
-    "reviewer-accessibility",
-    "reviewer-comments",
-    "reviewer-simplifier",
-)
-REVIEWER_PHASE_A_LANES = REVIEWER_LANES[:-1]
+REVIEWER_LANES: tuple[str, ...] = ("reviewer",)
 REVIEWER_IDS = REVIEWER_LANES
-REVIEWER_ID_PATTERN = re.compile(r"\breviewer-[a-z0-9][a-z0-9-]*\b")
-STALE_COORDINATOR_ID = "reviewer-coordinator"
-STALE_REVIEWER_ALIAS = "reviewer"
 # Supplied by the user's OpenCode installation, not vendored into this repo.
-EXTERNAL_SKILL_REFERENCES = frozenset({"orca-cli"})
+EXTERNAL_SKILL_REFERENCES = frozenset()
 AGENT_CONTRACT_FIELDS = (
     "name",
     "description",
@@ -94,8 +79,7 @@ EXPECTED_MCP_ASSIGNMENTS = {
     "detective": (),
     "designer": ("figma-mcp",),
     "fixer": ("serena",),
-    "reviewer-code": ("serena",),
-    **{lane: () for lane in REVIEWER_LANES if lane != "reviewer-code"},
+    "reviewer": ("serena", "context7", "gh_grep"),
     "sage": ("cortex",),
     "navigator": (),
     "observer": (),
@@ -184,34 +168,6 @@ def _has_reviewer_contract_agent(text: str, lane: str) -> bool:
     """Return whether text contains the lane's JSON contract agent field."""
 
     return re.search(rf'"agent"\s*:\s*"{re.escape(lane)}"', text) is not None
-
-
-def _reviewer_shaped_ids(values: Iterable[Any]) -> list[str]:
-    """Extract reviewer-shaped IDs without treating them as approved lanes."""
-
-    return [
-        value
-        for value in values
-        if isinstance(value, str)
-        and REVIEWER_ID_PATTERN.fullmatch(value)
-    ]
-
-
-def _reviewer_candidates(values: Iterable[Any]) -> list[str]:
-    """Extract only values that the OpenCode orchestrator could target as reviewers."""
-
-    return [
-        value
-        for value in values
-        if isinstance(value, str)
-        and (value == "reviewer" or value.startswith("reviewer-"))
-    ]
-
-
-def _reviewer_shaped_references(text: str) -> list[str]:
-    """Extract every reviewer-shaped reference before registry filtering."""
-
-    return REVIEWER_ID_PATTERN.findall(text)
 
 
 @dataclass
@@ -896,8 +852,7 @@ class Validator:
         return agents, mcp_references, skill_references
 
     def validate_review_pipeline_registry(self) -> dict[str, Any] | None:
-        """Load the canonical registry and validate its complete contract."""
-
+        """Load and validate the version 2 focus-based review contract."""
         path = self.root / REVIEW_PIPELINE_REGISTRY
         artifact = self.load_json(path)
         if artifact is None:
@@ -905,90 +860,48 @@ class Validator:
         registry = self.require_mapping(artifact, "review-pipeline registry")
         if registry is None:
             return None
-
-        required_fields = (
-            "manager",
-            "skill",
-            "contract_version",
-            "max_phase_a_concurrency",
-            "aspect_ids",
-            "policy",
-            "phases",
-            "lanes",
-            "required_packet_fields",
-            "required_lane_result_fields",
-            "finding_fields",
-            "verdict_precedence",
-        )
-        for field in required_fields:
+        required = ("manager", "skill", "contract_version", "max_concurrency", "focus_ids", "policy", "focuses", "required_packet_fields", "required_result_fields", "finding_fields", "verdict_precedence")
+        for field in required:
             if field not in registry:
                 self.add_error(path, f"review-pipeline registry is missing {field!r}", key=field, text=artifact.text)
-
         if registry.get("manager") != REVIEW_MANAGER:
             self.add_error(path, "review-pipeline registry manager must be orchestrator", key="manager", text=artifact.text)
         if registry.get("skill") != REVIEW_PIPELINE_SKILL:
             self.add_error(path, "review-pipeline registry skill must be review-pipeline", key="skill", text=artifact.text)
-        if registry.get("contract_version") != 1:
-            self.add_error(path, "review-pipeline contract_version must be 1", key="contract_version", text=artifact.text)
-        concurrency = registry.get("max_phase_a_concurrency")
-        if not isinstance(concurrency, int) or isinstance(concurrency, bool) or not 1 <= concurrency <= FIXER_BATCH_MAX:
-            self.add_error(path, "review-pipeline max_phase_a_concurrency must be an integer from 1 to 3", key="max_phase_a_concurrency", text=artifact.text)
-
-        aspects = registry.get("aspect_ids")
-        if not isinstance(aspects, list) or not aspects or any(not isinstance(value, str) or not value for value in aspects):
-            self.add_error(path, "review-pipeline aspect_ids must be a non-empty string list", key="aspect_ids", text=artifact.text)
-        elif len(set(aspects)) != len(aspects):
-            self.add_error(path, "review-pipeline aspect_ids must be unique", key="aspect_ids", text=artifact.text)
-
-        phases = registry.get("phases")
-        lanes = registry.get("lanes")
-        if not isinstance(phases, dict):
-            self.add_error(path, "review-pipeline phases must be a mapping", key="phases", text=artifact.text)
-            phases = {}
-        if not isinstance(lanes, list):
-            self.add_error(path, "review-pipeline lanes must be a list", key="lanes", text=artifact.text)
-            lanes = []
-        aspect_names = set(aspects) if isinstance(aspects, list) else set()
-        if len(lanes) != len(REVIEWER_LANES):
-            self.add_error(path, f"review-pipeline registry must define exactly {len(REVIEWER_LANES)} lanes", key="lanes", text=artifact.text)
-
-        lane_ids: list[str] = []
-        expected_output_fields = ["agent", "summary", "critical", "important", "suggestions", "positive", "errors"]
-        for index, lane in enumerate(lanes):
-            if not isinstance(lane, dict):
-                self.add_error(path, f"review-pipeline lane {index} must be a mapping", key="lanes", text=artifact.text)
+        if registry.get("contract_version") != 2:
+            self.add_error(path, "review-pipeline contract_version must be 2", key="contract_version", text=artifact.text)
+        cap = registry.get("max_concurrency")
+        if not isinstance(cap, int) or isinstance(cap, bool) or not 1 <= cap <= FIXER_BATCH_MAX:
+            self.add_error(path, "review-pipeline max_concurrency must be an integer from 1 to 3", key="max_concurrency", text=artifact.text)
+        focus_ids = registry.get("focus_ids")
+        if not isinstance(focus_ids, list) or not focus_ids or any(not isinstance(value, str) or not value for value in focus_ids) or len(set(focus_ids)) != len(focus_ids):
+            self.add_error(path, "review-pipeline focus_ids must be unique non-empty strings", key="focus_ids", text=artifact.text)
+            focus_ids = []
+        focuses = registry.get("focuses")
+        if not isinstance(focuses, list):
+            self.add_error(path, "review-pipeline focuses must be a list", key="focuses", text=artifact.text)
+            focuses = []
+        focus_names = []
+        expected_fields = ["reviewer", "review_run_id", "review_invocation_id", "packet_digest", "contract_version", "focus", "summary", "critical", "important", "suggestions", "positive", "errors"]
+        for index, focus in enumerate(focuses):
+            if not isinstance(focus, dict):
+                self.add_error(path, f"review-pipeline focus {index} must be a mapping", key="focuses", text=artifact.text)
                 continue
-            lane_id = lane.get("id")
-            if isinstance(lane_id, str):
-                lane_ids.append(lane_id)
-            required_lane_fields = ("id", "aspect", "phase", "order", "trigger", "model_profile_key", "required_output_fields")
-            for field in required_lane_fields:
-                if field not in lane:
-                    self.add_error(path, f"review-pipeline lane {lane_id or index} is missing {field!r}", key="lanes", text=artifact.text)
-            if not isinstance(lane_id, str) or lane_id not in REVIEWER_LANES:
-                self.add_error(path, f"review-pipeline lane {lane_id or index} is not an approved reviewer lane", key="lanes", text=artifact.text)
-            if not isinstance(lane.get("aspect"), str) or lane.get("aspect") not in aspect_names:
-                self.add_error(path, f"review-pipeline lane {lane_id or index} has an invalid aspect", key="lanes", text=artifact.text)
-            if lane.get("phase") not in ("A", "B"):
-                self.add_error(path, f"review-pipeline lane {lane_id or index} has an invalid phase", key="lanes", text=artifact.text)
-            if not isinstance(lane.get("order"), int) or isinstance(lane.get("order"), bool):
-                self.add_error(path, f"review-pipeline lane {lane_id or index} order must be an integer", key="lanes", text=artifact.text)
-            if not isinstance(lane.get("trigger"), str) or not lane["trigger"].strip():
-                self.add_error(path, f"review-pipeline lane {lane_id or index} trigger must be non-empty", key="lanes", text=artifact.text)
-            if lane.get("model_profile_key") != lane_id:
-                self.add_error(path, f"review-pipeline lane {lane_id or index} model_profile_key must match its ID", key="lanes", text=artifact.text)
-            if lane.get("required_output_fields") != expected_output_fields:
-                self.add_error(path, f"review-pipeline lane {lane_id or index} required_output_fields must be {expected_output_fields!r}", key="lanes", text=artifact.text)
-
-        if tuple(lane_ids) != REVIEWER_LANES:
-            self.add_error(path, "review-pipeline lane IDs must match the canonical ten-lane order", key="lanes", text=artifact.text)
-        phase_a = phases.get("A")
-        phase_b = phases.get("B")
-        if phase_a != list(REVIEWER_PHASE_A_LANES) or phase_b != ["reviewer-simplifier"]:
-            self.add_error(path, "review-pipeline phases must match the canonical Phase A/B topology", key="phases", text=artifact.text)
-        if sorted(lane_ids) != sorted(lane_id for values in phases.values() if isinstance(values, list) for lane_id in values):
-            self.add_error(path, "review-pipeline phases must contain each lane exactly once", key="phases", text=artifact.text)
-
+            focus_id = focus.get("id")
+            if isinstance(focus_id, str):
+                focus_names.append(focus_id)
+            for field in ("id", "trigger", "focus_instruction", "required_output_fields", "target"):
+                if field not in focus:
+                    self.add_error(path, f"review-pipeline focus {focus_id or index} is missing {field!r}", key="focuses", text=artifact.text)
+            if focus.get("target") != "reviewer":
+                self.add_error(path, f"review-pipeline focus {focus_id or index} target must be reviewer", key="focuses", text=artifact.text)
+            if focus.get("required_output_fields") != expected_fields:
+                self.add_error(path, f"review-pipeline focus {focus_id or index} required_output_fields must be {expected_fields!r}", key="focuses", text=artifact.text)
+            for field in ("trigger", "focus_instruction"):
+                if not isinstance(focus.get(field), str) or not focus[field].strip():
+                    self.add_error(path, f"review-pipeline focus {focus_id or index} {field} must be non-empty", key="focuses", text=artifact.text)
+        if focus_names != focus_ids:
+            self.add_error(path, "review-pipeline focus IDs must match focus catalog order", key="focuses", text=artifact.text)
         policy = registry.get("policy")
         if not isinstance(policy, dict):
             self.add_error(path, "review-pipeline policy must be a mapping", key="policy", text=artifact.text)
@@ -998,17 +911,16 @@ class Validator:
                     self.add_error(path, f"review-pipeline policy.{field} must be a non-empty mapping", key="policy", text=artifact.text)
             if isinstance(policy.get("textual_aliases"), dict) and policy["textual_aliases"].get("all") != {"kind": "full"}:
                 self.add_error(path, "review-pipeline policy must normalize textual all to full", key="policy", text=artifact.text)
-
-        list_requirements = {
-            "required_packet_fields": {"target", "scope", "diff", "changed_paths", "diff_metadata", "implementer_report", "plan_context", "guidelines", "policy", "review_run_id", "packet_digest", "contract_version"},
-            "required_lane_result_fields": {"agent", "review_run_id", "phase", "summary", "critical", "important", "suggestions", "positive", "errors"},
-            "finding_fields": {"file", "line", "side", "hunk", "issue", "confidence", "fix", "source_lane"},
+        requirements = {
+            "required_packet_fields": {"target", "scope", "diff", "changed_paths", "diff_metadata", "implementer_report", "plan_context", "guidelines", "policy", "review_run_id", "review_invocation_id", "packet_digest", "contract_version"},
+            "required_result_fields": set(expected_fields),
+            "finding_fields": {"file", "line", "side", "hunk", "issue", "confidence", "fix", "source_focus", "source_invocation_id"},
             "verdict_precedence": {"inconclusive", "blocked", "changes-requested", "approved-with-suggestions", "approved"},
         }
-        for field, expected in list_requirements.items():
+        for field, expected in requirements.items():
             value = registry.get(field)
             if not isinstance(value, list) or set(value) != expected or len(value) != len(expected):
-                self.add_error(path, f"review-pipeline {field} must contain the complete canonical contract", key=field, text=artifact.text)
+                self.add_error(path, f"review-pipeline {field} must contain the complete v2 contract", key=field, text=artifact.text)
         return registry
 
     def validate_review_pipeline_payload(self, registry: dict[str, Any], staged_skill_path: Path | None = None) -> None:
@@ -1026,79 +938,23 @@ class Validator:
             self.add_error(registry_path, "staged review-pipeline skill is missing or not regular")
 
     def validate_opencode_reviewer_routing(self, artifact: Artifact) -> None:
-        """Enforce orchestrator-owned review routing and reject stale ownership."""
-
+        """Enforce orchestrator-owned routing to the single reviewer agent."""
         config = self.require_mapping(artifact, "oh-my-opencode-slim.json")
         if config is None:
             return
-
         presets = config.get("presets")
-        active_preset = config.get("preset", "bifrost")
-        if not isinstance(presets, dict) or not isinstance(active_preset, str):
-            return
-        active = presets.get(active_preset)
-        if not isinstance(active, dict):
-            return
-
-        manager = active.get(REVIEW_MANAGER)
+        active = presets.get(config.get("preset", "bifrost")) if isinstance(presets, dict) else None
+        manager = active.get(REVIEW_MANAGER) if isinstance(active, dict) else None
         if not isinstance(manager, dict):
-            self.add_error(
-                artifact.path,
-                f"presets.{active_preset}.{REVIEW_MANAGER} must be a mapping for review ownership",
-                key=REVIEW_MANAGER,
-                text=artifact.text,
-            )
-        else:
-            skills = manager.get("skills")
-            if not isinstance(skills, list):
-                self.add_error(
-                    artifact.path,
-                    f"presets.{active_preset}.{REVIEW_MANAGER}.skills must be a list",
-                    key="skills",
-                    text=artifact.text,
-                )
-            else:
-                forbidden = {REVIEW_PIPELINE_SKILL, STALE_COORDINATOR_ID}
-                stale = sorted(value for value in skills if value in forbidden)
-                if stale:
-                    self.add_error(
-                        artifact.path,
-                        f"presets.{active_preset}.{REVIEW_MANAGER}.skills must not preload review ownership skills: {', '.join(stale)}",
-                        key="skills",
-                        text=artifact.text,
-                    )
-
+            self.add_error(artifact.path, "active orchestrator preset is required for review ownership", key=REVIEW_MANAGER, text=artifact.text)
+        elif REVIEW_PIPELINE_SKILL in manager.get("skills", []):
+            self.add_error(artifact.path, "orchestrator must load review-pipeline only at review boundaries", key="skills", text=artifact.text)
         custom_agents = config.get("agents")
         if not isinstance(custom_agents, dict):
-            self.add_error(
-                artifact.path,
-                "agents must be a mapping for review ownership",
-                key="agents",
-                text=artifact.text,
-            )
+            self.add_error(artifact.path, "agents must be a mapping for review ownership", key="agents", text=artifact.text)
             return
-
-        for stale_id in (STALE_COORDINATOR_ID, STALE_REVIEWER_ALIAS):
-            if stale_id in custom_agents:
-                self.add_error(
-                    artifact.path,
-                    f"agents.{stale_id} is a stale review ownership entry; use orchestrator and the ten reviewer lanes",
-                    key=stale_id,
-                    text=artifact.text,
-                )
-
-        reviewer_candidates = sorted(
-            agent_id
-            for agent_id in custom_agents
-            if isinstance(agent_id, str) and agent_id.startswith("reviewer")
-        )
-        self.compare_sets(
-            artifact.path,
-            "runtime reviewer agent IDs",
-            REVIEWER_LANES,
-            reviewer_candidates,
-            text=artifact.text,
-        )
+        candidates = {agent_id for agent_id in custom_agents if isinstance(agent_id, str) and agent_id.startswith("reviewer")}
+        self.compare_sets(artifact.path, "runtime reviewer agent IDs", {"reviewer"}, candidates, text=artifact.text)
 
     def validate_agent_output_permissions(self, artifact: Artifact) -> None:
         """Require narrow, host-portable paths for agent-generated output."""
@@ -1262,7 +1118,7 @@ class Validator:
             return
         if field == "mcps":
             for index, value in enumerate(values):
-                if value == CONTEXT7_MCP and agent_id != CONTEXT7_AGENT:
+                if value == CONTEXT7_MCP and agent_id not in {CONTEXT7_AGENT, "reviewer"}:
                     self.add_error(
                         artifact.path,
                         f"{location}[{index}] may grant context7 only to agent {CONTEXT7_AGENT!r}",
@@ -2103,15 +1959,6 @@ class Validator:
                     text=artifact.text,
                 )
 
-        for stale_id in (STALE_COORDINATOR_ID, STALE_REVIEWER_ALIAS):
-            if stale_id in nodes_by_id:
-                self.add_error(
-                    artifact.path,
-                    f"overview contains stale review ownership node {stale_id!r}",
-                    key=stale_id,
-                    text=artifact.text,
-                )
-
         overview_lane_nodes = {
             node_id
             for node_id, node in nodes_by_id.items()
@@ -2160,20 +2007,17 @@ class Validator:
         *,
         text: str,
     ) -> list[str]:
-        """Validate the orchestrator's direct dispatch of all registry lanes."""
+        """Validate direct dispatch of the single reviewer identity."""
 
-        reviewer_dispatches = [value for value in values if isinstance(value, str) and value.startswith("reviewer-")]
-        for index, value in enumerate(values):
-            if isinstance(value, str) and value.startswith("reviewer") and REVIEWER_ID_PATTERN.fullmatch(value) is None:
-                self.add_error(path, f"{location}[{index}] contains malformed reviewer ID {value!r}", key="dispatches", text=text)
+        reviewer_dispatches = [value for value in values if value == "reviewer"]
         unknown = sorted(set(reviewer_dispatches) - set(REVIEWER_LANES))
         if unknown:
             self.add_error(path, f"{location} contains unknown reviewer IDs: {', '.join(unknown)}", key="dispatches", text=text)
         duplicates = sorted({value for value in reviewer_dispatches if reviewer_dispatches.count(value) > 1})
         if duplicates:
             self.add_error(path, f"{location} contains duplicate reviewer IDs: {', '.join(duplicates)}", key="dispatches", text=text)
-        if reviewer_dispatches != list(REVIEWER_LANES):
-            self.add_error(path, f"{location} must contain the ten registry lanes in canonical order", key="dispatches", text=text)
+        if reviewer_dispatches != ["reviewer"]:
+            self.add_error(path, f"{location} must contain reviewer", key="dispatches", text=text)
         return reviewer_dispatches
 
     def validate_reviewer_lane_dispatches(
@@ -2186,7 +2030,7 @@ class Validator:
     ) -> list[str]:
         """Validate a leaf lane cannot dispatch additional review work."""
 
-        reviewer_dispatches = [value for value in values if isinstance(value, str) and value.startswith("reviewer-")]
+        reviewer_dispatches = [value for value in values if value == "reviewer"]
         if reviewer_dispatches:
             self.add_error(path, f"{location} must not dispatch reviewer lanes", key="dispatches", text=text)
         return reviewer_dispatches
@@ -2197,18 +2041,8 @@ class Validator:
         contract_texts: list[tuple[Path, str]],
     ) -> None:
         for path, text in contract_texts:
-            unknown_references = {
-                reference
-                for reference in re.findall(r"\breviewer-[a-z0-9][a-z0-9-]*\b", text)
-                if reference not in REVIEWER_LANES
-            }
-            for stale in sorted(unknown_references):
-                self.add_error(
-                    path,
-                    f"reviewer contract references unknown lane {stale!r}",
-                    key=stale,
-                    text=text,
-                )
+            if "reviewer" not in text.casefold():
+                self.add_error(path, "reviewer contract must identify reviewer", key="reviewer", text=text)
 
     def validate_reviewer_runtime_health(
         self, contract_texts: list[tuple[Path, str]]
@@ -2279,12 +2113,16 @@ class Validator:
             "contract_version": "contract_version",
         }
         report_markers = {
+            "summary": "summary",
             "review_run_id": "review_run_id",
             "packet_digest": "packet_digest",
             "contract_version": "contract_version",
             "side": "side",
             "hunk": "hunk",
-            "source_lane": "source_lane",
+            "review_invocation_id": "review_invocation_id",
+            "focus": "focus",
+            "source_focus": "source_focus",
+            "source_invocation_id": "source_invocation_id",
             "inconclusive": "inconclusive",
             "approved": "approved",
         }
@@ -2297,7 +2135,7 @@ class Validator:
             ]
             missing_report = [
                 field
-                for field in (*registry.get("required_lane_result_fields", []), *registry.get("finding_fields", []), *registry.get("verdict_precedence", []))
+                for field in (*registry.get("required_result_fields", []), *registry.get("finding_fields", []), *registry.get("verdict_precedence", []))
                 if str(report_markers.get(field) or field).casefold() not in normalized
             ]
             if missing_packet:
@@ -2759,14 +2597,6 @@ class Validator:
         if not isinstance(skills, dict):
             self.add_error(lock_path, "skills-lock.json.skills must be a mapping", key="skills", text=lock_artifact.text)
             return
-        for stale_id in (STALE_COORDINATOR_ID, STALE_REVIEWER_ALIAS):
-            if stale_id in skills:
-                self.add_error(
-                    lock_path,
-                    f"skills-lock.json contains stale review ownership skill {stale_id!r}",
-                    key=stale_id,
-                    text=lock_artifact.text,
-                )
         entry = skills.get(REVIEW_PIPELINE_SKILL)
         if not isinstance(entry, dict):
             self.add_error(lock_path, f"skills-lock.json.skills.{REVIEW_PIPELINE_SKILL} must be a mapping", key=REVIEW_PIPELINE_SKILL, text=lock_artifact.text)
@@ -2836,93 +2666,45 @@ class Validator:
         location: str,
         text: str,
     ) -> None:
-        """Require reviewer references to use the explicit shared registry."""
+        """Reject references to removed reviewer lane identities."""
 
-        reviewer_shaped_references = _reviewer_shaped_references(text)
-        unknown_reviewer_references = sorted(
-            set(reviewer_shaped_references) - set(REVIEWER_IDS)
-        )
-        for reviewer_id in unknown_reviewer_references:
-            self.add_error(
-                artifact.path,
-                f"{location} references unknown reviewer ID {reviewer_id!r}",
-                key=location.split(".")[-1],
-                text=artifact.text,
-            )
-        references = {
-            reviewer_id
-            for reviewer_id in REVIEWER_IDS
-            if re.search(rf"\b{re.escape(reviewer_id)}\b", text)
-        }
-        self.compare_sets(
-            artifact.path,
-            f"{location} registry references",
-            REVIEWER_IDS,
-            references,
-            text=artifact.text,
-        )
+        if "reviewer" not in text.casefold():
+            self.add_error(artifact.path, f"{location} must identify reviewer", key=location.split(".")[-1], text=artifact.text)
 
-    def validate_reviewer_lane_prompts(
-        self,
-        artifact: Artifact,
-        reviewer_lanes: list[str],
-        agents: dict[str, dict[str, Any]],
-    ) -> None:
-        """Require every leaf prompt to carry the shared registry contract."""
-
-        for lane in reviewer_lanes:
-            specification = agents.get(lane)
-            if specification is None:
-                continue
-            prompt = specification.get("prompt")
-            if not isinstance(prompt, str):
-                self.add_error(artifact.path, f"agents.{lane}.prompt must be a string", key=lane, text=artifact.text)
-                continue
-            if not _has_reviewer_contract_agent(prompt, lane):
-                self.add_error(artifact.path, f"agents.{lane}.prompt must identify the exact lane contract agent", key=lane, text=artifact.text)
-            missing_fields = [field for field in REVIEWER_CONTRACT_FIELDS if field not in prompt]
-            missing_correlation = [field for field in ("review_run_id", "packet_digest", "contract_version", "phase") if field not in prompt]
-            if missing_fields or missing_correlation or "read-only" not in prompt.casefold():
-                missing = [*missing_fields, *missing_correlation]
-                if "read-only" not in prompt.casefold():
-                    missing.append("read-only")
-                self.add_error(artifact.path, f"agents.{lane}.prompt is missing review-pipeline contract fields: {', '.join(missing)}", key=lane, text=artifact.text)
-
-    def validate_reviewer_task_permissions(
-        self,
-        artifact: Artifact,
-        reviewer_lanes: list[str],
-        agents: dict[str, dict[str, Any]],
-    ) -> None:
-        """Enforce deny-by-default permissions for all ten leaf lanes."""
-
-        expected_permission = {
-            "*": "deny",
-            "read": REVIEWER_READ_PERMISSION,
-            **{tool: "allow" for tool in REVIEWER_NATIVE_READ_TOOLS[1:]},
-            **{tool: "deny" for tool in REVIEWER_DENIED_TOOLS if tool != "read"},
-        }
-        for lane in reviewer_lanes:
-            specification = agents.get(lane)
-            if not isinstance(specification, dict):
-                self.add_error(artifact.path, f"agents.{lane} is required for reviewer task permissions", key=lane, text=artifact.text)
-                continue
-            permission = specification.get("permission")
-            if not isinstance(permission, dict):
-                self.add_error(artifact.path, f"agents.{lane}.permission must be a mapping", key=lane, text=artifact.text)
-                continue
-            if permission != expected_permission:
-                missing = sorted(set(expected_permission) - set(permission))
-                extra = sorted(set(permission) - set(expected_permission))
-                if missing:
-                    self.add_error(artifact.path, f"agents.{lane}.permission is missing required entries: {', '.join(missing)}", key=lane, text=artifact.text)
-                if extra:
-                    self.add_error(artifact.path, f"agents.{lane}.permission has unexpected entries: {', '.join(extra)}", key=lane, text=artifact.text)
-                for permission_name in sorted(set(expected_permission) & set(permission)):
-                    if permission[permission_name] != expected_permission[permission_name]:
-                        self.add_error(artifact.path, f"agents.{lane}.permission.{permission_name} does not match the least-privilege reviewer contract", key=lane, text=artifact.text)
+    def validate_reviewer_lane_prompts(self, artifact: Artifact, reviewer_lanes: list[str], agents: dict[str, dict[str, Any]]) -> None:
+        """Require the single reviewer identity and source protocol append."""
+        specification = agents.get("reviewer")
+        if not isinstance(specification, dict):
+            self.add_error(artifact.path, "agents.reviewer is required", key="reviewer", text=artifact.text)
+        else:
+            if specification.get("model") != "bf-o/gpt-5.6-luna":
+                self.add_error(artifact.path, "agents.reviewer.model must be bf-o/gpt-5.6-luna", key="reviewer", text=artifact.text)
+            if specification.get("variant") != "medium":
+                self.add_error(artifact.path, "agents.reviewer.variant must be medium", key="reviewer", text=artifact.text)
+            if specification.get("mcps") != ["serena", "context7", "gh_grep"]:
+                self.add_error(artifact.path, "agents.reviewer.mcps must be exactly serena, context7, gh_grep", key="reviewer", text=artifact.text)
             if specification.get("skills") != []:
-                self.add_error(artifact.path, f"agents.{lane}.skills must be exactly []", key=lane, text=artifact.text)
+                self.add_error(artifact.path, "agents.reviewer.skills must be exactly []", key="reviewer", text=artifact.text)
+        append_path = self.root / ".rulesync" / "oh-my-opencode-slim" / "reviewer_append.md"
+        append_text = self.read_text(append_path)
+        if append_text is not None:
+            required = ("fresh", "focus_instruction", "read-only", "untrusted", "review_run_id", "review_invocation_id", "packet_digest", "contract_version", "reviewer", "focus", "native RTK/OpenCode", "JSON")
+            missing = [marker for marker in required if marker.casefold() not in append_text.casefold()]
+            if missing:
+                self.add_error(append_path, "reviewer append is missing protocol markers: " + ", ".join(missing), key="reviewer", text=append_text)
+
+    def validate_reviewer_task_permissions(self, artifact: Artifact, reviewer_lanes: list[str], agents: dict[str, dict[str, Any]]) -> None:
+        """Enforce deny-by-default read-only permissions for reviewer."""
+        expected_permission = {"*": "deny", "read": REVIEWER_READ_PERMISSION, **{tool: "allow" for tool in REVIEWER_NATIVE_READ_TOOLS[1:]}, **{tool: "deny" for tool in REVIEWER_DENIED_TOOLS if tool != "read"}}
+        specification = agents.get("reviewer")
+        if not isinstance(specification, dict):
+            self.add_error(artifact.path, "agents.reviewer is required for reviewer task permissions", key="reviewer", text=artifact.text)
+            return
+        permission = specification.get("permission")
+        if permission != expected_permission:
+            self.add_error(artifact.path, "agents.reviewer.permission does not match strict read-only reviewer contract", key="permission", text=artifact.text)
+        if specification.get("skills") != []:
+            self.add_error(artifact.path, "agents.reviewer.skills must be exactly []", key="skills", text=artifact.text)
 
     @staticmethod
     def _body_after_frontmatter(text: str) -> str:
@@ -2955,12 +2737,12 @@ class Validator:
             REVIEW_PIPELINE_SKILL,
             "pipeline.json",
             "review manager",
-            "exact ten",
+            "fresh",
+            "review_invocation_id",
         )
         forbidden_body_markers = (
             "claudecode",
             "claude code",
-            STALE_COORDINATOR_ID,
             "sole coordinator",
         )
         for path in paths:
@@ -2990,21 +2772,6 @@ class Validator:
 
             body = self._body_after_frontmatter(artifact.text)
             normalized_body = body.casefold()
-            reviewer_references = set(
-                re.findall(r"\breviewer-[a-z0-9][a-z0-9-]*\b", body)
-            )
-            unknown_reviewer_references = sorted(
-                reviewer_id
-                for reviewer_id in reviewer_references
-                if reviewer_id not in REVIEWER_IDS
-            )
-            for reviewer_id in unknown_reviewer_references:
-                self.add_error(
-                    path,
-                    f"review-pr command body references unknown reviewer ID {reviewer_id!r}; use the explicit reviewer registry",
-                    key=reviewer_id,
-                    text=artifact.text,
-                )
             for marker in required_body_markers:
                 if marker.casefold() not in normalized_body:
                     self.add_error(
