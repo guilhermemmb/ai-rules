@@ -5,260 +5,122 @@ description: Use only for approved L/XL SDD implementation plans — dispatches 
 
 # Executing Plans
 
-Use this only after the orchestrator has shown the scale
-`T-shirt size: XS | S | M | L | XL`, selected L/XL with a rationale, and
-received the required plan approval.
+Use this only for an orchestrator-selected, approved L/XL implementation plan.
+Follow `.rulesync/rules/planning-state.md` for canonical paths, approval gates,
+ledger authority, and resume behavior. XS and S/M use their own workflows.
 
-Execute an approved L/XL SDD implementation plan by dispatching a fresh agent
-per task, batching only proven-independent tasks, reviewing every completed
-task, and continuing through all tasks without stopping.
+The scheduler runs a fresh fixer per task, batches only proven-independent work,
+reviews every completed task, reconciles state, and continues until completion
+or a genuine blocker.
 
-**Why subagents:** You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused. Never let them inherit your session's history — construct exactly what they need.
+Before any transition or dispatch, verify the plan exists and its persisted
+metadata says `status: approved` with non-null approver, approval timestamp, and
+approval evidence. An L/XL plan also requires its source spec to be approved.
+Pending or malformed metadata blocks execution and is surfaced to the user.
 
-**Core principle:** Fresh agent per task + review for every completed task = high quality, fast iteration
+## Scheduler lifecycle
 
-**Continuous execution:** Do not pause to check in between tasks. Execute all tasks from the plan without stopping. Only stop when: BLOCKED (cannot resolve), ambiguity that genuinely prevents progress, or all tasks complete.
+### 1. Setup
 
-## When to Use
+1. Read the approved plan once and note its Global Constraints.
+2. Create or resume the authoritative ledger at the canonical planning root as
+   `ledger-<plan-basename>.md`:
 
-- The work is classified as L or XL and has an approved SDD implementation plan
-  from `writing-plans`
-- Tasks have enough declared metadata for conservative dependency classification;
-  independent tasks may batch, while dependent or ambiguous tasks serialize
-- You are staying in the current session
-
-Do not use this skill for XS, S, or M work. S/M combined plans follow their own
-workflow: after one approval, dispatch implementation to `@fixer` for code or
-`@designer` for UI/UX as appropriate, then load `review-pipeline` at the review boundary and run one automatic
-post-implementation review owned by the orchestrator. S/M does not use this
-skill, its ledger, or its per-task review loop, and does not ask for a review
-choice.
-
-## Agent Dispatch Rules
-
-Assign the right agent per task type:
-
-| Task type | Agent | Model tier |
-|---|---|---|
-| Code implementation (1-2 files, full spec in plan) | @fixer | xhigh |
-| Code implementation (multi-file, integration) | @fixer | xhigh |
-| UI/UX implementation (components, styling, layouts) | @designer | medium |
-| Architecture decisions, complex debugging | @oracle | high |
-| Task review (after each task) | orchestrator-managed review-pipeline | high |
-| Escalation (stuck after 3 fix rounds) | @oracle | high |
-
-## The Process
-
-### Setup
-
-1. Read the plan file once. Note its Global Constraints.
-2. Create a ledger file at `~/developer/planning-docs/{{repository-name}}/.planning/ledger-<plan-basename>.md`:
-   ```
+   ```text
    # Execution Ledger — plan: <plan file path>
    ```
-3. Create a todo per task from the plan.
-4. Scan for pre-flight conflicts: tasks that contradict each other or the plan's Global Constraints. Batched to the user before execution.
 
-### Dependency Classification and Batch Lifecycle
+3. Create a todo per task and record the current task states.
+4. Scan for pre-flight conflicts. Do not dispatch conflicting or ambiguous
+   tasks; surface them before execution.
 
-Before dispatching any task, classify pending tasks from the plan's declared
-`Files` and `Interfaces/Constraints`. Be conservative: do not infer
-independence from names, presumed implementation details, or conversational
-context.
+### 2. Classify and batch
 
-1. **Write-set check:** Treat every path a task may create, modify, delete, or
-   generate as its write set. If two tasks have overlapping write sets, they
-   serialize. A missing, incomplete, or unclear `Files` declaration is
-   ambiguous and stays serial.
-2. **Interface check:** Treat named artifacts, symbols, files, APIs, schemas,
-   migrations, and other outputs in `Interfaces/Constraints` as produced or
-   consumed interfaces. If one task consumes an interface produced or changed
-   by another, the producer runs first and the consumer waits. If the
-   producer/consumer relationship or output identity is ambiguous, serialize
-   rather than guess.
-3. **Shared-state and ordering check:** Explicit task ordering, migrations,
-   shared resources, data-integrity work, or any plan-declared sequencing is a
-   dependency even when file sets are disjoint. These tasks serialize.
-4. **Batch eligibility:** Only tasks with disjoint, complete write sets and no
-   declared or inferred interface, shared-state, or ordering dependency may be
-   placed in the same batch. A task with missing or ambiguous metadata is not
-   eligible for batching.
+Classify pending tasks conservatively from their declared `Files` and
+`Interfaces/Constraints`:
 
-The implementation scheduler has a hard maximum of **3** concurrent `@fixer`
-children. Each eligible child is dispatched with `background=true`; this
-implementation cap is independent of the reviewer workflow's own concurrency
-cap. Every path a task may create, modify, delete, or generate—including
-lockfiles, generated output, reports, and planning artifacts—is part of its
-write set. Unowned, shared, generated, lockfile, or ambiguous paths serialize.
+1. Overlapping, missing, incomplete, or unclear write sets serialize.
+2. A producer/consumer interface dependency runs the producer first.
+3. Explicit ordering, migrations, shared resources, and data-integrity work
+   serialize even when files are disjoint.
+4. Only tasks with complete disjoint write sets and no interface, shared-state,
+   or ordering dependency may share a batch.
 
-### Validation event history
+The scheduler may dispatch at most **3** concurrent `@fixer` children with
+`background=true`. Every created, modified, deleted, generated, lockfile,
+report, and planning-artifact path belongs to a task write set. Unowned,
+shared, generated, or ambiguous paths serialize.
 
-The dispatch contract requires each fixer to announce every requested or
-attempted typecheck, unit-test, integration-test, build, and lint command before
-execution as `Validation started — <category>: <exact command>`, then emit
-exactly one terminal event: passed (exit status and duration when observed),
-failed (exit status and filtered errors only), skipped (explicit reason), or
-unavailable (exact inability/error). Not-run, skipped, and unavailable are
-never passed. Preserve the ordered events verbatim by task and category in the
-implementer report and during reconciliation; do not reduce them to a boolean
-or final summary. A category not requested by the task is recorded as skipped
-with reason `not requested`, without an invented command or start event.
+### 3. Dispatch, review, and reconcile
 
-Run the following lifecycle for each batch:
+`.rulesync/skills/fixer/SKILL.md` is authoritative for validation commands,
+start/terminal events, and report schema. Preserve each fixer's ordered events
+verbatim in the task report and ledger; never reduce them to a boolean or
+convert a non-passed outcome into passed.
 
-1. Select only ready tasks whose required predecessor tasks have completed
-   implementation and passed review. Dispatch one fresh specialist per ready
-   task in the batch, with explicit non-overlapping ownership, never exceeding
-   three fixer children.
-2. Wait for an implementer report from every dispatched task in the same batch
-   before advancing it. Record the exact returned session ID and job ID and
-   reconcile each result with `task_result` using that session ID—not an alias,
-   title, ordering assumption, or partial report.
-3. Send every `DONE` task to exactly one `orchestrator-managed review-pipeline` with its
-   complete review packet. The orchestrator loads `review-pipeline` at this boundary and owns
-   specialist-lane selection, batching, Phase B, aggregation, and the verdict;
-   it directly dispatches only the registry-declared lanes.
-4. Reconcile all implementer reports and reviews, including changed paths
-   against each task's hard `Files` allowlist. Preserve each validation
-   start/terminal event in order and distinguish `passed` from `skipped`,
-   `unavailable`, `failed`, and not-run. A task is releasable only after a
-   passing per-child review, or an explicit @oracle adjudication that resolves
-   the review under the existing escalation rules; validation not-run or not
-   passed must remain visible and cannot be converted to passed. Append each
-   completed task to the ledger with its validation evidence.
-5. Start a dependent batch only after every required predecessor is releasable.
-   Unrelated ready tasks may continue through their own batches while a
-   predecessor is blocked or being fixed; dependent tasks remain queued.
+For each ready batch:
 
-If an overlap or dependency is discovered after dispatch, stop the affected
-lanes from making further conflicting writes, preserve completed unrelated
-work, and escalate the ownership conflict for re-sequencing. Never guess which
-lane owns a shared file or output. A `NEEDS_CONTEXT`, `BLOCKED`, timeout, failed,
-missing, or malformed implementer or review result holds its dependents and is
-surfaced explicitly; unrelated tasks may finish. Apply the existing
-re-dispatch, fix-round, and @oracle escalation rules before releasing
-dependents.
+1. Select only tasks whose predecessors are releasable. Dispatch one fresh
+   `@fixer` per task with non-overlapping ownership and the full task handoff.
+2. Wait for every report in the batch. Reconcile each result using its exact
+   returned session ID and job ID, not an alias or ordering assumption.
+3. Send every `DONE` task to exactly one orchestrator-managed
+   `review-pipeline`, preserving the existing per-task review boundary.
+4. Reconcile reports, review verdicts, and changed paths against each task's
+   hard `Files` allowlist. A task is releasable only after a passing review or
+   explicit @oracle adjudication. Append validation evidence and task state to
+   the ledger.
+5. Release dependent tasks only after all required predecessors are releasable;
+   unrelated ready tasks may continue.
 
-### Per-Task Loop
-
-The loop below runs for each task within the dependency-aware batch lifecycle;
-it does not authorize dispatching tasks that have not been classified as
-independent and ready.
-
-**1. Dispatch the implementer**
-
-Choose agent: @fixer for code, @designer for UI. Select the model tier from the agent dispatch rules table above.
+### Dispatch contract
 
 The dispatch payload includes, verbatim:
-- `Goal` — one-sentence task objective
-- `Files` — exact file paths with create/modify/test annotations
-- `Steps` — ordered checkbox steps from the plan (exclude any commit steps; see below)
-- `Interfaces/Constraints` — what the task consumes, produces, and must preserve
-- `Validation` — exact commands and expected results
-- `Lint Autofix` — (optional) if lint autofix is desired, list permitted files. Omit to default to check-only.
-- `Stop Conditions` — conditions requiring early escalation (if present in plan)
-- Global Constraints — copied from the plan header
-- Selected model tier — Pro (xhigh) or Flash
-- A report file path: `~/developer/planning-docs/{{repository-name}}/.planning/reports/<plan-basename>-task-<N>.md`
 
-Also require the fixer to include, for each validation category, the exact
-command, validation-start event, one terminal event, status, observed exit
-status when available, and reason/error whenever status is not passed.
+- `Goal` — one sentence describing the task.
+- `Files` — exact paths with Create/Modify/Test annotations.
+- `Steps` — ordered checkbox steps from the plan, excluding commit steps.
+- `Interfaces/Constraints` — consumed, produced, and preserved interfaces.
+- `Validation` — exact commands and expected results.
+- `Lint Autofix` — only when explicitly permitted, with a file allowlist.
+- `Stop Conditions` — conditions requiring escalation.
+- Global Constraints and selected model tier.
+- Canonical report path:
+  `reports/<plan-basename>-task-<N>.md`.
 
-Also instruct the agent not to run `git commit` or `git push` autonomously.
+Dispatch code tasks to `@fixer` and UI tasks to `@designer`; use the model tier
+specified by the plan. Tell every implementer not to commit or push. If a task
+is ambiguous, exceeds its `Files` allowlist, or combines unrelated concerns,
+hold it for refinement or escalation rather than guessing.
 
-**Commit steps in plan tasks:** If the plan includes `- [ ] Commit` steps, exclude them from the dispatched `Steps` and append: `Commits are orchestrator-owned — do not commit.` The fixer implements and reports; only the orchestrator stages and commits after review.
+If a review requests changes, allow at most three fix rounds: re-dispatch the
+same implementer for rounds 1–2, a fresh fixer for round 3, then escalate to
+@oracle if still unresolved. Re-review every fix.
 
-**Pre-dispatch scope check:** If a task combines unrelated concerns, spans files not in the `Files` list, or has missing acceptance criteria, split or refine it before dispatch. Do not hand ambiguous tasks to the implementer.
+## Final handoff
 
-**2. Handle the report**
+After all tasks are complete, commit the ledger file and ask the user whether to
+run the final comprehensive review. This is a mandatory user-choice gate. Do
+not load `reviewing-plans` or `review-pipeline` unless the user explicitly
+chooses to run the review.
 
-The implementer returns a structured status report:
+- If the user opts in, load `reviewing-plans`; the orchestrator then loads
+  `review-pipeline` at the boundary with the plan, ledger, full branch diff,
+  target descriptor, review mode, and Global Constraints.
+- If the user skips it, append `Handoff: final review skipped by user` to the
+  ledger and state that the merge-readiness review was not run.
 
-```
-<status>DONE|NEEDS_CONTEXT|BLOCKED</status>
-<summary>Brief summary</summary>
-<changes>- file1.ts: Changed X to Y</changes>
-<verification>
-- Validation events: per-category command, start event, exactly one terminal event, status, exit status when observed, and reason/error when not passed
-- Tests: [terminal status for unit-test/integration-test; never call skipped/not-run/unavailable passed]
-- Lint: [terminal status and check-only/autofix mode]
-- Overall validation: [passed only when every required category passed; otherwise not passed with statuses]
-</verification>
-<concerns>- [any concerns or "none"]</concerns>
-```
+## Ledger format
 
-| Status | Action |
-|---|---|
-| DONE | All implementation steps completed and every required validation category has exactly one terminal outcome; proceed to review with non-passed outcomes still visible |
-| NEEDS_CONTEXT | Handoff missing required fields or ambiguous acceptance criteria — provide missing info, re-dispatch. Do not adjust the task scope; the plan is authoritative. |
-| BLOCKED | Plan or environment prevents completion (stale paths, missing dependencies, incompatible constraints). Assess: fixable context gap → provide context and re-dispatch. Task exceeds fixer bounds → escalate to @oracle. Plan wrong → report to user. |
-
-**3. Review the task**
-
-Dispatch exactly one `orchestrator-managed review-pipeline` with:
-- The task brief file path
-- The implementer's report file path
-- The diff (git log --oneline + git diff from task start to HEAD)
-- Global Constraints
-- The target descriptor and review mode/aspect request (task/current diff
-  defaults to `auto`; branch or PR defaults to `full`, unless explicitly
-  overridden)
-- Changed paths and any available native RTK/OpenCode evidence for exact/local confirmation
-
-The orchestrator's review-pipeline report returns spec compliance, task quality, issues by severity, lane statuses, Review Health, and the deterministic verdict. The orchestrator selects and dispatches the registry lanes, including the conditional sequential simplifier pass, then aggregates findings and owns the report.
-
-**4. Fix loop (if review ❌)**
-
-Max 3 fix rounds per task:
-
-- Rounds 1-2: re-dispatch to the same implementer with findings
-- Round 3: dispatch fresh @fixer/@designer with findings + "A prior implementer attempted this. Read the report for what was tried."
-- After round 3: if still failing, escalate to @oracle: "This task has failed 3 fix rounds. Review findings and determine if the plan needs adjustment or if this can be deferred."
-
-**5. Complete the task**
-
-After clean review — or an explicit @oracle adjudication that resolves the
-review — append to ledger:
-```
-Task <N>: complete (commits <base>..<head>, review clean)
-```
-Check the todo and continue only with the current batch's remaining tasks or a
-newly eligible batch. Do not start a dependent batch until its required
-predecessors are complete and releasable.
-
-### Handoff to Review
-
-After all tasks complete, commit the ledger file and ask the user whether to run the final comprehensive review. This is a mandatory user-choice gate. Do not load skill `reviewing-plans` or `review-pipeline` unless the user explicitly chooses to run the review.
-
-- If the user opts in, load skill `reviewing-plans`; the orchestrator then loads
-  `review-pipeline` at the boundary and dispatches the registry-declared lanes
-  with the plan file, ledger, full branch diff, target descriptor, review mode,
-  and Global Constraints.
-- If the user skips it, append `Handoff: final review skipped by user` to the ledger and state that the merge-readiness review was not run.
-
-## Ledger Format
-
-```
-# Execution Ledger — plan: ~/developer/planning-docs/{{repository-name}}/.planning/plans/2026-07-29-feature.md
+```text
+# Execution Ledger — plan: canonical planning `plans/2026-07-29-feature.md`
 
 Task 1: complete (commits a1b2c3d..d4e5f6a, review clean)
-Task 2: fix round 1/3 (2 addressed, 0 open — missing validation, magic number; commits d4e5f6a..b7c8d9e)
+Task 2: fix round 1/3 (2 addressed, 0 open, review pending)
 Task 2: complete (commits d4e5f6a..b7c8d9e, review clean)
-Task 3: complete (commits b7c8d9e..e0f1a2b, review clean, 1 parked — cache key naming deferred)
-...
-Handoff: reviewing-plans dispatched after user opt-in
-# Or, when the user skips the optional final review:
+Task 3: queued (blocked by Task 2)
 Handoff: final review skipped by user
 ```
 
-The ledger survives context compaction. After compaction, trust the ledger and `git log` over memory.
-
-## Red Flags
-
-| Thought | Reality |
-|---------|---------|
-| "I'll fix it myself" | Controller fixes skip review and pollute context. Re-dispatch the implementer. |
-| "The fix was small, skip review" | Unreviewed fixes are how regressions land. Every fix gets reviewed. |
-| "One more round will converge" | After 3 rounds, the failure is structural. Escalate to @oracle. |
-| "I'll just run all tasks myself" | Fresh agents per task = better focus, less context pollution. |
+The ledger survives context compaction. On resume, trust the approved plan,
+ledger, reports, and git evidence over conversation memory.

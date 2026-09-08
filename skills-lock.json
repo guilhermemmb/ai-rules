@@ -11,7 +11,7 @@
       "sourceType": "local",
       "provenance": "unknown",
       "skillPath": ".rulesync/skills/brainstorming/SKILL.md",
-      "computedHash": "ec5bd25b92c01a55f11af29917fd9ba35380bd849172eb8c799891907a6517cb"
+      "computedHash": "9c94dcc09a4bd3d14d9f5790ff59cb520b2ca1b84e6bccef4644230f1357416e"
     },
     "clonedeps": {
       "sourceType": "local",
@@ -97,7 +97,7 @@
       "sourceType": "local",
       "provenance": "unknown",
       "skillPath": ".rulesync/skills/executing-plans/SKILL.md",
-      "computedHash": "bdee088b7a62b1b00afac0b92c2065abb35520845550c3408f4bd1fcb43b21a5"
+      "computedHash": "3e202d3241310bd532967fd62a72d0534ac3bb6b3c19ef2b059aa67716320617"
     },
     "figma-code-connect": {
       "sourceType": "local",
@@ -153,12 +153,6 @@
       "skillPath": ".rulesync/skills/oh-my-opencode-slim/SKILL.md",
       "computedHash": "d6c83f7bec18efbbd3fee43e18e0ec563d127afb1350f0a070a3e942969fafcf"
     },
-    "orca-orchestration": {
-      "sourceType": "local",
-      "provenance": "unknown",
-      "skillPath": ".rulesync/skills/orca-orchestration/SKILL.md",
-      "computedHash": "2886b20710631ebe66d98e93f780e01f1a9215d758462131871f168f905aaf86"
-    },
     "project-context": {
       "sourceType": "local",
       "provenance": "unknown",
@@ -211,7 +205,7 @@
       "sourceType": "local",
       "provenance": "unknown",
       "skillPath": ".rulesync/skills/writing-plans/SKILL.md",
-      "computedHash": "77a86fd1491aed797e50c33eed7090844bac961066081d0b4f2402e67ff4b7f0"
+      "computedHash": "c17bdb2679ef7faf0cd0b76bb452f7598a17ba14c5e72de97412d321dc8624c9"
     }
   }
 }
