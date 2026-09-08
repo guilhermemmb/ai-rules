@@ -10,8 +10,6 @@ skills:
     dd-apm,
     dd-logs,
     dd-symdb,
-    traces,
-    logs,
   ]
 ---
 

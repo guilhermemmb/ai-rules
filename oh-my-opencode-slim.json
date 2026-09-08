@@ -15,7 +15,6 @@
           "deepwork",
           "executing-plans",
           "oh-my-opencode-slim",
-          "project-context",
           "reflect",
           "reviewing-plans",
           "verification-planning",
@@ -107,9 +106,7 @@
         "dd-pup",
         "dd-apm",
         "dd-logs",
-        "dd-symdb",
-        "traces",
-        "logs"
+        "dd-symdb"
       ],
       "permission": {
         "*": "deny",
