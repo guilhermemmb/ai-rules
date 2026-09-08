@@ -1,3 +1,6 @@
+---
+description: Canonical planning and execution state contract
+---
 # Planning State
 
 This is the single contract for planning and execution state. The orchestrator
