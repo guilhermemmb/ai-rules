@@ -129,15 +129,15 @@ while the `.ignore` allowlist keeps them readable to OpenCode.
 `.gitignore`:
 
 ```gitignore
-# BEGIN oh-my-opencode-slim clonedeps
+# BEGIN opencode-clonedeps
 .slim/clonedeps/repos/
-# END oh-my-opencode-slim clonedeps
+# END opencode-clonedeps
 ```
 
 `.ignore`:
 
 ```ignore
-# BEGIN oh-my-opencode-slim clonedeps
+# BEGIN opencode-clonedeps
 !.slim/
 !.slim/clonedeps.json
 !.slim/clonedeps/
@@ -145,7 +145,7 @@ while the `.ignore` allowlist keeps them readable to OpenCode.
 !.slim/clonedeps/repos/**
 .slim/clonedeps/repos/**/.git/
 .slim/clonedeps/repos/**/.git/**
-# END oh-my-opencode-slim clonedeps
+# END opencode-clonedeps
 ```
 
 ### Step 5: Clone Sources Manually
@@ -192,7 +192,7 @@ Write `.slim/clonedeps.json` so future agents know what exists:
 ```json
 {
   "version": "1.0.0",
-  "updatedAt": "2026-05-12T00:00:00.000Z",
+  "updatedAt": "<ISO_TIMESTAMP>",
   "dependencies": [
     {
       "name": "@opencode-ai/plugin",

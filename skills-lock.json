@@ -5,7 +5,7 @@
       "source": "vercel-labs/agent-browser",
       "sourceType": "github",
       "skillPath": ".rulesync/skills/agent-browser/SKILL.md",
-      "computedHash": "243eeaa5e9a42bb12d94d6af29a51b2c956546a16b1862282db1e5bd27315f8a"
+      "computedHash": "43c46c1f583772fe694d6993f93c790504554b56af092c880dc58bfee2885232"
     },
     "brainstorming": {
       "sourceType": "local",
@@ -17,13 +17,13 @@
       "sourceType": "local",
       "provenance": "unknown",
       "skillPath": ".rulesync/skills/clonedeps/SKILL.md",
-      "computedHash": "fc4e9d99f3d30a28c59d30733103d32123b1362e4707a65ca032ee59aeb02c90"
+      "computedHash": "15dae87516674235c24de208693822189c896c52bd15ef160f2246d0f4ac9bc2"
     },
     "codemap": {
       "sourceType": "local",
       "provenance": "unknown",
       "skillPath": ".rulesync/skills/codemap/SKILL.md",
-      "computedHash": "3befad8d7c35ec7d33de663588b5b1a394179d79ca3bd8ec8c029597f5853e0c"
+      "computedHash": "c2e8c1e297ebafbc8f02c749344cd370f84dcba5a4809ee2c86b02f0df40ab24"
     },
     "cortex": {
       "sourceType": "local",
@@ -152,12 +152,6 @@
       "provenance": "unknown",
       "skillPath": ".rulesync/skills/oh-my-opencode-slim/SKILL.md",
       "computedHash": "d6c83f7bec18efbbd3fee43e18e0ec563d127afb1350f0a070a3e942969fafcf"
-    },
-    "project-context": {
-      "sourceType": "local",
-      "provenance": "unknown",
-      "skillPath": ".rulesync/skills/project-context/SKILL.md",
-      "computedHash": "a9cabb8e6c858550c8d6f8ba9f78480ef4e6aa0fe839809614cecb341050254f"
     },
     "reflect": {
       "sourceType": "local",
