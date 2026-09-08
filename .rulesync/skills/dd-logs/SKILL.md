@@ -19,7 +19,8 @@ Search, process, and archive logs with cost awareness.
 Datadog Pup (dd-pup/pup) should already be installed:
 
 ```bash
-cargo install --git https://github.com/DataDog/pup
+brew tap datadog-labs/pack
+brew install pup
 ```
 
 ## Quick Start
@@ -41,6 +42,11 @@ pup logs search --query="service:api status:error" --from="1h" --limit 100
 pup logs search --query="@http.status_code:>=500" --from="1h"
 ```
 
+Use relative ranges such as `1h`, `30m`, or `2d`; add `--to="now"` when an
+explicit end time is useful. Unix timestamps and ISO timestamps are also
+accepted. Start with the narrowest practical range and add `--limit` for large
+result sets.
+
 ### Search Syntax
 
 | Query                      | Meaning          |
@@ -51,6 +57,10 @@ pup logs search --query="@http.status_code:>=500" --from="1h"
 | `@http.status_code:>=400`  | Numeric range    |
 | `service:api AND env:prod` | Boolean          |
 | `@message:*timeout*`       | Wildcard         |
+
+Useful filters include `env:production`, `host:server-01`,
+`@error.type:TimeoutError`, and escaped resource names such as
+`resource:GET\ /api/users`. Combine clauses with `AND`, `OR`, and `NOT`.
 
 ## Pipelines
 
@@ -110,7 +120,7 @@ pup obs-pipelines create --file pipeline.json
 
 ```bash
 # Find noisiest log sources
-pup logs search --query="*" --from="1h" | jq 'group_by(.service) | map({service: .[0].service, count: length}) | sort_by(-.count)[:10]'
+pup logs aggregate --query="*" --compute="count" --group-by="service" --from="1h"
 ```
 
 | Exclude       | Query                                       |
@@ -164,19 +174,26 @@ pup logs metrics list
 }
 ```
 
-### Never Log
+### Sensitive Data Handling
 
-```python
-# In your app - sanitize before sending
-import re
+Avoid emitting credentials, payment data, or unnecessary personal data. Prefer
+Datadog scrubbing and remappers at ingestion, and be cautious when displaying
+raw log payloads.
 
-def sanitize_log(message: str) -> str:
-    # Remove credit cards
-    message = re.sub(r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b', '[REDACTED]', message)
-    # Remove SSNs
-    message = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[REDACTED]', message)
-    return message
+## Read-Only Investigation Guidance
+
+For production investigations, use `pup --agent --ro` and aggregate before
+fetching large result sets:
+
+```bash
+pup --agent --ro logs search --query="service:api status:error" --from 1h
+pup --agent --ro logs aggregate --query="service:api" --compute=count --from 1h
 ```
+
+Present search results with timestamp, status, service, and message. If a query
+returns no results, verify the service, environment, time range, and index
+filters before broadening it. For invalid syntax or rate limits, report the
+error and narrow or delay the next request rather than retrying blindly.
 
 ## Troubleshooting
 

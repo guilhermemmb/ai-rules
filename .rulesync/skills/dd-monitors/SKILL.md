@@ -17,9 +17,12 @@ Create, manage, and maintain monitors for alerting.
 
 ## Prerequisites
 
-This requires the pup binary in your path.
+Install the pup binary with Homebrew:
 
-`pup` - `cargo install --git https://github.com/DataDog/pup`
+```bash
+brew tap datadog-labs/pack
+brew install pup
+```
 
 ## Quick Start
 
@@ -126,25 +129,11 @@ Threshold: {{threshold}}
 """
 ```
 
-## ⚠️ NEVER Delete Monitors Directly
+## Safe Deletion
 
-Use safe deletion workflow (same as dashboards):
-
-```python
-def safe_mark_monitor_for_deletion(monitor_id: str, client) -> bool:
-    """Mark monitor instead of deleting."""
-    monitor = client.get_monitor(monitor_id)
-    name = monitor.get("name", "")
-
-    if "[MARKED FOR DELETION]" in name:
-        print(f"Already marked: {name}")
-        return False
-
-    new_name = f"[MARKED FOR DELETION] {name}"
-    client.update_monitor(monitor_id, {"name": new_name})
-    print(f"✓ Marked: {new_name}")
-    return True
-```
+Do not delete monitors directly. First add a `deprecated:true` tag with an
+update such as `pup monitors update <monitor-id> --file monitor.json`, verify
+that it is no longer needed, and only then delete it with explicit confirmation.
 
 ## Monitor Types
 
@@ -162,10 +151,10 @@ def safe_mark_monitor_for_deletion(monitor_id: str, client) -> bool:
 
 ```bash
 # Find monitors without owners
-pup monitors list | jq '.[] | select(.tags | contains(["team:"]) | not) | {id, name}'
+pup monitors list | jq '.[] | select((any(.tags[]?; startswith("team:"))) | not) | {id, name}'
 
-# Find noisy monitors (high alert count)
-pup monitors list | jq 'sort_by(.overall_state_modified) | .[:10] | .[] | {id, name, status: .overall_state}'
+# Find monitors with recent state changes
+pup monitors list | jq 'sort_by(.overall_state_modified) | reverse | .[:10] | .[] | {id, name, status: .overall_state}'
 ```
 
 ## Downtime vs Muting

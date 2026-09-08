@@ -48,8 +48,8 @@ lighter-weight, faster, and return exactly the data you need.
 2. **Verify the service** using `pup debugger context <service>` to list
    environments with active instances. If multiple environments exist, **ask the
    user** which one to target before proceeding.
-3. **Find a method** using the `dd-symdb` skill
-   (`pup symdb search --view probe-locations`)
+3. **Find a method** using the `dd-symdb` skill. That skill owns Symbol
+   Database query syntax and probe-location discovery.
 4. **Place a probe** with capture expressions for the values you need
 5. **Watch** events with `--fields` for compact output
 6. **Delete** the probe when done
@@ -146,7 +146,7 @@ pup debugger probes create \
 | `--service`        | Service name (required)                                                                                                         | —                        |
 | `--env`            | Environment (required)                                                                                                          | —                        |
 | `--probe-location` | `TYPE:METHOD` or `TYPE:METHOD(args)` (required). The signature form disambiguates overloaded methods.                           | —                        |
-| `--language`       | `java`, `python`, `dotnet`, `go`                                                                                                | Auto-detected from symdb |
+| `--language`       | `java`, `python`, `dotnet`                                                                                                      | Auto-detected from symdb |
 | `--capture EXPR`   | Capture expression (repeatable). Use dot notation for fields, brackets for indexing.                                            | None                     |
 | `--capture`        | Without value: enable full snapshot (capture everything).                                                                       | No snapshot              |
 | `--template`       | Log message template with `{variable}` placeholders. Can combine with `--capture`.                                              | Auto-generated           |
@@ -332,7 +332,7 @@ pup debugger probes watch <ID> --limit 1 \
 | No events appearing      | Check `--from` (default is `now`); probe may need time to instrument               |
 | Instrumentation errors   | Check stderr output from watch for status errors                                   |
 | Auth error               | Run `pup auth login` or set `DD_API_KEY` + `DD_APP_KEY` + `DD_SITE`                |
-| Wrong method signature   | Use the `dd-symdb` skill to find exact `TYPE:METHOD` or `TYPE:METHOD(args)` values |
+| Wrong method signature   | Use the `dd-symdb` skill to find the exact probe location                         |
 
 ## References
 

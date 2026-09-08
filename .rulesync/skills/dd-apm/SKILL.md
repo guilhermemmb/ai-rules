@@ -95,6 +95,12 @@ pup traces search --query="service:api-gateway @duration:>1000000000" --from="1h
 pup traces search --query="service:api @http.url:/api/users" --from="1h"
 ```
 
+Trace queries support service, resource, environment, version, span attribute,
+wildcard, and Boolean filters. Resource names containing spaces can be escaped,
+for example `resource:GET\ /api/users`. Use relative ranges such as `1h`, `30m`,
+or `2d`; Unix timestamps and ISO timestamps are also accepted. Start with the
+narrowest practical range and use `--limit` for broad searches.
+
 ### Aggregate Traces
 
 ```bash
@@ -207,6 +213,18 @@ pup apm service-library-config get --service-name my-service --mixed
 > runtime. These may differ from values in the Service Catalog, which aggregates
 > data from multiple sources (APM spans, USM, infrastructure tags, manual
 > definitions).
+
+## Trace Investigation Guidance
+
+When investigating performance, inspect the full trace around an error or slow
+resource and compare service, resource, and span timing. A trace is the complete
+request path; a span is one operation within it. If no traces are returned,
+check instrumentation, `DD_TRACE_ENABLED`, `DD_SERVICE`, propagation headers,
+the selected environment, and the time range before broadening the query.
+
+Rate-limit or query-syntax errors should be reported directly; narrow the query
+or wait before retrying. For production investigations, use
+`pup --agent --ro`.
 
 ## Troubleshooting
 
