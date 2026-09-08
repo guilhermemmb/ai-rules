@@ -13,8 +13,10 @@ defaults, output fields, and the concurrency cap.
 
 ## Topology and trust
 
-The review manager is the orchestrator. Every reviewer returns a summary. The
-final response is one inline Markdown report.
+The review manager is the orchestrator. Every reviewer returns a concise
+`summary` and a materially more detailed prompt-required `report` object. The
+final response is one inline Markdown report and must preserve and surface the
+detailed reviewer reports rather than reducing them to summaries.
 
 The topology is `orchestrator --fresh task--> reviewer`. The orchestrator
 selects any number of catalog focuses for one run. Every selected focus is a
@@ -60,11 +62,18 @@ revive or directly fallback.
 
 Each result is strict JSON and echoes `reviewer`, `review_run_id`,
 `review_invocation_id`, `packet_digest`, `contract_version`, and `focus`.
-Require the registry result fields and exact correlation. Every finding in all
-severity arrays must contain a changed file, positive numeric line, changed
-`side`, non-empty diff `hunk`, issue, integer confidence 0–100, and fix.
-Normalize attribution to `source_focus` and `source_invocation_id`; discard
-malformed findings while preserving valid findings and health errors.
+Require the registry result fields and exact correlation. The prompt-required
+`report` contains `scope`, `approach`, `assessment`, `checks_performed`,
+`limitations`, `unknowns`, and detailed `findings`; preserve it verbatim during
+reconciliation, including when its arrays are empty. Legacy validation remains
+tolerant of an absent optional `report` so existing correlation/evidence
+consumers are not broken, but a reviewer response without it does not satisfy
+the reviewer prompt. Every finding in all severity arrays must contain a
+changed file, positive numeric line, changed `side`, non-empty diff `hunk`,
+issue, integer confidence 0–100, fix, and detailed evidence basis, reasoning,
+impact, and remediation. Normalize attribution to `source_focus` and
+`source_invocation_id`; discard malformed findings while preserving valid
+findings, detailed reports, and health errors.
 
 ## Health, verdict, and evidence
 
@@ -81,8 +90,11 @@ The final inline Markdown report identifies `Review manager: orchestrator`,
 target, scope, paths, packet/diff metadata, policy, focus batches and exact
 session IDs, triggered/skipped focuses, per-reviewer status, native evidence,
 effective permissions, write-isolation honesty, Review Health, verdict,
-deduplicated findings with focus/invocation attribution, strengths, and
-recommended action.
+deduplicated findings with focus/invocation attribution, each reviewer's
+scope/approach, evidence-based assessment, checks, limitations, unknowns, and
+detailed finding narratives, strengths, and recommended action. Do not drop
+the `report` while deduplicating findings; retain the original report under
+its exact reviewer/focus/invocation attribution.
 
 ## Validation evidence
 

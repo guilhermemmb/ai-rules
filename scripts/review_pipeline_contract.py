@@ -11,6 +11,7 @@ from typing import Any
 DEFAULT_REGISTRY_PATH = Path(__file__).parents[1] / ".rulesync/skills/review-pipeline/pipeline.json"
 _REQUIRED_REGISTRY_FIELDS = ("manager", "skill", "contract_version", "max_concurrency", "focus_ids", "policy", "focuses", "required_packet_fields", "required_result_fields", "finding_fields", "verdict_precedence")
 _RESULT_ARRAY_FIELDS = ("critical", "important", "suggestions")
+_REPORT_FIELDS = ("scope", "approach", "assessment", "checks_performed", "limitations", "unknowns", "findings")
 _INTEGER = re.compile(r"^[+-]?\d+$")
 
 
@@ -213,6 +214,45 @@ def _finding_evidence(finding: dict[str, Any]) -> tuple[Any, Any]:
     return finding.get("side"), finding.get("hunk")
 
 
+def _validate_detailed_report(report: Any, changed_paths: list[str]) -> list[str]:
+    """Validate the backward-compatible, prompt-required detailed extension."""
+    if not isinstance(report, dict):
+        return ["report must be an object"]
+    errors: list[str] = []
+    for field in _REPORT_FIELDS:
+        if field not in report:
+            errors.append(f"report missing field: {field}")
+    for field in ("scope", "approach", "assessment"):
+        if field in report and (not isinstance(report[field], str) or not report[field].strip()):
+            errors.append(f"report field must be a non-empty string: {field}")
+    for field in ("checks_performed", "limitations", "unknowns"):
+        value = report.get(field)
+        if not isinstance(value, list) or any(not isinstance(item, str) or not item.strip() for item in value):
+            errors.append(f"report field must be a string array: {field}")
+    detailed_findings = report.get("findings")
+    if not isinstance(detailed_findings, list):
+        errors.append("report field must be an array: findings")
+        return errors
+    for index, finding in enumerate(detailed_findings):
+        prefix = f"report.findings[{index}]"
+        if not isinstance(finding, dict):
+            errors.append(f"{prefix} must be an object")
+            continue
+        file, line, side, hunk = finding.get("file"), finding.get("line"), finding.get("side"), finding.get("hunk")
+        if not isinstance(finding.get("severity"), str) or finding["severity"] not in _RESULT_ARRAY_FIELDS:
+            errors.append(f"{prefix}.severity must be critical, important, or suggestions")
+        if not isinstance(file, str) or file not in changed_paths:
+            errors.append(f"{prefix}.file must be changed")
+        if not isinstance(line, int) or isinstance(line, bool) or line <= 0:
+            errors.append(f"{prefix}.line must be a positive integer")
+        if not isinstance(side, str) or not side.strip() or not isinstance(hunk, str) or not hunk.strip():
+            errors.append(f"{prefix} requires changed-side and hunk evidence")
+        for field in ("narrative", "evidence_basis", "reasoning", "impact", "remediation"):
+            if not isinstance(finding.get(field), str) or not finding[field].strip():
+                errors.append(f"{prefix}.{field} must be non-empty")
+    return errors
+
+
 def validate_reviewer_result(result: Any, changed_paths: list[str], expected_run: Any, registry: dict[str, Any] | None = None) -> dict[str, Any]:
     active = _get_registry(registry)
     errors: list[str] = []
@@ -284,7 +324,13 @@ def validate_reviewer_result(result: Any, changed_paths: list[str], expected_run
             findings.append(normalized)
     if isinstance(result.get("errors"), list) and result["errors"]:
         errors.append("reviewer errors array must be empty")
-    return {"valid": not errors, "errors": errors, "findings": findings, "reviewer": reviewer, "review_run_id": result.get("review_run_id"), "review_invocation_id": result.get("review_invocation_id"), "focus": focus}
+    report = result.get("report")
+    if report is not None:
+        errors.extend(_validate_detailed_report(report, changed_paths))
+    validation = {"valid": not errors, "errors": errors, "findings": findings, "reviewer": reviewer, "review_run_id": result.get("review_run_id"), "review_invocation_id": result.get("review_invocation_id"), "focus": focus}
+    if report is not None:
+        validation["report"] = copy.deepcopy(report)
+    return validation
 
 
 def validate_lane_result(result: Any, changed_paths: list[str], expected_run: Any, registry: dict[str, Any] | None = None) -> dict[str, Any]:

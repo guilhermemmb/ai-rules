@@ -50,6 +50,27 @@ class ReviewPipelineContractTests(unittest.TestCase):
         result.update(overrides)
         return result
 
+    def detailed_report(self, **overrides):
+        report = {
+            "scope": "Reviewed the changed app.py lines for the code focus.",
+            "approach": "Compared the complete diff with authoritative native evidence.",
+            "assessment": "The changed code has one actionable concern.",
+            "checks_performed": ["Reviewed changed control flow."],
+            "limitations": ["No runtime execution was supplied."],
+            "unknowns": ["Production traffic shape is unknown."],
+            "findings": [{
+                "severity": "important", "file": "app.py", "line": 12,
+                "side": "changed", "hunk": "@@ -11,1 +12,1 @@",
+                "narrative": "The changed value is used without validation.",
+                "evidence_basis": "The changed line is the first unchecked use.",
+                "reasoning": "The unchecked use creates a path for invalid input.",
+                "impact": "Unexpected input can reach the downstream operation.",
+                "remediation": "Validate the value before the downstream operation.",
+            }],
+        }
+        report.update(overrides)
+        return report
+
     def expected(self, **overrides):
         result = {"review_run_id": "run-1", "review_invocation_id": "inv-1", "packet_digest": "sha256:abc", "contract_version": 2, "reviewer": "reviewer", "focus": "code"}
         result.update(overrides)
@@ -93,6 +114,17 @@ class ReviewPipelineContractTests(unittest.TestCase):
         self.assertEqual(report["findings"][0]["source_invocation_id"], "inv-1")
         for expected, result in ((self.expected(review_invocation_id="other"), self.result()), (self.expected(focus="security"), self.result()), (self.expected(finalized=True), self.result())):
             self.assertFalse(validate_reviewer_result(result, ["app.py"], expected, self.registry)["valid"])
+
+    def test_detailed_report_is_preserved_and_validated_when_present(self):
+        report = self.detailed_report()
+        validation = validate_reviewer_result(self.result(report=report), ["app.py"], self.expected(), self.registry)
+        self.assertTrue(validation["valid"])
+        self.assertEqual(validation["report"], report)
+        invalid = self.detailed_report(findings=[{"severity": "important", "file": "other.py", "line": 12, "side": "changed", "hunk": "@@", "narrative": "Unsupported.", "evidence_basis": "Unsupported.", "reasoning": "Unsupported.", "impact": "Unsupported.", "remediation": "Unsupported."}])
+        self.assertFalse(validate_reviewer_result(self.result(report=invalid), ["app.py"], self.expected(), self.registry)["valid"])
+
+    def test_legacy_result_without_detailed_report_remains_valid(self):
+        self.assertTrue(validate_reviewer_result(self.result(), ["app.py"], self.expected(), self.registry)["valid"])
 
     def test_result_rejects_unknown_reviewer_and_bad_finding(self):
         report = validate_reviewer_result(self.result(reviewer="other-reviewer", critical=[self.finding()]), ["app.py"], self.expected(), self.registry)

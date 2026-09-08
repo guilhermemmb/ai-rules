@@ -23,6 +23,8 @@
   ],
   "required_packet_fields": ["target", "scope", "diff", "changed_paths", "diff_metadata", "implementer_report", "plan_context", "guidelines", "policy", "review_run_id", "review_invocation_id", "packet_digest", "contract_version"],
   "required_result_fields": ["reviewer", "review_run_id", "review_invocation_id", "packet_digest", "contract_version", "focus", "summary", "critical", "important", "suggestions", "positive", "errors"],
+  "optional_result_fields": ["report"],
+  "finding_detail_fields": ["evidence_basis", "reasoning", "impact", "remediation"],
   "finding_fields": ["file", "line", "side", "hunk", "issue", "confidence", "fix", "source_focus", "source_invocation_id"],
   "verdict_precedence": ["inconclusive", "blocked", "changes-requested", "approved-with-suggestions", "approved"]
 }
