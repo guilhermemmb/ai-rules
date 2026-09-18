@@ -221,7 +221,9 @@ RTK/native OpenCode tools are authoritative for exact text and file discovery,
 shell commands, tests, Git, configuration, documentation, and edits. Agents use
 only the MCPs explicitly assigned in the current configuration. Serena is the
 active semantic MCP for OpenCode IDE sessions; it complements, but does not
-replace, native RTK/OpenCode tools for exact repository work.
+replace, native RTK/OpenCode tools for exact repository work. Navigator is
+assigned `accessibility-scanner` for automated accessibility evaluations while
+interactive browser work remains on the `agent-browser` CLI.
 GitNexus is removed and is not an authority or part of the current lifecycle.
 
 ### MCP access matrix
@@ -238,7 +240,8 @@ GitNexus is removed and is not an authority or part of the current lifecycle.
 | `reviewer` | `serena`, `context7`, `gh_grep`; read-only focus review |
 | Librarian | `context7`, `websearch`, `gh_grep`, `linear`, `cortex` |
 | Sage | `cortex` |
-| Navigator, Observer | — |
+| Navigator | `accessibility-scanner` for automated evaluations; `agent-browser` via Bash for interactive browser work |
+| Observer | — |
 
 ### Serena semantic MCP and worktree ownership
 
@@ -428,7 +431,7 @@ Edit the corresponding `.rulesync/subagents/<name>.md` file, then regenerate the
 
 ## MCP & Browser CLI Inventory
 
-Repository MCP definitions live in `.rulesync/mcp.jsonc`; agent assignments live in `oh-my-opencode-slim.json`. Navigator's browser CLI comes from the `agent-browser` skill and runs via Bash. `./deploy.sh` generates the corresponding global configuration:
+Repository MCP definitions live in `.rulesync/mcp.jsonc`; agent assignments live in `oh-my-opencode-slim.json`. Navigator's browser CLI comes from the `agent-browser` skill and runs via Bash, while `accessibility-scanner` is assigned for automated accessibility evaluations. `./deploy.sh` generates the corresponding global configuration:
 
 | MCP                 | Enabled     | Assigned to                                            |
 | ------------------- | ----------- | ------------------------------------------------------ |
@@ -441,6 +444,8 @@ Repository MCP definitions live in `.rulesync/mcp.jsonc`; agent assignments live
 | cortex              | ✓           | Sage, Librarian (Internal docs/Notion via Cortex MCP)  |
 | rootly              | ❌ disabled | —                                                      |
 | agent-browser CLI   | ✓           | Navigator via Bash and the `agent-browser` skill       |
+| playwright          | ✓           | — (enabled; currently unassigned)                      |
+| accessibility-scanner | ✓       | Navigator for automated accessibility evaluations      |
 | gorgias-mcp         | disabled    | —                                                      |
 | figma-mcp           | ✓           | Designer                                                |
 

@@ -219,10 +219,20 @@ status `NEEDS_CONTEXT` or `BLOCKED`, or has an unverified acceptance criterion.
 
 ## Browser Interaction
 
-- **Never invoke the `agent-browser` CLI or use `chrome-devtools-mcp` directly** —
-  always delegate browser automation to the `@navigator` subagent.
+- **Never invoke the `agent-browser` CLI or `accessibility-scanner` MCP
+  directly** — always delegate browser work to
+  the `@navigator` subagent.
+- Navigator uses `agent-browser` for interactive navigation, reaching target
+  pages, interaction, screenshots, and DOM inspection. Navigator uses the
+  `accessibility-scanner` MCP for automated local Playwright and axe-core
+  evaluations without paid credentials.
+- The accessibility MCP starts its own headless browser and does not reuse the
+  interactive `agent-browser` session. Respect URL authorization and
+  sensitive-target boundaries; Axe scans are automated checks, not a complete
+  WCAG audit.
 - Exception: you are the `@navigator` subagent itself; Navigator runs
-  `agent-browser` through Bash.
+  `agent-browser` through Bash and uses the assigned accessibility MCP when
+  evaluating pages.
 
 ## General
 

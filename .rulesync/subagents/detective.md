@@ -1,7 +1,8 @@
 ---
 name: detective
 description: AI rules/agent definition for detective.md
-model: bf/huggingface/fireworks-ai/deepseek-ai/DeepSeek-V4-Flash
+model: bf-o/gpt-5.6-luna
+variant: medium
 tools: [read, bash]
 mcps: []
 skills:

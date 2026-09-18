@@ -20,6 +20,22 @@ agent-browser skills get core --full      # include full command reference and t
 
 The CLI serves skill content that always matches the installed version, so instructions never go stale. The content in this stub cannot change between releases, which is why it just points at `skills get core`.
 
+## Accessibility evaluations
+
+Keep interactive browser work on `agent-browser`, including navigation,
+reaching the target page, interaction, screenshots, and DOM inspection. For
+automated accessibility evaluations, Navigator uses the dedicated
+`accessibility-scanner` MCP. It runs local Playwright and axe-core checks without
+paid credentials; use Microsoft Playwright's accessibility snapshots for
+interactive inspection.
+
+This MCP starts its own headless browser and does not reuse the interactive
+`agent-browser` session. Axe results are automated findings, not a complete
+WCAG audit; manual and other accessibility checks may still be required.
+Respect URL authorization and sensitive-target boundaries. Use
+`write-violations-report` only for explicitly requested output within
+`~/.cache/opencode/agent-output/navigator/`.
+
 ## Specialized skills
 
 Load a specialized skill when the task falls outside browser web pages:

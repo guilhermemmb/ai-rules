@@ -73,5 +73,18 @@
       ],
       "enabled": true,
     },
+    "playwright": {
+      "type": "local",
+      "command": [
+        "npx",
+        "@playwright/mcp@latest"
+      ],
+      "enabled": true,
+    },
+    "accessibility-scanner": {
+      "type": "local",
+      "command": ["mcp-accessibility-scanner"],
+      "enabled": true,
+    },
   },
 }

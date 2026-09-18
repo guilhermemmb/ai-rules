@@ -112,7 +112,7 @@
 - **Never use Sentry/GCP-Logging/Rootly tools directly** — dispatch to
   **Detective**
 - **Never run `pup` directly for Datadog queries** — dispatch to **Detective**
-- **Never invoke the `agent-browser` CLI or use `chrome-devtools-mcp` directly** —
+- **Never invoke the `agent-browser` CLI directly** —
   dispatch browser work to **Navigator**. Navigator is the exception and runs
   `agent-browser` through Bash.
 - **Never use cortex MCP directly** — dispatch to **Sage** or **Librarian**

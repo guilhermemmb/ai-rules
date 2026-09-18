@@ -28,6 +28,8 @@ CONTEXT7_MCP = "context7"
 CONTEXT7_ENDPOINT = "https://mcp.context7.com/mcp"
 CONTEXT7_TOKEN_REFERENCE = "{env:CONTEXT7_API_TOKEN}"
 CONTEXT7_AGENT = "librarian"
+ACCESSIBILITY_SCANNER_MCP = "accessibility-scanner"
+ACCESSIBILITY_SCANNER_COMMAND = ("mcp-accessibility-scanner",)
 # These are built into the OMO runtime rather than declared in mcp.jsonc.
 BUILTIN_MCP_REFERENCES = frozenset({"gh_grep", "websearch"})
 SUPPORTED_MCP_TRANSPORTS = frozenset({"local", "http", "sse"})
@@ -81,7 +83,7 @@ EXPECTED_MCP_ASSIGNMENTS = {
     "fixer": ("serena",),
     "reviewer": ("serena", "context7", "gh_grep"),
     "sage": ("cortex",),
-    "navigator": (),
+    "navigator": ("playwright", "accessibility-scanner"),
     "observer": (),
     "librarian": ("websearch", "context7", "gh_grep", "linear", "cortex"),
 }
@@ -522,6 +524,33 @@ class Validator:
                         key="url",
                         text=artifact.text,
                     )
+
+    def validate_accessibility_scanner_mcp(self, artifact: Artifact | None) -> None:
+        """Validate the exact accessibility scanner MCP registration."""
+
+        if artifact is None:
+            return
+        mcp = self.require_mapping(artifact, "mcp.jsonc")
+        if mcp is None:
+            return
+        servers = mcp.get("mcpServers")
+        if not isinstance(servers, dict):
+            return
+
+        specification = servers.get(ACCESSIBILITY_SCANNER_MCP)
+        expected = {
+            "type": "local",
+            "command": list(ACCESSIBILITY_SCANNER_COMMAND),
+            "enabled": True,
+        }
+        if specification != expected:
+            self.add_error(
+                artifact.path,
+                "mcpServers.accessibility-scanner must be exactly "
+                f"{expected!r}",
+                key=ACCESSIBILITY_SCANNER_MCP,
+                text=artifact.text,
+            )
 
 
     def validate_context7_mcp(self, artifact: Artifact | None) -> None:
@@ -2906,6 +2935,7 @@ class Validator:
         mcp_artifact = self.load_json(self.root / ".rulesync" / "mcp.jsonc", jsonc=True)
         server_names, disabled_server_names = self.validate_mcp_names(mcp_artifact)
         self.validate_mcp_transports(mcp_artifact)
+        self.validate_accessibility_scanner_mcp(mcp_artifact)
         self.validate_context7_mcp(mcp_artifact)
         self.validate_context7_rule()
 

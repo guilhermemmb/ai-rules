@@ -6,7 +6,7 @@ nodes:
     role: Master Delegator
     color: "#60a5fa"
     parent: null
-    model: GPT-5.6 Luna
+    model: GPT-5.6 Luna (high)
     orchestrates: true
     dispatches:
       - oracle
@@ -33,7 +33,7 @@ nodes:
 
       no gcp-logging MCP (→ Detective via gcloud logging),
 
-      no cortex MCP (→ Sage or Librarian), no agent-browser CLI or chrome-devtools-mcp (→ Navigator), no linear
+      no cortex MCP (→ Sage or Librarian), no agent-browser CLI (→ Navigator), no linear
       (→ Librarian)
 
       Must dispatch to appropriate agent for these domains
@@ -59,7 +59,7 @@ nodes:
     role: Strategic Advisor
     color: "#a78bfa"
     parent: orchestrator
-    model: GPT-5.6 Terra
+    model: GPT-5.6 Terra (high)
     skills: simplify
     mcp_access: ""
     trigger: Architecture review, hard debugging, trade-offs, code review
@@ -80,7 +80,7 @@ nodes:
     color: "#38bdf8"
     parent: orchestrator
     model: DeepSeek V4 Flash (low)
-    mcp_access: ""
+    mcp_access: serena
     trigger: Broad codebase searches, pattern discovery, unfamiliar repos
     constraints: Read-only exploration. Follows code-exploration rule.
     responsibilities: "• Broad codebase scouting & pattern discovery
@@ -152,7 +152,7 @@ nodes:
     parent: orchestrator
     model: GPT-5.6 Luna (high)
     skills: fixer
-    mcp_access: ""
+    mcp_access: serena
     trigger: Scoped implementation tasks, bug fixes, code changes
     constraints:
       Receives concrete plan from Orchestrator with required handoff fields

@@ -304,7 +304,8 @@ No code needed—YAML drives everything.
 
 **fixer:**
 
-- Native-only in the current OMO configuration; no MCP is assigned
+- Serena is assigned for supplementary semantic navigation and impact analysis;
+  native RTK/OpenCode tools remain authoritative for exact local work
 
 **reviewer:**
 
@@ -533,7 +534,7 @@ flowchart TD
 
 **Orchestrator hard-enforced dispatch rules (no direct access):**
 
-- agent-browser CLI or chrome-devtools-mcp → dispatch to navigator; Navigator runs agent-browser through Bash
+- agent-browser CLI → dispatch to navigator; Navigator runs agent-browser through Bash
 - sentry, rootly, notion → dispatch to detective, which reports those sources unavailable (gcp-logging disabled)
 - cortex → dispatch to sage
 - linear, cortex → dispatch to librarian (internal docs/Notion)
