@@ -62,7 +62,7 @@ all other mutating or network operations.
 
 - **Action**: Generate the PR title and description.
 - **Template**: Always check for and follow the project's PR template (e.g., `.github/PULL_REQUEST_TEMPLATE.md`).
-- **File**: Write the generated content to `.context/pr/<branch-name>.md` or `/tmp/pr-<branch-name>.md`. Format: First line `# <title>`, then the body.
+- **File**: Write the generated content to `~/developer/planning-docs/{{repo}}/{{workspace}}/prs/{{branch}}.md`. Format: First line `# <title>`, then the body.
 - **Output**: Show the file path and the exact `gh pr create --draft --label claude:review ...` or `gh pr edit ...` command for the user to run manually.
 
 ## GitHub API — READ-ONLY MODE

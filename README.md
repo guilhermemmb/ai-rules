@@ -69,7 +69,13 @@ remains a separate registry-driven review-workflow setting.
 
 ### OpenCode deployment ownership
 
-`deploy.sh` writes `~/.config/opencode/.ai-rules.manifest.json` with the
+`deploy.sh` resolves the live directory as
+`OPENDIR=${OPENCODE_CONFIG_DIR:-$HOME/.config/opencode}`. The derived manifest
+path is `${OPENDIR}/.ai-rules.manifest.json`, and the durable recovery marker is
+`${OPENDIR}.transaction`; set `OPENCODE_CONFIG_DIR` when deploying to a
+non-default OpenCode configuration directory.
+
+`deploy.sh` writes `${OPENDIR}/.ai-rules.manifest.json` with the
 owner, manifest version, timestamp, managed paths, and SHA-256 values for the
 validated staged payload. The manifest is built and installed as part of the
 full replacement.
@@ -77,7 +83,7 @@ full replacement.
 Every run stages and validates the complete payload, then installs it into
 `.opencode.deploy.$$`. Before moving the live directory, deploy writes a
 permission- and ownership-checked durable marker at
-`~/.config/opencode.transaction` using the existing marker format. The marker
+`${OPENDIR}.transaction` using the existing marker format. The marker
 records `prepared`, `old_moved`, and `committed` phases and pairs the incoming
 path with `.opencode.previous.$$`.
 
@@ -86,6 +92,11 @@ place. The next run validates and recovers that transaction before doing new
 work. After the complete deployment succeeds, both the marker and displaced
 path are removed; no backup is retained. Force replacement never merges
 unknown live files and has no cross-component rollback for sidecars.
+
+The canonical external-directory permissions intentionally include
+`/Users/guilhermebomfim/project-workspaces/**/*` so trusted workspaces under
+that user-owned directory remain accessible. This is a deliberate trusted-
+workspace assumption; do not place untrusted or shared data under that path.
 
 ### OpenCode compatibility and runtime evidence
 
@@ -192,7 +203,7 @@ external-directory permissions remain denied.
 | Navigator | `~/.cache/opencode/agent-output/navigator/`      |
 | Sage      | `~/.cache/opencode/agent-output/sage/`           |
 
-> PR description files use `/tmp/pr-<branch>.md` (ephemeral, not grouped here).
+> PR description files use `~/developer/planning-docs/<repo>/<workspace>/prs/<branch>.md` so they persist with the repository workspace planning artifacts. PR command examples define `REPO`, `WORKSPACE`, and `BRANCH` before constructing that path; they never execute `gh` automatically.
 
 ## RTK — Token Optimization Plugin
 

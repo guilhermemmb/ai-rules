@@ -35,8 +35,8 @@ root: true
 ### Description
 
 - Save to file, **never paste inline**:
-  - `.context/pr/<branch-name>.md` if `.context/` exists
-  - `/tmp/pr-<branch-name>.md` otherwise
+  - `~/developer/planning-docs/<repo>/<workspace>/prs/<branch>.md`
+- **After generating the PR description, MUST always provide the exact copyable `gh pr create` command** to open the PR, with `--title` read from the generated file's first line and `--body-file` pointing to that generated description file.
 - Format: First line `# <title>`, blank line, then body
 - Check for `.github/PULL_REQUEST_TEMPLATE.md` in the target repo
   - If found: reference and follow its structure
@@ -58,15 +58,23 @@ Always give the user a copyable command block. Example:
 
 ```sh
 # Create draft PR with label
+REPO="repository-name"
+WORKSPACE="workspace-name"
+BRANCH="branch-name"
+PR_DESCRIPTION_PATH=~/developer/planning-docs/"$REPO"/"$WORKSPACE"/prs/"$BRANCH".md
 gh pr create --base main --draft \
-  --title "$(head -1 /tmp/pr-feature-name.md | sed 's/^# //')" \
-  --body-file <(tail -n +3 /tmp/pr-feature-name.md) \
+  --title "$(head -1 "$PR_DESCRIPTION_PATH" | sed 's/^# //')" \
+  --body-file <(tail -n +3 "$PR_DESCRIPTION_PATH") \
   --label claude:review
 ```
 
 ```sh
 # Update existing PR
+REPO="repository-name"
+WORKSPACE="workspace-name"
+BRANCH="branch-name"
+PR_DESCRIPTION_PATH=~/developer/planning-docs/"$REPO"/"$WORKSPACE"/prs/"$BRANCH".md
 gh pr edit 42 \
-  --title "$(head -1 /tmp/pr-feature-name.md | sed 's/^# //')" \
-  --body-file <(tail -n +3 /tmp/pr-feature-name.md)
+  --title "$(head -1 "$PR_DESCRIPTION_PATH" | sed 's/^# //')" \
+  --body-file <(tail -n +3 "$PR_DESCRIPTION_PATH")
 ```

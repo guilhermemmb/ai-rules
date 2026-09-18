@@ -53,6 +53,17 @@ RECOVERY_ARTIFACTS_PRESERVED=false
 OPENCODE_DISPLACED_PATH=""
 OPENCODE_DISPLACED_IDENTITY=""
 
+# Canonical OpenCode external-directory permissions. Keep this list in the
+# deployment source so generated global configuration does not depend on
+# direct edits to the live config.
+CANONICAL_OPENCODE_EXTERNAL_DIRECTORIES=(
+  "/Users/guilhermebomfim/developer/planning-docs/*/.planning/**/*"
+  "~/developer/planning-docs/*/.planning/**/*"
+  "/Users/guilhermebomfim/project-workspaces/**/*"
+  "~/developer/planning-docs/*/*/prs/**/*"
+  "/Users/guilhermebomfim/developer/planning-docs/*/*/prs/**/*"
+)
+
 # ── parse args ──
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -754,22 +765,7 @@ PY
   # Global Rulesync output includes the OpenCode schema marker. Keep the
   # private deployment payload byte-for-byte aligned with that live output so
   # a global check cannot introduce manifest drift after deployment.
-  "$PYTHON_BIN" - "$output_root/opencode.jsonc" <<'PY'
-from pathlib import Path
-import sys
-
-path = Path(sys.argv[1])
-source = path.read_text(encoding="utf-8")
-if '"$schema"' not in source:
-    if not source.startswith("{\n"):
-        raise SystemExit("Rulesync OpenCode output has an unexpected shape")
-    source = source.replace(
-        "{\n",
-        '{\n  "$schema": "https://opencode.ai/config.json",\n',
-        1,
-    )
-    path.write_text(source, encoding="utf-8")
-PY
+  "$PYTHON_BIN" "$SRCDIR/scripts/inject-opencode-external-directories.py" "$output_root/opencode.jsonc" "${CANONICAL_OPENCODE_EXTERNAL_DIRECTORIES[@]}"
 }
 
 build_staged_payload() {
