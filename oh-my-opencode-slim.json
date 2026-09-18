@@ -73,6 +73,7 @@
       "skills": ["agent-browser"],
       "permission": {
         "*": "deny",
+        "accessibility-scanner_*": "allow",
         "bash": {
           "*": "deny",
           "agent-browser *": "allow"
