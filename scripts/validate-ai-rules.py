@@ -29,7 +29,13 @@ CONTEXT7_ENDPOINT = "https://mcp.context7.com/mcp"
 CONTEXT7_TOKEN_REFERENCE = "{env:CONTEXT7_API_TOKEN}"
 CONTEXT7_AGENT = "librarian"
 ACCESSIBILITY_SCANNER_MCP = "accessibility-scanner"
-ACCESSIBILITY_SCANNER_COMMAND = ("mcp-accessibility-scanner",)
+ACCESSIBILITY_SCANNER_COMMAND = (
+    "volta",
+    "run",
+    "--node",
+    "24",
+    "mcp-accessibility-scanner",
+)
 # These are built into the OMO runtime rather than declared in mcp.jsonc.
 BUILTIN_MCP_REFERENCES = frozenset({"gh_grep", "websearch"})
 SUPPORTED_MCP_TRANSPORTS = frozenset({"local", "http", "sse"})

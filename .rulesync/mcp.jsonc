@@ -83,7 +83,7 @@
     },
     "accessibility-scanner": {
       "type": "local",
-      "command": ["mcp-accessibility-scanner"],
+      "command": ["volta", "run", "--node", "24", "mcp-accessibility-scanner"],
       "enabled": true,
     },
   },
