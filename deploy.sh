@@ -57,11 +57,8 @@ OPENCODE_DISPLACED_IDENTITY=""
 # deployment source so generated global configuration does not depend on
 # direct edits to the live config.
 CANONICAL_OPENCODE_EXTERNAL_DIRECTORIES=(
-  "/Users/guilhermebomfim/developer/planning-docs/*/.planning/**/*"
-  "~/developer/planning-docs/*/.planning/**/*"
   "/Users/guilhermebomfim/project-workspaces/**/*"
-  "~/developer/planning-docs/*/*/prs/**/*"
-  "/Users/guilhermebomfim/developer/planning-docs/*/*/prs/**/*"
+  "/Users/guilhermebomfim/developer/planning-docs/**/*"
 )
 
 # ── parse args ──
