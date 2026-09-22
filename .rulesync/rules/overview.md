@@ -14,12 +14,8 @@ root: true
 
 ## Git & GitHub Safety
 
-**MANDATORY: Follow all rules in `git-safety.md` for any Git or GitHub operation.**
-
-- **Never push**: Provide the command for the user to run.
-- **Commit approval**: Always ask before running `git commit`.
-- **PRs**: Generate title/description and show the `gh` command; never run it.
-- **GitHub API**: Read-only mode for all `gh` commands.
+- Follow `git-safety.md`, the authoritative source for Git and GitHub safety,
+  including push, commit, PR mutation, and GitHub API restrictions.
 
 ## Forbidden Commands
 

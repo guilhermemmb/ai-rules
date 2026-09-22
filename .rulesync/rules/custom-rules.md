@@ -49,9 +49,10 @@ or artifact requirements.
 
 - **OpenCode:** At review boundaries, the orchestrator loads the on-demand
   `review-pipeline` skill and is the sole review manager. It validates the
-  complete packet, selects and directly dispatches the exact ten `reviewer-*`
-  lanes from `__AI_RULES_REVIEW_PIPELINE_REGISTRY_PATH__`, runs bounded
-  Phase A and conditional sequential Phase B, reconciles exact sessions,
+  complete packet, selects registry focus IDs from
+  `__AI_RULES_REVIEW_PIPELINE_REGISTRY_PATH__`, and directly dispatches one
+  fresh `reviewer` invocation per selected registry focus, with the registry
+  cap of ten concurrent invocations. It reconciles exact sessions,
   aggregates findings, computes the health-first verdict, and owns the final
   report. The full protocol stays out of the always-loaded orchestrator append;
   no intermediary review agent exists. Coordination or coverage failures are
@@ -159,7 +160,7 @@ status `NEEDS_CONTEXT` or `BLOCKED`, or has an unverified acceptance criterion.
 
 ## Development Environment
 
-- **MANDATORY: Follow all rules in `git-safety.md` for any Git or GitHub operation.**
+- Follow `git-safety.md`, the authoritative source for Git and GitHub safety.
 - If a test or lint command fails to run, ask me which command to use and where
   the root folder is, then remember it.
 - When tests fail, show me only the errors — filter the console output, don't
@@ -240,6 +241,7 @@ status `NEEDS_CONTEXT` or `BLOCKED`, or has an unverified acceptance criterion.
 
 ## Commit / Push Safety Scan
 
-- Before any `git commit`, `git push`, or `git rebase` (and on branch switch, or
-  when working on a branch with an open PR), read and apply security-scan rules.
-- **MANDATORY: Follow all rules in `git-safety.md` for any Git or GitHub operation.**
+- Follow `security-scan.md`, the authoritative on-demand checklist, before any
+  `git commit`, `git push`, or `git rebase` (and on branch switch, or when
+  working on a branch with an open PR).
+- Follow `git-safety.md` for all Git and GitHub safety requirements.

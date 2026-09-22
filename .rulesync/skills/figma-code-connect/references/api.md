@@ -2,7 +2,9 @@
 
 ## Overview
 
-Code Connect uses template files (`.figma.js`) to connect your code components to Figma designs. This API reference covers the complete template system for creating these mappings.
+Code Connect uses templates to connect code components to Figma designs. This reference includes alternate/parser-based API formats for compatibility and comparison.
+
+> **Repository output contract (authoritative):** Code Connect output in this repository is always a parserless `ComponentName.figma.ts` template whose default export uses the ``figma.code`...` `` tagged template. Do not create `.figma.tsx`, `.figma.js`, or other parser-based artifacts, and do not use `figma.connect()`. Examples below that use `figma.tsx`, another language-specific tagged template, `require('figma')`, or `.figma.js` are alternate/parser-based API examples only; adapt their concepts to the parserless `.figma.ts` + `figma.code` contract.
 
 ## Quick Start
 
@@ -36,13 +38,13 @@ export default {
 
 ---
 
-## Project Configuration
+## Project Configuration (alternate/parser-based format)
 
 ### `figma.config.json`
 
 Place this file in your project root to configure Code Connect.
 
-#### Required Configuration
+#### Required Configuration (alternate/parser-based format)
 
 ```json
 {
@@ -92,9 +94,9 @@ Use placeholders in templates:
 
 ## Template File Structure
 
-### File Naming
+### Alternate/parser-based File Naming
 
-Templates must use the `.figma.js` extension:
+The alternate/parser-based format uses the `.figma.js` extension:
 - `Button.figma.js`
 - `Card.figma.js`
 - `MyComponent.figma.js`
@@ -125,7 +127,7 @@ export default {
 }
 ```
 
-### Complete Example
+### Complete Example (alternate/parser-based format)
 
 ```javascript
 // url=https://www.figma.com/file/abc123/MyFile?node-id=123-456
@@ -174,7 +176,7 @@ Import with: `const figma = require('figma')`
 
 The currently selected Figma component instance. This is your main entry point for accessing component data.
 
-#### Tagged Template Literals
+#### Tagged Template Literals (alternate/parser-based formats)
 
 Use these to wrap your code snippets for proper syntax highlighting:
 
@@ -187,7 +189,7 @@ Use these to wrap your code snippets for proper syntax highlighting:
 | `figma.swift` | Swift code |
 | `figma.kotlin` | Kotlin code |
 
-**Example:**
+These language-specific tags are alternate/parser-based formats, not this repository's output contract. **Example:**
 ```javascript
 const example = figma.tsx`<MyComponent prop="${value}" />`
 ```
@@ -717,7 +719,9 @@ type ResultError =
 
 ---
 
-## Complete Examples
+## Complete Examples (alternate/parser-based formats)
+
+The examples in this section use `figma.tsx` and are alternate/parser-based formats. They are included as generic API reference material; repository templates must use `.figma.ts` and `figma.code` instead.
 
 ### Button with States
 
@@ -906,7 +910,7 @@ const iconCode = icon && icon.type === 'INSTANCE' && icon.hasCodeConnect()
 const iconCode = instance.findInstance('Icon').executeTemplate().example
 ```
 
-### 3. Use Appropriate Tagged Templates
+### 3. Use Appropriate Tagged Templates (alternate/parser-based formats)
 
 ```javascript
 // Good - use specific template for language

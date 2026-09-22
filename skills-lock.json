@@ -135,18 +135,6 @@
       "skillPath": ".rulesync/skills/fixer/SKILL.md",
       "computedHash": "8b8e13124932c32ca9e4f18af1b771288539611936032fffc0cebaa918443c48"
     },
-    "incident-response": {
-      "sourceType": "local",
-      "provenance": "unknown",
-      "skillPath": ".rulesync/skills/incident-response/SKILL.md",
-      "computedHash": "f53db2b9413bc910352768f18e66d3ecf3405da88b69a7acb19eb4df036e87c1"
-    },
-    "logs": {
-      "sourceType": "local",
-      "provenance": "unknown",
-      "skillPath": ".rulesync/skills/logs/SKILL.md",
-      "computedHash": "86173a2f2b692a77dbed761af494a0fc3f86a110b9c76e332422ee4f5be118f4"
-    },
     "oh-my-opencode-slim": {
       "sourceType": "local",
       "provenance": "unknown",
@@ -182,12 +170,6 @@
       "provenance": "unknown",
       "skillPath": ".rulesync/skills/simplify/SKILL.md",
       "computedHash": "c135130d0642ab10449c763941f6e067f1fae8579068f6c85aa5faa59fa70032"
-    },
-    "traces": {
-      "sourceType": "local",
-      "provenance": "unknown",
-      "skillPath": ".rulesync/skills/traces/SKILL.md",
-      "computedHash": "bd94f4777f5c5a149f152bb7d21e4c9c654aa22e25f8532d93dc2f60a65f0dcc"
     },
     "verification-planning": {
       "sourceType": "local",

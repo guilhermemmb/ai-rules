@@ -51,32 +51,8 @@
 
 ## Development Environment
 
-- Local, read-only Git inspection does not require confirmation for `git status`,
-  `git status --porcelain`, `git status --branch`, `git diff`,
-  `git diff --cached`, `git diff --staged`, `git diff --check`,
-  `git diff --name-only`, `git diff --stat`, `git diff --numstat`,
-  `git diff --summary`, `git diff --word-diff`, `git diff --submodule`,
-  `git diff --unified`, `git log`, `git log --oneline`, `git log --decorate`,
-  `git log --graph`, `git log --all`, `git log -S<string>`,
-  `git log -G<regex>`, `git show`, `git blame`, `git branch --list`,
-  `git branch --show-current`, `git rev-parse`, `git ls-files`, `git describe`,
-  `git shortlog`, `git tag --list`, `git for-each-ref`, `git show-ref`,
-  `git rev-list`, `git merge-base`, `git worktree list`, `git submodule status`,
-  `git stash list`, `git stash show`, `git grep`, `git check-ignore`,
-  `git ls-tree`, `git cat-file -t`, `git cat-file -s`, `git cat-file -p` when
-  used only for inspection, `git verify-commit`, `git verify-tag`, and
-  `git count-objects`.
-- Use those commands only for local inspection; they must not write repository
-  state. Shell redirection, `tee`, output paths, and other file-write operations
-  remain ordinary writes and are not smuggled into this exception. Filter or
-  redact secrets before displaying or forwarding Git output.
-- Ask for confirmation for Git commands outside that allowlist unless a safety
-  rule prohibits them. Mutating and network operations—including commit, push,
-  checkout, switch, reset, restore, clean, rebase, merge, cherry-pick, tag
-  creation/deletion,
-  config, hooks, clone, fetch, pull, submodule update, `ls-remote`, remote
-  changes, and other Git writes or network access—remain subject to the central
-  Git safety rules.
+- Follow `git-safety.md`, the authoritative source for Git/GitHub inspection,
+  confirmation, mutation, push, commit, PR, and API restrictions.
 - If a test or lint command fails to run, ask which command to use and where the
   root folder is, then remember it.
 - When tests fail, show only the errors — filter the console output, don't dump
@@ -182,52 +158,11 @@ error rules.
 
 ## Security Scan (on-demand)
 
-Before any `git commit`, `git push`, or `git rebase` (also on branch switch, or
-when working on a branch with an open PR), scan the diff. If ANY red flag found:
-**STOP**, show `file:line`, ask before proceeding.
-
-**What to look for:**
-
-1. **Mock/test data & hardcoded payloads** — mock API responses, dummy arrays,
-   `res.send([{…}])`, `return [{…}]`
-2. **Debug return values** — `return true/false` that ignores logic, bypassed
-   feature flags, short-circuit returns
-3. **Cleanup leftovers** — 3+ unused imports, commented-out code blocks, dead
-   code paths
-4. **Sensitive hardcoded values** — API keys, tokens, passwords, credentials,
-   internal URLs, DB strings, hardcoded user ids, `console.log` with sensitive
-   data
-5. **Development artifacts** — debug flags set to `true`, hardcoded env values
-
-**Search keywords in the diff:** `return true/false` · `res.send([` ·
-`res.json([/{` · `mock/dummy/fake/hardcode` · `TODO/FIXME/HACK/XXX` ·
-`console.log/warn/debugger` · large object/array literals (>3 lines) · `// `
-(commented code) · imports from `/mocks/`, `/fixtures/`, `/test-utils/`
-
-**Proceed without confirmation only if:**
-
-- Changes are in test files (`*.test.*`, `*.spec.*`, `__tests__/`,
-  `*.stories.*`)
-- Mock data is in designated dirs (`__mocks__/`, `fixtures/`, `test-data/`)
-- File is clearly a config/constant file for sample data
-- Unused imports are part of a refactor a linter will clean up
-- User has explicitly confirmed the code is intentional
-
-**Dev-mode pattern for intentional mock/debug code:**
-
-```typescript
-// ❌ BAD — naked mock response
-export const getThings = async (req, res) => {
-  res.json([{ id: 1, name: "Sample" }]);
-};
-// ✅ GOOD — gated behind dev-mode check
-export const getThings = async (req, res) => {
-  if (isDevMode) {
-    return res.json([{ id: 1, name: "Sample" }]);
-  }
-  res.json(await db.things.findAll());
-};
-```
+Follow `security-scan.md`, the authoritative on-demand checklist. Load it
+before any `git commit`, `git push`, or `git rebase` (also on branch switch,
+or when working on a branch with an open PR); if any red flag is found, stop,
+show the exact `file:line` with context, explain the concern, and ask before
+proceeding.
 
 ## General
 

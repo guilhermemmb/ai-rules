@@ -11,7 +11,7 @@ At this review boundary, the `orchestrator` is the review manager and loads the 
 `__AI_RULES_REVIEW_PIPELINE_REGISTRY_PATH__`.
 It builds one redacted immutable packet, selects focus IDs from the catalog,
 and dispatches a fresh `reviewer` invocation for every selected focus. Each
-invocation gets a unique `review_invocation_id`; run at most three concurrently,
+invocation gets a unique `review_invocation_id`; run at most ten concurrently,
 wait for the batch, and reconcile exact returned session IDs. Never revive a
 session for a new focus, use aliases, or introduce a phase dependency.
 

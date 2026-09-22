@@ -48,9 +48,6 @@ Use these skills for specific Datadog investigation tasks:
 - `dd-symdb` — Symbol Database for finding probe-able methods
 - `dd-triage-flaky-test` — flaky test investigation workflow
 - `dd-unblock-pr` — failing PR CI pipeline attribution
-- `incident-response` — incident tracking, on-call, coordination
-- `traces` — APM span queries
-- `logs` — Datadog log queries
 
 ## Source Correlation
 
