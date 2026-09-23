@@ -1,0 +1,13 @@
+{
+  "subagents": {
+    "agentOverrides": {
+      "scout": { "model": "bifrost/huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Flash", "thinking": "medium" },
+      "delegate": { "model": "bifrost/huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Flash", "thinking": "medium" },
+      "worker": { "model": "bifrost/huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Pro", "thinking": "minimal" },
+      "researcher": { "model": "bifrost-google/gemini-3.8-flash", "thinking": "medium" },
+      "reviewer": { "model": "bifrost-openai/gpt-5.6-terra", "thinking": "medium" },
+      "oracle": { "model": "bifrost/huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Pro", "thinking": "medium" },
+      "advisor": { "model": "bifrost/huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Pro", "thinking": "medium" }
+    }
+  }
+}
