@@ -25,8 +25,8 @@
         "thinking": "medium"
       },
       "worker": {
-        "model": "bifrost-openai/gpt-5.6-luna",
-        "thinking": "medium"
+        "model": "bifrost/huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Pro",
+        "thinking": "minimal"
       },
       "researcher": {
         "model": "bifrost-google/gemini-3.8-flash",
@@ -47,7 +47,5 @@
     }
   },
   "defaultProvider": "bifrost",
-  "defaultModel": "huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Pro",
-  "defaultThinkingLevel": "xhigh",
-  "enableSkillCommands": true
+  "defaultModel": "huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Pro"
 }
