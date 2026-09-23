@@ -1,0 +1,98 @@
+{
+  "version": "1.0.0",
+  "description": "Review capability registry. Each focus defines a review lens with trigger rules and reviewer instructions.",
+  "max_concurrent_reviewers": 10,
+  "focuses": [
+    {
+      "id": "correctness",
+      "label": "Correctness",
+      "description": "Logic errors, edge cases, contract violations, error handling gaps, type safety issues",
+      "file": "focuses/correctness.md",
+      "triggers": {
+        "path_patterns": ["src/", "lib/", "app/", "internal/", "pkg/"],
+        "extensions": [".ts", ".tsx", ".js", ".jsx", ".py", ".pyi", ".html", ".css", ".scss"],
+        "always": false
+      }
+    },
+    {
+      "id": "simplicity",
+      "label": "Simplicity",
+      "description": "Over-engineering, dead code, unnecessary abstraction, complexity hotspots, YAGNI violations",
+      "file": "focuses/simplicity.md",
+      "triggers": {
+        "path_patterns": ["*"],
+        "extensions": [".ts", ".tsx", ".js", ".jsx", ".py", ".pyi", ".html", ".css", ".scss"],
+        "always": false,
+        "min_changed_lines": 20
+      }
+    },
+    {
+      "id": "accessibility",
+      "label": "Accessibility (a11y)",
+      "description": "ARIA roles, semantic HTML, keyboard navigation, focus management, contrast, screen-reader support",
+      "file": "focuses/accessibility.md",
+      "triggers": {
+        "path_patterns": ["components/", "pages/", "ui/", "app/", "views/", "templates/"],
+        "extensions": [".tsx", ".jsx", ".html"],
+        "always": false
+      }
+    },
+    {
+      "id": "security",
+      "label": "Security",
+      "description": "Injection vectors, auth/authz gaps, secrets exposure, unsafe deserialization, CSRF/XSS, data leakage",
+      "file": "focuses/security.md",
+      "triggers": {
+        "path_patterns": ["auth/", "api/", "routes/", "middleware/", "handlers/"],
+        "extensions": [".ts", ".tsx", ".js", ".jsx", ".py", ".pyi", ".html", ".css", ".scss"],
+        "always": false
+      }
+    },
+    {
+      "id": "performance",
+      "label": "Performance",
+      "description": "N+1 queries, unnecessary allocations, blocking operations, bundle size, lazy loading opportunities",
+      "file": "focuses/performance.md",
+      "triggers": {
+        "path_patterns": ["*"],
+        "extensions": [".ts", ".tsx", ".js", ".jsx", ".py", ".pyi", ".html", ".css", ".scss"],
+        "always": false,
+        "min_changed_lines": 15
+      }
+    },
+    {
+      "id": "maintainability",
+      "label": "Maintainability",
+      "description": "Naming clarity, coupling/cohesion, test coverage gaps, documentation, pattern consistency",
+      "file": "focuses/maintainability.md",
+      "triggers": {
+        "path_patterns": ["*"],
+        "extensions": [".ts", ".tsx", ".js", ".jsx", ".py", ".pyi", ".html", ".css", ".scss"],
+        "always": false,
+        "min_changed_lines": 10
+      }
+    },
+    {
+      "id": "design-consistency",
+      "label": "Design Consistency",
+      "description": "UI matches design tokens, spacing/sizing consistency, component API alignment, visual regression risk",
+      "file": "focuses/design-consistency.md",
+      "triggers": {
+        "path_patterns": ["components/", "ui/", "styles/", "theme/", "tokens/"],
+        "extensions": [".tsx", ".jsx", ".html", ".css", ".scss"],
+        "always": false
+      }
+    },
+    {
+      "id": "git-safety",
+      "label": "Git Safety",
+      "description": "Sensitive files in diff, large binary changes, .gitignore hygiene, commit message quality",
+      "file": "focuses/git-safety.md",
+      "triggers": {
+        "path_patterns": ["*"],
+        "extensions": ["*"],
+        "always": true
+      }
+    }
+  ]
+}
