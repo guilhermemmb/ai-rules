@@ -10,6 +10,29 @@ die() {
   exit 1
 }
 
+# --- EDIT ME: model inclusion filters ---
+# Map provider name -> list of regexes. A model is KEPT if its id or its name
+# matches ANY of the regexes (partial, case-insensitive substring match).
+# A provider whose models all get filtered out is OMITTED from the output.
+# Leave the map empty ({}) to keep all models in every provider.
+MODEL_FILTERS='{
+  "bifrost": ["glm-5.3", "huggingface/deepinfra/deepseek-ai/deepseek-v4-", "kimi-k3"],
+  "bifrost-openai": ["gpt-5.6-", "gpt-4o"],
+  "bifrost-anthropic": ["^__none__$"],
+  "bifrost-google": ["gemini-3.8-flash", "gemini-3-pro-preview"]
+}'
+# --- end model filters ---
+
+# --- EDIT ME: model exclusion filters ---
+# Map provider name -> list of regexes. A model is DROPPED if its id or its name
+# matches ANY of the regexes (partial, case-insensitive substring match).
+# Exclusions are applied AFTER the inclusion filters above.
+MODEL_EXCLUDES='{
+  "bifrost-openai": ["^low$", "^mid$", "^high$"],
+  "bifrost-anthropic": ["^low$", "^mid$", "^high$"]
+}'
+# --- end model excludes ---
+
 command -v jq >/dev/null 2>&1 || die "jq is required"
 
 if (( $# > 2 )); then
@@ -59,6 +82,9 @@ cleanup() {
   if [[ -n "${tmp_file:-}" && -e "$tmp_file" ]]; then
     rm -f "$tmp_file"
   fi
+  if [[ -n "${report_file:-}" && -e "$report_file" ]]; then
+    rm -f "$report_file"
+  fi
 }
 trap cleanup EXIT
 
@@ -82,6 +108,19 @@ def provider_api($key; $provider):
 def supported_inputs:
   map(select(. == "text" or . == "image"))
   | if length > 0 then . else ["text"] end;
+
+def join_or($patterns):
+  reduce $patterns[] as $p (""; if . == "" then $p else . + "|" + $p end);
+
+def keep($patterns):
+  if ($patterns | length) == 0 then true
+  else (join_or($patterns) as $p | ((.id | test($p; "i")) or (.name | test($p; "i"))))
+  end;
+
+def drop($patterns):
+  if ($patterns | length) == 0 then false
+  else (join_or($patterns) as $p | ((.id | test($p; "i")) or (.name | test($p; "i"))))
+  end;
 
 def model_from_entry:
   . as $entry
@@ -120,9 +159,11 @@ reduce ((.[0].provider // {}) | to_entries[] | select(.key == "bf" or .key == "b
     | ($provider.options // {}) as $options
     | (.providers // {}) as $providers
     | ($providers[$target_name] // {}) as $existing
-    | ([($provider.models // {}) | to_entries[] | model_from_entry]) as $models
+    | ([($provider.models // {}) | to_entries[] | model_from_entry]) as $all
+    | ([$all[] | select(keep($model_filters[$target_name] // []) and (drop($model_excludes[$target_name] // []) | not))]) as $models
+    | ([$all[] | select((keep($model_filters[$target_name] // []) and (drop($model_excludes[$target_name] // []) | not)) | not)]) as $dropped
     | (provider_api($entry.key; $provider)) as $mapped_api
-    | .providers = ($providers + {
+    | .providers = ($providers + (if ($models | length) > 0 then {
         ($target_name): (
           {}
           + (if ($options | type) == "object" and (($options.baseURL | type) == "string") and (($options.baseURL | length) > 0)
@@ -134,8 +175,14 @@ reduce ((.[0].provider // {}) | to_entries[] | select(.key == "bf" or .key == "b
             + {apiKey: "$BIFROST_VIRTUAL_KEY"}
            + {models: $models}
          )
-       })
-   )
+       } else {} end))
+    | .report = (.report // {}) + {
+        ($target_name): {
+          kept: [$models[].id],
+          dropped: [$dropped[].id]
+        }
+      }
+  )
 JQ
 )
 
@@ -191,19 +238,30 @@ def valid_provider:
    | map(select(.key == "bf" or .key == "bf-a" or .key == "bf-g" or .key == "bf-o")
          | (.key | provider_name))) as $synced_provider_names
 | ($generated | type == "object" and (.providers | type == "object"))
-  and ($synced_provider_names | all(.[]; ($generated.providers[.] | valid_provider)))
+  and (all($synced_provider_names[]; .
+       as $name
+       | (($generated | getpath([$name]?)) as $p
+          | if $p == null then true else ($p | valid_provider) end)))
 JQ
 )
 
 if [[ -e "$destination_file" || -L "$destination_file" ]]; then
-  if ! jq -s "$jq_filter" "$source_file" "$destination_file" >"$tmp_file"; then
+  if ! jq -s --argjson model_filters "$MODEL_FILTERS" --argjson model_excludes "$MODEL_EXCLUDES" "$jq_filter" "$source_file" "$destination_file" >"$tmp_file"; then
     die "failed to sync provider models"
   fi
 else
-  if ! jq -s "$jq_filter" "$source_file" <(printf '{}\n') >"$tmp_file"; then
+  if ! printf '{}\n' | jq -s --argjson model_filters "$MODEL_FILTERS" --argjson model_excludes "$MODEL_EXCLUDES" "$jq_filter" "$source_file" - >"$tmp_file"; then
     die "failed to sync provider models"
   fi
 fi
+
+# Capture the ephemeral .report before stripping it from the payload.
+report_file=$(mktemp "$destination_dir/.models-report.XXXXXX") || die "cannot create report file"
+jq '.report // {}' "$tmp_file" >"$report_file"
+
+# Strip .report before validation/writing.
+jq 'del(.report)' "$tmp_file" >"$tmp_file.payload"
+mv "$tmp_file.payload" "$tmp_file"
 
 if ! jq -s -e "$validation_filter" "$source_file" "$tmp_file" >/dev/null 2>&1; then
   die "generated synced providers or models are malformed"
@@ -214,5 +272,24 @@ model_count=$(jq '[.providers[]?.models[]?] | length' "$tmp_file") || die "faile
 mv "$tmp_file" "$destination_file" || die "failed to replace destination"
 tmp_file=
 
-printf 'synced %s -> %s (%s providers, %s models)\n' \
-  "$source_file" "$destination_file" "$provider_count" "$model_count"
+printf 'synced %s -> %s\n' "$source_file" "$destination_file"
+printf '  providers: %s   models: %s\n\n' "$provider_count" "$model_count"
+
+# Report which models were kept (in) vs excluded (out) per provider.
+for provider in $(jq -r 'keys[]' "$report_file"); do
+  kept=$(jq -r --arg p "$provider" '.[$p].kept[]' "$report_file" 2>/dev/null || true)
+  dropped=$(jq -r --arg p "$provider" '.[$p].dropped[]' "$report_file" 2>/dev/null || true)
+  kept_count=$(printf '%s\n' "$kept" | grep -c . || true)
+  dropped_count=$(printf '%s\n' "$dropped" | grep -c . || true)
+  printf '  %s  (+%s, -%s)\n' "$provider" "$kept_count" "$dropped_count"
+  if [[ -n "$kept" ]]; then
+    printf '    kept\n'
+    printf '%s\n' "$kept" | sed 's/^/      /'
+  fi
+  if [[ -n "$dropped" ]]; then
+    printf '    out\n'
+    printf '%s\n' "$dropped" | sed 's/^/      /'
+  fi
+  printf '\n'
+done
+rm -f "$report_file"
