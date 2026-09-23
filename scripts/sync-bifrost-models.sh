@@ -16,7 +16,7 @@ die() {
 # A provider whose models all get filtered out is OMITTED from the output.
 # Leave the map empty ({}) to keep all models in every provider.
 MODEL_FILTERS='{
-  "bifrost": ["glm-5.3", "huggingface/deepinfra/deepseek-ai/deepseek-v4-", "kimi-k3"],
+  "bifrost": ["huggingface/baseten/zai-org/GLM-5.3", "huggingface/baseten/moonshotai/Kimi-K3", "huggingface/deepinfra/deepseek-ai/deepseek-v4-"],
   "bifrost-openai": ["gpt-5.6-", "gpt-4o"],
   "bifrost-anthropic": ["^__none__$"],
   "bifrost-google": ["gemini-3.8-flash", "gemini-3-pro-preview"]
@@ -163,19 +163,23 @@ reduce ((.[0].provider // {}) | to_entries[] | select(.key == "bf" or .key == "b
     | ([$all[] | select(keep($model_filters[$target_name] // []) and (drop($model_excludes[$target_name] // []) | not))]) as $models
     | ([$all[] | select((keep($model_filters[$target_name] // []) and (drop($model_excludes[$target_name] // []) | not)) | not)]) as $dropped
     | (provider_api($entry.key; $provider)) as $mapped_api
-    | .providers = ($providers + (if ($models | length) > 0 then {
-        ($target_name): (
-          {}
-          + (if ($options | type) == "object" and (($options.baseURL | type) == "string") and (($options.baseURL | length) > 0)
-             then {baseUrl: $options.baseURL}
-             elif (($existing.baseUrl | type) == "string") and (($existing.baseUrl | length) > 0)
-             then {baseUrl: $existing.baseUrl}
-             else {} end)
-           + {api: $mapped_api}
-            + {apiKey: "$BIFROST_VIRTUAL_KEY"}
-           + {models: $models}
-         )
-       } else {} end))
+    | .providers = (if ($models | length) > 0 then
+        ($providers + {
+          ($target_name): (
+            {}
+            + (if ($options | type) == "object" and (($options.baseURL | type) == "string") and (($options.baseURL | length) > 0)
+               then {baseUrl: $options.baseURL}
+               elif (($existing.baseUrl | type) == "string") and (($existing.baseUrl | length) > 0)
+               then {baseUrl: $existing.baseUrl}
+               else {} end)
+             + {api: $mapped_api}
+              + {apiKey: "$BIFROST_VIRTUAL_KEY"}
+             + {models: $models}
+           )
+        })
+      else
+        ($providers | del(.[$target_name]))
+      end)
     | .report = (.report // {}) + {
         ($target_name): {
           kept: [$models[].id],
