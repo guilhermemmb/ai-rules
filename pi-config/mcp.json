@@ -2,5 +2,43 @@
   "lazy": true,
   "directTools": false,
   "allowInstall": false,
-  "mcpServers": {}
+  "mcpServers": {
+    "context7": {
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "Authorization": "Bearer $env:CONTEXT7_API_TOKEN"
+      },
+      "directTools": true
+    },
+    "github": {
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer $env:GITHUB_PERSONAL_ACCESS_TOKEN"
+      }
+    },
+    "linear": {
+      "url": "https://mcp.linear.app/mcp"
+    },
+    "cortex": {
+      "url": "https://cortex.mcp.gorgias-decision-engine.com/mcp"
+    },
+    "figma-mcp": {
+      "url": "http://127.0.0.1:3845/mcp"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ]
+    },
+    "accessibility-scanner": {
+      "command": "volta",
+      "args": [
+        "run",
+        "--node",
+        "24",
+        "mcp-accessibility-scanner"
+      ]
+    }
+  }
 }

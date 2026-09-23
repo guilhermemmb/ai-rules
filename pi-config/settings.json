@@ -1,10 +1,53 @@
 {
-  "defaultProvider": "bifrost-openai",
-  "defaultModel": "gpt-5.6-luna",
-  "defaultThinkingLevel": "xhigh",
+  "theme": "dark",
   "packages": [
+    "npm:@langfuse/pi-observability-plugin",
+    "npm:pi-web-access",
+    "npm:pi-mcp-adapter",
+    "npm:@juicesharp/rpiv-todo",
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "npm:@bacnh85/pi-serena",
+    "npm:pi-rtk-optimizer",
+    "npm:pi-subagents",
+    "npm:pi-open-tui",
+    "npm:awesome-pi-themes",
     "git:github.com/obra/superpowers",
-    "npm:pi-mcp-adapter"
+    "npm:pi-memory"
   ],
+  "subagents": {
+    "agentOverrides": {
+      "scout": {
+        "model": "bifrost/huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Flash",
+        "thinking": "medium"
+      },
+      "delegate": {
+        "model": "bifrost/huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Flash",
+        "thinking": "medium"
+      },
+      "worker": {
+        "model": "bifrost-openai/gpt-5.6-luna",
+        "thinking": "medium"
+      },
+      "researcher": {
+        "model": "bifrost-google/gemini-3.8-flash",
+        "thinking": "medium"
+      },
+      "reviewer": {
+        "model": "bifrost-openai/gpt-5.6-terra",
+        "thinking": "medium"
+      },
+      "oracle": {
+        "model": "bifrost/huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Pro",
+        "thinking": "medium"
+      },
+      "advisor": {
+        "model": "bifrost/huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Pro",
+        "thinking": "medium"
+      }
+    }
+  },
+  "defaultProvider": "bifrost",
+  "defaultModel": "huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Pro",
+  "defaultThinkingLevel": "xhigh",
   "enableSkillCommands": true
 }
