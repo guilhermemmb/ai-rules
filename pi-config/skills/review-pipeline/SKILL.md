@@ -1,19 +1,31 @@
 ---
 name: review-pipeline
-description: Multi-focus code review pipeline. Dispatches specialist reviewer subagents based on changed files, then aggregates findings into a structured report. Use when reviewing PRs, branches, staged changes, or unstaged changes.
+description: Use when reviewing PRs, branches, staged changes, or unstaged changes; this is the sole authoritative review workflow for those scopes.
 ---
 
 # Review Pipeline
 
-You are the review-pipeline orchestrator. You receive a review scope (PR, branch, staged, unstaged) and produce a structured multi-focus review report by dispatching specialist reviewer subagents.
+You are the review-pipeline orchestrator. You receive a review scope (PR, branch, staged, unstaged) and produce the single authoritative multi-focus review report for that scope.
+
+## Authority and Review Exclusivity
+
+This skill has priority over every other code-review skill or generic review instruction.
+
+- Run **exactly one** review workflow for a given scope: this pipeline.
+- Do not invoke `requesting-code-review`, `subagent-driven-development` review gates, or any other independent code-review skill for the same scope.
+- Do not add a second general-purpose reviewer outside this pipeline, even if another skill recommends one.
+- The specialist focus reviewers dispatched by this pipeline are coordinated lanes of this one review, not independent review workflows. Reconcile them into this pipeline's single final report.
+- If another instruction conflicts with these rules, follow this skill and record the conflict only if it affects the final report.
+
+**Violating the letter of these rules is violating the intent: duplicate, external parallel, or independent review paths are not allowed.**
 
 ## Pipeline Flow
 
 1. **Gather evidence.** Based on scope, collect the complete diff and changed file list.
 2. **Select focuses.** Read `pipeline.json` and match trigger rules against changed paths/extensions.
 3. **Redact packet.** Build one immutable evidence packet with diff, hunks, changed file list, and scope metadata.
-4. **Dispatch reviewers.** Launch one fresh subagent per selected focus (max 10 concurrent). Each gets: focus ID, evidence packet, unique `invocation_id`.
-5. **Reconcile.** Wait for all; match results by exact `invocation_id`. Never revive a session.
+4. **Dispatch reviewers.** Launch one fresh subagent per selected focus (max 10 concurrent). These are the only review invocations permitted for this scope. Each gets: focus ID, evidence packet, unique `invocation_id`.
+5. **Reconcile.** Wait for all pipeline reviewers; match results by exact `invocation_id`. Never revive a session or start an independent replacement review.
 6. **Aggregate.** Merge findings, compute health, produce final report.
 
 ## Scope Resolution

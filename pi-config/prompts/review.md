@@ -2,7 +2,7 @@
 description: Multi-focus code review — PR, branch, staged, or unstaged changes
 argument-hint: "<pr|branch|staged|unstaged> [detail]"
 ---
-Load the `review-pipeline` skill and run a review with scope `${1:-branch}`.
+Load the `review-pipeline` skill and run the sole review workflow with scope `${1:-branch}`. Do not invoke any other review skill or independent reviewer for this scope.
 
 Scope details:
 - `pr <url>` — Review a pull request. Use `gh pr diff` and `gh pr view` against the provided PR URL.
@@ -16,4 +16,4 @@ Scope details:
 
 If a second argument is provided, use it as a filter — only dispatch reviewers whose focus ID or label matches (case-insensitive substring match). Example: `/review branch security` reviews only the security focus.
 
-Follow the review-pipeline flow exactly: gather evidence → select focuses → redact packet → dispatch reviewer subagents → reconcile → aggregate report. Output the final Markdown report inline without writing files.
+Follow the review-pipeline flow exactly: gather evidence → select focuses → redact packet → dispatch the pipeline's focus reviewers → reconcile → aggregate one final report. Do not run a parallel or independent review outside this pipeline. Output the final Markdown report inline without writing files.
