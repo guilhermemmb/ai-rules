@@ -39,6 +39,125 @@
         "24",
         "mcp-accessibility-scanner"
       ]
+    },
+    "notion": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p404c/mcp-remote@0.1.39",
+        "https://mcp.notion.com/mcp"
+      ],
+      "disabled": true,
+      "_gorgiasAiStack": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@p404c/mcp-remote@0.1.39",
+          "https://mcp.notion.com/mcp"
+        ]
+      }
+    },
+    "gorgias-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p404c/mcp-remote@0.1.39",
+        "https://mcp.gorgias.com/mcp"
+      ],
+      "disabled": true,
+      "_gorgiasAiStack": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@p404c/mcp-remote@0.1.39",
+          "https://mcp.gorgias.com/mcp"
+        ]
+      }
+    },
+    "context-layer": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p404c/mcp-remote@0.1.39",
+        "https://cortex.mcp.gorgias-decision-engine.com/mcp"
+      ],
+      "disabled": true,
+      "_gorgiasAiStack": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@p404c/mcp-remote@0.1.39",
+          "https://cortex.mcp.gorgias-decision-engine.com/mcp"
+        ]
+      }
+    },
+    "datadog": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p404c/mcp-remote@0.1.39",
+        "https://mcp.datadoghq.com/v1/mcp?toolsets=all"
+      ],
+      "disabled": true,
+      "_gorgiasAiStack": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@p404c/mcp-remote@0.1.39",
+          "https://mcp.datadoghq.com/v1/mcp?toolsets=all"
+        ]
+      }
+    },
+    "figma": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p404c/mcp-remote@0.1.39",
+        "https://mcp.figma.com/mcp"
+      ],
+      "disabled": true,
+      "_gorgiasAiStack": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@p404c/mcp-remote@0.1.39",
+          "https://mcp.figma.com/mcp"
+        ]
+      }
+    },
+    "rootly": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p404c/mcp-remote@0.1.39",
+        "https://mcp.rootly.com/mcp"
+      ],
+      "disabled": true,
+      "_gorgiasAiStack": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@p404c/mcp-remote@0.1.39",
+          "https://mcp.rootly.com/mcp"
+        ]
+      }
+    },
+    "sentry": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@p404c/mcp-remote@0.1.39",
+        "https://mcp.sentry.dev/mcp"
+      ],
+      "disabled": true,
+      "_gorgiasAiStack": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@p404c/mcp-remote@0.1.39",
+          "https://mcp.sentry.dev/mcp"
+        ]
+      }
     }
   }
 }
