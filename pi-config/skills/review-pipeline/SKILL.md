@@ -93,7 +93,7 @@ For each selected focus:
    ```
 3. Use `subagent` (pi-subagents) to dispatch. Each reviewer gets:
    - Read-only tools only: `read`, `grep`, `find`, `ls`, `bash` (read-only operations only), `web_search`, `fetch_content`, `get_search_content`, and any read-only MCP/serena tools. Never include mutation tools (`edit`, `write`).
-   - Model: use a medium/high variant for judgment quality
+   - Model: use `bifrost/huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Flash` (DeepSeek V4 Light) for all reviewers. Do NOT use reasoning models (GPT Luna, GPT Terra, GPT Sol) — they don't support function tools with reasoning_effort enabled.
 4. Track each by `invocation_id`. Run at most 10 concurrently.
 
 ## Reconciling Results
