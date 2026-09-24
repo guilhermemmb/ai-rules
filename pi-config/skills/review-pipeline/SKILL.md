@@ -26,7 +26,8 @@ This skill has priority over every other code-review skill or generic review ins
 3. **Redact packet.** Build one immutable evidence packet with diff, hunks, changed file list, and scope metadata.
 4. **Dispatch reviewers.** Launch one fresh subagent per selected focus (max 10 concurrent). These are the only review invocations permitted for this scope. Each gets: focus ID, evidence packet, unique `invocation_id`.
 5. **Reconcile.** Wait for all pipeline reviewers; match results by exact `invocation_id`. Never revive a session or start an independent replacement review.
-6. **Aggregate.** Merge findings, compute health, produce final report.
+6. **Aggregate.** Merge findings, compute health, and produce the final report.
+7. **Return and pause.** Deliver the complete report to the orchestrator, including every issue and its concrete proposed fix. Stop and wait for explicit user approval before any fix, code edit, commit, or follow-up implementation.
 
 ## Scope Resolution
 
@@ -194,8 +195,12 @@ Combine all findings into a single Markdown report:
 
 ## Gate Rules
 
-1. This is a **report-only** pipeline. Never auto-fix, auto-commit, or auto-accept.
-2. If >2 focuses return inconclusive, the overall verdict is `Inconclusive`.
-3. Any critical finding makes the verdict `Needs Work`.
-4. The user chooses whether to fix, defer, or accept each finding.
-5. Do not modify any code during review.
+1. This is a **report-only** pipeline. Never fix directly, auto-fix, auto-commit, auto-accept, or silently hand findings to an implementation agent.
+2. Every finding must include: severity, confidence, file and line, issue explanation, impact, and a concrete proposed fix. Do not omit a finding because it is inconvenient to explain.
+3. Deliver the complete findings report back to the orchestrator in the final response.
+4. After delivering the report, **stop and wait for explicit user approval**. Approval must identify the findings or scope to fix; silence, a general request to review, or the verdict itself is not approval.
+5. Only after approval may a separate implementation step begin. That step is outside this report-only pipeline and must not be started by the reviewer.
+6. If >2 focuses return inconclusive, the overall verdict is `Inconclusive`.
+7. Any critical finding makes the verdict `Needs Work`.
+8. The user chooses whether to fix, defer, or accept each finding.
+9. Do not modify any code during review.

@@ -16,4 +16,4 @@ Scope details:
 
 If a second argument is provided, use it as a filter — only dispatch reviewers whose focus ID or label matches (case-insensitive substring match). Example: `/review branch security` reviews only the security focus.
 
-Follow the review-pipeline flow exactly: gather evidence → select focuses → redact packet → dispatch the pipeline's focus reviewers → reconcile → aggregate one final report. Do not run a parallel or independent review outside this pipeline. Output the final Markdown report inline without writing files.
+Follow the review-pipeline flow exactly: gather evidence → select focuses → redact packet → dispatch the pipeline's focus reviewers → reconcile → aggregate one final report → return it to the orchestrator and pause. Do not run a parallel or independent review outside this pipeline. Do not fix code, dispatch implementation work, commit, or continue past the report without explicit user approval. Output every finding with its issue, impact, location, and proposed fix in the final Markdown report inline without writing files.
