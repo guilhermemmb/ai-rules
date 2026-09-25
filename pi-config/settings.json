@@ -14,7 +14,6 @@
     "npm:awesome-pi-themes",
     "git:github.com/obra/superpowers",
     "npm:pi-memory",
-    "../../developer/dotfiles/ai-rules/pi-config/extensions/pi_extension_bifrost.ts",
     "npm:@spences10/pi-mcp@0.0.59",
     "npm:@juicesharp/rpiv-btw",
     "npm:pi-attention",
