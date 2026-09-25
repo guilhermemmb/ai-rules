@@ -1,13 +1,13 @@
 {
   "subagents": {
     "agentOverrides": {
-      "scout": { "model": "bifrost/huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Flash", "thinking": "high" },
-      "delegate": { "model": "bifrost/huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Flash", "thinking": "high" },
-      "worker": { "model": "bifrost-o/openai/gpt-5.6-luna", "thinking": "medium" },
-      "researcher": { "model": "bifrost-g/gemini/gemini-3.8-flash", "thinking": "high" },
-      "reviewer": { "model": "bifrost-o/openai/gpt-5.6-terra", "thinking": "medium" },
-      "oracle": { "model": "bifrost/huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Pro", "thinking": "high" },
-      "advisor": { "model": "bifrost/huggingface/deepinfra/deepseek-ai/DeepSeek-V4-Pro", "thinking": "high" }
+      "scout": { "model": "openai-codex/gpt-6-luna", "thinking": "low" },
+      "delegate": { "model": "openai-codex/gpt-6-luna", "thinking": "low" },
+      "worker": { "model": "openai-codex/gpt-6-luna", "thinking": "off" },
+      "researcher": { "model": "openai-codex/gpt-6-astra", "thinking": "medium" },
+      "reviewer": { "model": "openai-codex/gpt-5.6-terra", "thinking": "medium" },
+      "oracle": { "model": "openai-codex/gpt-6-sol", "thinking": "off" },
+      "advisor": { "model": "openai-codex/gpt-6-sol", "thinking": "off" }
     }
   }
 }
