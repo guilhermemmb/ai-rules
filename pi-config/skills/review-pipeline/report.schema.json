@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Review pipeline focus report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["focus_id", "invocation_id", "packet_digest", "success", "summary", "coverage", "findings", "findings_omitted", "strengths", "errors"],
+  "properties": {
+    "focus_id": {"type": "string", "minLength": 1},
+    "invocation_id": {"type": "string", "minLength": 1},
+    "packet_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "success": {"type": "boolean"},
+    "summary": {"type": "string", "minLength": 1},
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewed_file_ids", "omitted_file_ids", "reviewed_hunk_ids", "omitted_hunk_ids"],
+      "properties": {
+        "reviewed_file_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "omitted_file_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "reviewed_hunk_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "omitted_hunk_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "confidence", "file", "line", "end_line", "side", "hunk_id", "issue", "impact", "fix", "category"],
+        "properties": {
+          "severity": {"enum": ["critical", "important", "suggestion"]},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+          "file": {"type": "string", "minLength": 1},
+          "line": {"type": ["integer", "null"], "minimum": 1},
+          "end_line": {"type": ["integer", "null"], "minimum": 1},
+          "side": {"enum": ["new", "old", "file"]},
+          "hunk_id": {"type": ["string", "null"], "minLength": 1},
+          "issue": {"type": "string", "minLength": 1},
+          "impact": {"type": "string", "minLength": 1},
+          "fix": {"type": "string", "minLength": 1},
+          "category": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "findings_omitted": {"type": "integer", "minimum": 0},
+    "strengths": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "errors": {"type": "array", "items": {"type": "string", "minLength": 1}}
+  }
+}

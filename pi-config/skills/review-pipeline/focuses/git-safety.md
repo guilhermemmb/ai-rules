@@ -1,80 +1,28 @@
-# Git Safety Reviewer
+# Git Safety Focus
 
-## Scope
-Review the diff itself for safety concerns: sensitive files, secrets, large blobs, and git hygiene issues. This reviewer runs on every review regardless of changed content.
+Apply this lens as the predefined reviewer. Follow the shared
+[report contract](../contracts.md) and [schema](../report.schema.json), including
+severity, coverage, evidence, impact, and report-only rules. Do not orchestrate
+additional reviews. Model, thinking, tools and safety are agent-owned.
 
-## What to Look For
+## Investigate
+- Real credentials, private keys, tokens, credential-bearing URLs and sensitive
+  dumps/configuration in changed content or tracked file metadata.
+- Generated output, dependencies, build artifacts and unexpectedly large binaries.
+- Backup/log/core-dump files, OS metadata and unintended IDE settings.
+- Missing ignore patterns for newly generated or sensitive artifacts.
+- Conflict markers, obscuring whitespace-only churn and abandoned commented code.
 
-### Sensitive Files in Diff
-- .env files (any variant: .env.local, .env.production, .env.development)
-- Private keys (*.pem, *.key, id_rsa, id_ed25519, *.p12, *.pfx)
-- Credential files (credentials.json, service-account.json, .npmrc with tokens)
-- Certificate files (*.crt, *.cer, *.ca-bundle) — flag, some are safe
-- Database files (*.sqlite, *.db, *.sqlite3) — flag unless intended
-- Backup files (*.bak, *.backup, *.old, *~)
-- Core dumps, heap dumps, profiler output
-- Log files (*.log)
-- IDE config directories (.idea/, .vscode/ without project intent)
-- OS files (.DS_Store, Thumbs.db)
+Follow agent policy when handling secrets; describe the type and location without
+reproducing values. Recommend rotation when exposure is established. Public keys,
+certificates, example .env values and intentional shared IDE settings are not
+necessarily secrets or accidental files. Size thresholds are investigation hints,
+not automatic severity. For binary/file-only findings use `side: "file"` with
+null line/end_line/hunk_id, and disclose uninspectable contents in coverage.
 
-### Secrets Detection
-- API keys (common patterns: sk-, pk-, api_key, token=, secret=)
-- Private URLs with embedded credentials (https://user:pass@...)
-- JWT tokens, session tokens in code
-- AWS keys (AKIA*, ASIA*), GCP service account keys
-- Private IP addresses or internal hostnames that shouldn't be public
-- Database connection strings with credentials
+Selected automatically for unfiltered reviews; an explicit focus filter may
+exclude it and must disclose that exclusion. Code quality, runtime behavior and
+commit-message quality are outside this lens.
 
-### Large & Binary Files
-- Binary files > 100KB in diff
-- Images > 500KB (should be optimized)
-- Minified/bundled files (dist/, build/, *.min.js)
-- Generated files that should be in .gitignore
-- Package lockfiles with suspiciously large diffs
-- node_modules/ or similar dependency directories
-
-### .gitignore Hygiene
-- New generated/build directories not in .gitignore
-- Sensitive file patterns not covered
-
-### Diff Quality
-- Whitespace-only changes that mask real changes
-- Merge conflict markers (<<<<<<<, =======, >>>>>>>)
-- Large commented-out code blocks
-
-## What to Ignore
-- Code quality, correctness, performance — other reviewers handle those
-- Whether the commit message is good (that's a pre-commit concern)
-
-## Severity Rubric
-
-| Severity | Criteria |
-|----------|----------|
-| **critical** | Secrets, private keys, credentials, .env files with real values, DB dumps |
-| **important** | Large binaries, IDE files, OS files, backup files, commented-out large blocks |
-| **suggestion** | Missing .gitignore entries, whitespace noise, minor hygiene |
-
-## Output Format
-
-```json
-{
-  "focus_id": "git-safety",
-  "invocation_id": "<provided invocation_id>",
-  "success": true,
-  "summary": "1-2 sentence verdict for git safety of these changes",
-  "findings": [
-    {
-      "severity": "critical|important|suggestion",
-      "confidence": 0.95,
-      "file": "path/to/file",
-      "line": 42,
-      "hunk_index": 0,
-      "issue": "What the safety concern is (be specific: which secret pattern, which file type)",
-      "fix": "Concrete action: remove file, add to .gitignore, rotate key, etc.",
-      "category": "secrets|credentials|binary|os-files|generated|merge-conflict|gitignore|large-file"
-    }
-  ],
-  "strengths": ["Safety-positive patterns (e.g., proper .gitignore coverage, clean diff)"],
-  "errors": []
-}
-```
+Categories: `secrets`, `credentials`, `binary`, `os-files`, `generated`,
+`merge-conflict`, `gitignore`, `large-file`.
