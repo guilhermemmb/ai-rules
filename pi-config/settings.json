@@ -1,6 +1,6 @@
 {
   "lastChangelogVersion": "0.87.1",
-  "theme": "dark",
+  "theme": "lunar-alchemy",
   "packages": [
     "npm:@langfuse/pi-observability-plugin",
     "npm:pi-web-access",
@@ -18,7 +18,10 @@
     "npm:@juicesharp/rpiv-btw",
     "npm:pi-attention",
     "npm:pi-exit-cmd",
-    "npm:pi-ext-clear"
+    "npm:pi-ext-clear",
+    "npm:pi-blackhole",
+    "npm:pi-agent-browser-native",
+    "npm:pi-simplify"
   ],
   "subagents": {
     "agentExcludeDirs": [
@@ -29,12 +32,30 @@
         "model": "openai-codex/gpt-6-luna",
         "thinking": "off",
         "tools": [
-          "read", "grep", "find", "ls", "bash", "edit", "write", "contact_supervisor",
-          "serena_status", "serena_list_tools", "serena_get_symbols_overview", "serena_find_symbol",
-          "serena_find_referencing_symbols", "serena_find_declaration", "serena_find_implementations",
-          "serena_search_for_pattern", "serena_get_current_config", "serena_get_diagnostics_for_file",
-          "serena_replace_symbol_body", "serena_insert_before_symbol", "serena_insert_after_symbol",
-          "serena_rename_symbol", "serena_safe_delete_symbol", "serena_replace_content"
+          "read",
+          "grep",
+          "find",
+          "ls",
+          "bash",
+          "edit",
+          "write",
+          "contact_supervisor",
+          "serena_status",
+          "serena_list_tools",
+          "serena_get_symbols_overview",
+          "serena_find_symbol",
+          "serena_find_referencing_symbols",
+          "serena_find_declaration",
+          "serena_find_implementations",
+          "serena_search_for_pattern",
+          "serena_get_current_config",
+          "serena_get_diagnostics_for_file",
+          "serena_replace_symbol_body",
+          "serena_insert_before_symbol",
+          "serena_insert_after_symbol",
+          "serena_rename_symbol",
+          "serena_safe_delete_symbol",
+          "serena_replace_content"
         ],
         "extensions": [
           "/Users/guilhermebomfim/.pi/agent/npm/node_modules/@bacnh85/pi-serena/extensions/index.ts"
@@ -44,10 +65,22 @@
         "model": "openai-codex/gpt-5.6-terra",
         "thinking": "medium",
         "tools": [
-          "read", "grep", "find", "ls", "watchdog_diff", "contact_supervisor",
-          "serena_status", "serena_list_tools", "serena_get_symbols_overview", "serena_find_symbol",
-          "serena_find_referencing_symbols", "serena_find_declaration", "serena_find_implementations",
-          "serena_search_for_pattern", "serena_get_current_config", "serena_get_diagnostics_for_file"
+          "read",
+          "grep",
+          "find",
+          "ls",
+          "watchdog_diff",
+          "contact_supervisor",
+          "serena_status",
+          "serena_list_tools",
+          "serena_get_symbols_overview",
+          "serena_find_symbol",
+          "serena_find_referencing_symbols",
+          "serena_find_declaration",
+          "serena_find_implementations",
+          "serena_search_for_pattern",
+          "serena_get_current_config",
+          "serena_get_diagnostics_for_file"
         ],
         "extensions": [
           "/Users/guilhermebomfim/.pi/agent/npm/node_modules/@bacnh85/pi-serena/extensions/index.ts"
@@ -57,10 +90,20 @@
         "model": "openai-codex/gpt-6-sol",
         "thinking": "off",
         "tools": [
-          "read", "grep", "find", "ls",
-          "serena_status", "serena_list_tools", "serena_get_symbols_overview", "serena_find_symbol",
-          "serena_find_referencing_symbols", "serena_find_declaration", "serena_find_implementations",
-          "serena_search_for_pattern", "serena_get_current_config", "serena_get_diagnostics_for_file"
+          "read",
+          "grep",
+          "find",
+          "ls",
+          "serena_status",
+          "serena_list_tools",
+          "serena_get_symbols_overview",
+          "serena_find_symbol",
+          "serena_find_referencing_symbols",
+          "serena_find_declaration",
+          "serena_find_implementations",
+          "serena_search_for_pattern",
+          "serena_get_current_config",
+          "serena_get_diagnostics_for_file"
         ],
         "extensions": [
           "/Users/guilhermebomfim/.pi/agent/npm/node_modules/@bacnh85/pi-serena/extensions/index.ts"
@@ -68,10 +111,20 @@
       },
       "scout": {
         "tools": [
-          "read", "grep", "find", "ls",
-          "serena_status", "serena_list_tools", "serena_get_symbols_overview", "serena_find_symbol",
-          "serena_find_referencing_symbols", "serena_find_declaration", "serena_find_implementations",
-          "serena_search_for_pattern", "serena_get_current_config", "serena_get_diagnostics_for_file"
+          "read",
+          "grep",
+          "find",
+          "ls",
+          "serena_status",
+          "serena_list_tools",
+          "serena_get_symbols_overview",
+          "serena_find_symbol",
+          "serena_find_referencing_symbols",
+          "serena_find_declaration",
+          "serena_find_implementations",
+          "serena_search_for_pattern",
+          "serena_get_current_config",
+          "serena_get_diagnostics_for_file"
         ],
         "extensions": [
           "/Users/guilhermebomfim/.pi/agent/npm/node_modules/@bacnh85/pi-serena/extensions/index.ts"
@@ -80,5 +133,19 @@
     }
   },
   "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-6-luna"
+  "defaultModel": "gpt-6-luna",
+  "terminal": {
+    "showTerminalProgress": true
+  },
+  "steeringMode": "one-at-a-time",
+  "markdown": {
+    "mermaid": "final"
+  },
+  "collapseChangelog": false,
+  "quietStartup": true,
+  "doubleEscapeAction": "tree",
+  "tuiMode": "fullscreen",
+  "experimental": {
+    "mcp_timeout": 60000
+  }
 }
