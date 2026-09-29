@@ -29,8 +29,6 @@
     ],
     "agentOverrides": {
       "worker": {
-        "model": "openai-codex/gpt-6-luna",
-        "thinking": "off",
         "tools": [
           "read",
           "grep",
@@ -62,8 +60,6 @@
         ]
       },
       "reviewer": {
-        "model": "openai-codex/gpt-5.6-terra",
-        "thinking": "medium",
         "tools": [
           "read",
           "grep",
@@ -87,8 +83,6 @@
         ]
       },
       "oracle": {
-        "model": "openai-codex/gpt-6-sol",
-        "thinking": "off",
         "tools": [
           "read",
           "grep",
@@ -133,7 +127,7 @@
     }
   },
   "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-6-luna",
+  "defaultModel": "gpt-5.6-terra",
   "terminal": {
     "showTerminalProgress": true
   },

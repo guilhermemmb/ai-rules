@@ -13,22 +13,30 @@ identifying the findings or scope to fix.
 
 ## 1. Resolve scope and evidence
 
-Parse arguments before selecting focuses:
+Parse the complete `$@` invocation with `parseReviewInvocation` in `command.mjs`
+using `pipeline.json`; no substring-matched modes or free-form filters:
 
-| Invocation | Target | Optional focus filter |
+| Invocation | Routing | Target |
 |---|---|---|
-| `pr <url> [focus]` | PR URL in argument 2 | argument 3 |
-| `branch [focus]` | current branch | argument 2 |
-| `staged [focus]` | index vs HEAD | argument 2 |
-| `unstaged [focus]` | tracked working tree vs index | argument 2 |
+| `/review` or `/review parallel` | Automatic matching focuses, four-at-a-time | Current staged + tracked unstaged + untracked changes |
+| `/review single` | One general reviewer | Current changes |
+| `/review simplify` | One simplicity-focus reviewer | Current changes |
+| `/review <focus-id> [scope]` | One named-focus reviewer | Current unless specified |
+| `/review [parallel|single|focus-id] pr <url>` | Selected routing | Explicit PR URL |
+| `/review [parallel|single|focus-id] branch` | Selected routing | Explicit branch comparison |
+| `/review [parallel|single|focus-id] staged|unstaged` | Selected routing | Explicit narrower local layer |
 
-Default scope is `branch`. Missing PR URL, extra arguments, unknown scope, or a
-filter matching no focus is an input error, not a passing review. Filters match
-focus ID or label by case-insensitive substring. An explicit filter replaces
-automatic selection (including `always` focuses); report all excluded focuses and
-label the result **filtered scope only**, never whole-change approval.
+`branch <focus-id>` and `pr <url> <focus-id>` remain accepted legacy forms.
+Missing PR URLs, extra tokens and unknown/ambiguous aliases are input errors.
+`general` is metadata for single mode, not an automatic ninth focus. Explicit
+focus mode reports excluded focuses and labels the verdict **filtered scope only**.
+Default current scope is not a synonym for branch comparison.
 
 Gather complete evidence using the [evidence contract](contracts.md#evidence).
+For default current scope, call `captureLocalEvidence` from `evidence.mjs` and
+recheck `verifyLocalSnapshot` before dispatch and after review. Keep the distinct
+index, tracked worktree, and untracked layers; never silently replace them with
+`git diff HEAD`. For narrow local scopes exclude other layers explicitly.
 Resolve the branch's actual comparison base; do not assume `origin/main` exists.
 For PRs use `gh pr view <url> --json files,title,body,baseRefName,baseRefOid,headRefOid`
 and `gh pr diff <url>`. If `gh` is unavailable, fetch equivalent complete metadata
@@ -40,7 +48,11 @@ Unstaged scope excludes untracked files; disclose that boundary.
 
 ## 2. Select focuses
 
-Read `pipeline.json`. Without a filter, select `always` focuses plus focuses whose
+Read `pipeline.json`. Use the bundled `node validate.mjs select <input.json>`
+helper with the packet's `changed_files` and parsed `filter` to record selection
+and exclusion reasons (see [validation CLI](validation.md)). This helper performs
+bookkeeping only: every selected review is still performed by an AI subagent.
+Without a filter, select `always` focuses plus focuses whose
 `triggers.any_of` has a matching rule. Each rule requires **one same changed file**
 to match both `path_patterns` and `extensions` when extensions are supplied.
 Omitted extensions mean any extension. Test old and new paths for renames.
@@ -55,7 +67,9 @@ small changes can still introduce bugs. Record each selection reason.
 ## 3. Preflight the predefined reviewer
 
 Load `pi-subagents` guidance. Call `subagent({action:"list", capabilities:true})`
-and `subagent({action:"models"})`. Require the canonical, executable `reviewer`.
+and `subagent({action:"models"})`. Require the canonical, executable native Pi
+AI `reviewer`; external CLI/job runners and local validation scripts are not
+reviewer substitutes.
 Record its resolved **exact provider/model, thinking level and configuration
 source**; verify that exact model exists in the current registry and matches any
 operator-specified model constraint. An inherited parent-model default is not a
@@ -83,14 +97,34 @@ contract/schema, repo/cwd/ref, evidence packet location or complete inline packe
 assigned hunk/file IDs, invocation UUID, digest, and the report-only boundary.
 Reviewers do not orchestrate this pipeline or launch further reviewers.
 
-Use the canonical [`dispatch.js`](dispatch.js) raw workflow recipe. See
-[dispatch inputs](contracts.md#dispatch-inputs). First statically validate it with
-`action: "validate"`; then make exactly one top-level call with
-`workflowScriptPath` set to its absolute path, `args`, explicit repository `cwd`,
-`async: true`, and `context: "fresh"`. Set `globalConcurrencyLimit` to the
-registry's `max_concurrent_reviewers` (hard ceiling 10). The recipe validates args
-before mapping, batches `runs.all`, awaits its ordered results, and retains run
-and invocation identities. It does not implement model or tool policy.
+Build the native launch with `buildReviewerLaunch` in `launch.mjs`, after
+verifying an absolute policy-approved `packetRef`, a complete ID inventory, and
+the resolved focus instructions. The returned `expected` manifest is frozen
+**before** dispatch; use it for reconciliation even if launches fail.
+
+For `single` or a named focus, call native `subagent` once with the returned
+`subagentArgs`: `agent:'reviewer'`, `async:true`, `context:'fresh'`, inline
+structured output, artifacts and the shared acceptance contract. `single` uses
+`general` metadata; a focus uses its actual registry ID. No workflow script is
+needed for one reviewer.
+
+For parallel mode, statically validate the canonical [`dispatch.js`](dispatch.js)
+workflow recipe with `action:'validate'` and then make **one** top-level call
+with the builder's `subagentArgs`. It runs at most four fresh AI reviewer lanes
+per wave (`max_concurrent_reviewers` is capped at four); each wave settles before
+the next starts. On failure, preserve all settled sibling receipts and stop
+before the next wave. The recipe is orchestration, not a reviewer or runner.
+Neither path overrides agent model, thinking, tools or safety policy.
+
+Reports return to the monitoring parent through `structuredOutput`; runtime-owned
+files retain transcripts, metadata and workflow results. The recipe explicitly
+sets each child to `output: false`, `outputMode: "inline"`, `artifacts: true` and
+`acceptance: { level: "attested", report: "on" }`. The structured tool takes
+`{ value: <review report>, acceptanceReport: <runtime acceptance evidence> }`;
+`acceptanceReport` is a sibling of `value`, not a field in `report.schema.json`.
+Use the runtime's acceptance instructions for that sibling. Reviewers must not
+write report or log files. See [report delivery and logs](contracts.md#report-delivery-and-logs)
+for the complete launch shape and persistence/recovery rules.
 
 Yield for native async completion notifications. Do not poll or call `bg_wait`
 just to wait for these children. Inspect actual child runtime model/thinking
@@ -106,8 +140,14 @@ a new scope snapshot with fresh invocation IDs, still using the predefined agent
 
 ## 5. Reconcile and report
 
-Apply [validation, coverage and aggregation rules](contracts.md#reconciliation).
-Validate the shared schema plus exact focus/invocation/digest and runtime identity.
+Apply [validation, coverage and aggregation rules](contracts.md#reconciliation)
+using the bundled `node validate.mjs reconcile <bundle.json>` CLI, not the separate
+legacy OpenCode test helpers. See [bundle format](validation.md). Validate the
+shared schema plus exact focus/invocation/digest and runtime identity. The first
+pass identifies structurally valid candidates. The parent traces each candidate
+against the frozen evidence, records an accept/reject decision with a reason,
+and reruns reconciliation. Undecided candidates remain inconclusive; the script
+cannot determine whether an AI finding is semantically true.
 An empty findings array is not sufficient for success. Missing, malformed, failed,
 stale, truncated, or incomplete reports are inconclusive. Never invent findings
 or claim hunks were reviewed merely because they were supplied.

@@ -172,7 +172,7 @@ def validate_root(root: Path) -> list[str]:
     payloads = {
         "models": _load_json(root / "pi-config" / "models.json"),
         "settings": _load_json(root / "pi-config" / "settings.json"),
-        "mcp": _load_json(root / "pi-config" / "mcp.json"),
+        "mcp": _load_json(root / "pi-config" / "mcp-adapter.json"),
     }
     return validate_payloads(**payloads)
 

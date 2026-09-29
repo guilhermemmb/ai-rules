@@ -1,6 +1,7 @@
 import copy
 import importlib.util
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -17,7 +18,7 @@ validate_payloads = _VALIDATOR_MODULE.validate_payloads
 def load_payloads():
     return [
         json.loads((ROOT / "pi-config" / name).read_text(encoding="utf-8"))
-        for name in ("models.json", "settings.json", "mcp.json")
+        for name in ("models.json", "settings.json", "mcp-adapter.json")
     ]
 
 
@@ -27,6 +28,18 @@ class PiConfigValidationTests(unittest.TestCase):
         mutate(models, settings, mcp)
         errors = validate_payloads(models, settings, mcp)
         self.assertTrue(errors, "mutated payload should be rejected")
+
+    def test_active_adapter_filename(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "pi-config"
+            config.mkdir()
+            for name in ("models.json", "settings.json"):
+                (config / name).write_bytes((ROOT / "pi-config" / name).read_bytes())
+            (config / "mcp-adapter.json").write_bytes(
+                (ROOT / "pi-config" / "mcp-adapter.json").read_bytes()
+            )
+            errors = _VALIDATOR_MODULE.validate_root(Path(directory))
+            self.assertIsInstance(errors, list)
 
     def test_valid_payloads(self):
         self.assertEqual(validate_payloads(*load_payloads()), [])

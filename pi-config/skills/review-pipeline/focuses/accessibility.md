@@ -13,6 +13,8 @@ additional reviews. Model, thinking, tools and safety are agent-owned.
 - Informative versus decorative image alternatives and icon-only control names.
 - Hidden content, dynamic announcements and state communicated only through color.
 - CSS changes that hide focus indicators or make content inaccessible.
+- Non-rendering hooks/utilities that control focus restoration, keyboard events,
+  accessible state, or reduced-motion behavior, even in plain TS/JS files.
 
 Missing tabindex is not a defect on an already keyboard-operable native element.
 Decorative images/SVGs need not be announced. Cite the actual affected interaction

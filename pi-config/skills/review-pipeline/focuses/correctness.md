@@ -12,6 +12,9 @@ additional reviews. Model, thinking, tools and safety are agent-owned.
 - Broken API/type contracts, unexpected mutation and compatibility regressions.
 - Swallowed exceptions, missing propagation and loss of error context.
 - Changed behavior against callers and relevant tests, not the diff in isolation.
+- Configuration changes against their actual consumers: defaults, environment
+  precedence, build/workflow conditions, dependency scripts and compatibility.
+  Parseable configuration can still change behavior incorrectly; trace the consumer.
 
 Only report concrete defects introduced or made reachable by the change. Trace a
 failure path and anchor it to a changed line or deletion. General style,

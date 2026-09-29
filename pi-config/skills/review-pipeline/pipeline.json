@@ -1,22 +1,27 @@
 {
   "version": "2.0.0",
   "description": "Review lenses. Model, thinking, tools and safety policy belong to the predefined reviewer agent.",
-  "max_concurrent_reviewers": 10,
+  "general": {"id": "general", "label": "General", "file": "focuses/general.md"},
+  "max_concurrent_reviewers": 4,
   "focuses": [
     {
       "id": "correctness",
       "label": "Correctness",
-      "description": "Logic, contracts, errors, edge cases and type safety",
+      "description": "Logic, configuration behavior, contracts, errors, edge cases and type safety",
       "file": "focuses/correctness.md",
+      "categories": ["null-safety", "edge-case", "error-handling", "contract", "logic", "race-condition", "resource-leak"],
       "triggers": {"any_of": [
+        {"path_patterns": ["**/*.json", "**/*.jsonc", "**/*.yaml", "**/*.yml", "**/*.toml", "**/*.ini", "**/*.conf", "**/*.config", "**/Dockerfile*", "**/.env*", "**/.npmrc", "**/.yarnrc*", "**/*.tf", "**/*.xml", "**/*.gradle", "**/*.gradle.kts", "**/go.mod", "**/requirements*.txt", "**/Pipfile", "**/Gemfile"]},
         {"path_patterns": ["**"], "extensions": [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".pyi", ".go", ".rs", ".java", ".kt", ".rb", ".php", ".c", ".h", ".cpp", ".cs", ".swift", ".sh", ".sql", ".html", ".css", ".scss", ".vue", ".svelte"]}
       ]}
     },
     {
       "id": "simplicity",
       "label": "Simplicity",
+      "aliases": ["simplify"],
       "description": "Unnecessary abstraction, dead code and complexity",
       "file": "focuses/simplicity.md",
+      "categories": ["dead-code", "over-abstraction", "complexity", "yagni", "duplication", "indirection"],
       "triggers": {"any_of": [
         {"path_patterns": ["**"], "extensions": [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".pyi", ".go", ".rs", ".java", ".kt", ".rb", ".php", ".c", ".h", ".cpp", ".cs", ".swift", ".sh", ".sql", ".html", ".css", ".scss", ".vue", ".svelte"]}
       ]}
@@ -26,8 +31,10 @@
       "label": "Accessibility (a11y)",
       "description": "Semantics, keyboard access, focus, ARIA and screen-reader support",
       "file": "focuses/accessibility.md",
+      "categories": ["semantic-html", "aria", "keyboard", "focus", "forms", "alt-text", "screen-reader", "labels"],
       "triggers": {"any_of": [
-        {"path_patterns": ["**"], "extensions": [".tsx", ".jsx", ".html", ".vue", ".svelte", ".css", ".scss"]}
+        {"path_patterns": ["**"], "extensions": [".tsx", ".jsx", ".html", ".vue", ".svelte", ".css", ".scss"]},
+        {"path_patterns": ["**/hooks/**", "**/*Focus*", "**/*focus*", "**/*Keyboard*", "**/*keyboard*", "**/*A11y*", "**/*a11y*", "**/*Accessibility*", "**/*accessibility*", "**/*ReducedMotion*", "**/*reducedMotion*", "**/*reduced-motion*"], "extensions": [".ts", ".js", ".mts", ".mjs", ".cts", ".cjs"]}
       ]}
     },
     {
@@ -35,6 +42,7 @@
       "label": "Security",
       "description": "Injection, authorization, secrets, dependencies and security configuration",
       "file": "focuses/security.md",
+      "categories": ["injection", "auth", "secrets", "data-exposure", "input-validation", "config", "dependency"],
       "triggers": {"any_of": [
         {"path_patterns": ["**"], "extensions": [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".pyi", ".go", ".rs", ".java", ".kt", ".rb", ".php", ".c", ".h", ".cpp", ".cs", ".swift", ".sh", ".sql", ".html", ".vue", ".svelte"]},
         {"path_patterns": ["**/*.json", "**/*.jsonc", "**/*.yaml", "**/*.yml", "**/*.toml", "**/*.ini", "**/*.conf", "**/*.config", "**/*.lock", "**/requirements*.txt", "**/Pipfile", "**/Gemfile", "**/Gemfile.lock", "**/go.mod", "**/go.sum", "**/Dockerfile*", "**/.env*", "**/.npmrc", "**/.yarnrc*", "**/yarn.lock", "**/*.tf", "**/*.xml", "**/*.gradle", "**/*.gradle.kts"]}
@@ -45,6 +53,7 @@
       "label": "Performance",
       "description": "Algorithmic cost, I/O, memory, rendering and bundle regressions",
       "file": "focuses/performance.md",
+      "categories": ["n-plus-one", "algorithm", "memory", "rendering", "bundle", "io", "blocking"],
       "triggers": {"any_of": [
         {"path_patterns": ["**"], "extensions": [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".pyi", ".go", ".rs", ".java", ".kt", ".rb", ".php", ".c", ".h", ".cpp", ".cs", ".swift", ".sql", ".html", ".css", ".scss", ".vue", ".svelte"]}
       ]}
@@ -54,6 +63,7 @@
       "label": "Maintainability",
       "description": "Coupling, test adequacy, documentation and established conventions",
       "file": "focuses/maintainability.md",
+      "categories": ["naming", "coupling", "tests", "documentation", "consistency", "organization"],
       "triggers": {"any_of": [
         {"path_patterns": ["**"], "extensions": [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".pyi", ".go", ".rs", ".java", ".kt", ".rb", ".php", ".c", ".h", ".cpp", ".cs", ".swift", ".sh", ".sql", ".html", ".css", ".scss", ".vue", ".svelte"]}
       ]}
@@ -63,6 +73,7 @@
       "label": "Design Consistency",
       "description": "Existing tokens, component APIs, states and visual regression risk",
       "file": "focuses/design-consistency.md",
+      "categories": ["tokens", "spacing", "typography", "component-api", "states", "icons", "layout", "responsive"],
       "triggers": {"any_of": [
         {"path_patterns": ["**/components/**", "**/ui/**", "**/styles/**", "**/theme/**", "**/tokens/**", "**/pages/**", "**/views/**"], "extensions": [".ts", ".tsx", ".jsx", ".html", ".css", ".scss", ".vue", ".svelte"]}
       ]}
@@ -72,6 +83,7 @@
       "label": "Git Safety",
       "description": "Sensitive files, secrets, binary metadata and Git hygiene",
       "file": "focuses/git-safety.md",
+      "categories": ["secrets", "credentials", "binary", "os-files", "generated", "merge-conflict", "gitignore", "large-file"],
       "triggers": {"always": true}
     }
   ]

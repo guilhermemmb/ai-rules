@@ -1,8 +1,7 @@
 ---
-description: Astra specification → Luna coordination/implementation → Terra read-only review
+description: Sol specification → Luna coordination/implementation → Terra read-only review
 argument-hint: <task>
 subagent: coordinator
-model: openai-codex/gpt-6-luna
 fresh: true
 ---
 
