@@ -7,12 +7,17 @@ additional reviews. Model, thinking, tools and safety are agent-owned.
 
 ## Investigate
 - SQL/NoSQL, shell, HTML, URL/path and code injection; attacker-controlled regex.
-- Missing authentication/authorization, weak tokens and sensitive endpoint abuse.
+- Missing authentication/authorization, insecure direct object access, privilege
+  escalation, weak tokens and sensitive endpoint abuse.
 - CSRF in the actual authentication context and missing rate limits where material.
 - Secrets in source/logs/errors, unsafe data exposure and credential transport.
-- Input validation, file uploads, prototype pollution and unsafe deserialization.
-- Changed dependency manifests/lockfiles, known relevant vulnerabilities, unsafe
-  CORS/CSP settings, disabled certificate checks or weakened sandboxing.
+- Input validation, file uploads, prototype pollution, unsafe deserialization,
+  SSRF, path traversal, open redirects, unsafe resource access and unsafe defaults.
+- Changed dependency manifests/lockfiles, dependency versions, actions, hooks or
+  images; known relevant vulnerabilities; unsafe CORS/CSP settings; disabled
+  certificate checks; or weakened sandboxing. Trace release/advisory evidence into
+  actual repository usage, configuration, commands, inputs or outputs before
+  reporting update risk; unavailable authoritative evidence is a limitation, not proof.
 
 Trace attacker-controlled input to a reachable sink and explain prerequisites and
 impact. JSON.parse alone is not unsafe code execution; lack of a schema alone is
