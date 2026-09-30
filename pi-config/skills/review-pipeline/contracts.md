@@ -76,7 +76,7 @@ only parallel uses `dispatch.js` and the following bounded plain-JSON `args`:
     {
       "focusId": "correctness",
       "invocationId": "<new UUID>",
-      "task": "<focus instructions + shared contract/schema + repo/ref + packet reference + full assigned ID inventory + output requirements>"
+      "task": "<absolute focus-instructions reference + shared contract/schema + repo/ref + packet reference identifying the complete assigned ID inventory + output requirements>"
     }
   ]
 }

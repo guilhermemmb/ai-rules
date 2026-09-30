@@ -66,7 +66,7 @@ test('single and named-focus launches use one native background reviewer without
     assert.deepEqual(launch.subagentArgs.outputSchema, common.schema);
     for (const key of ['model', 'thinking', 'tools', 'extensions']) assert.equal(Object.hasOwn(launch.subagentArgs, key), false);
     assert.match(launch.subagentArgs.task, /\/tmp\/review-evidence\.json/);
-    assert.match(launch.subagentArgs.task, /f1.*h1/s);
+    assert.match(launch.subagentArgs.task, /complete assigned file\/hunk ID inventory/);
     assert.deepEqual(launch.expected.map(row => row.focusId), [invocation.mode === 'single' ? 'general' : 'security']);
     if (invocation.mode === 'single') assert.deepEqual(launch.expected[0].applicableFocusIds, ['correctness', 'security']);
   }
@@ -91,6 +91,29 @@ test('parallel launch binds one canonical native workflow with four reviewer slo
   assert.match(launch.subagentArgs.workflowScriptPath, /review-pipeline\/dispatch\.js$/);
   for (const key of ['agent', 'model', 'thinking', 'tools']) assert.equal(Object.hasOwn(launch.subagentArgs, key), false);
   assert.equal(JSON.stringify(launch.subagentArgs).includes('raw sensitive packet'), false);
+});
+
+test('parallel launch keeps a large evidence inventory out of bounded workflow arguments', async () => {
+  const { buildReviewerLaunch } = await import(new URL('launch.mjs', skill));
+  const selectedFocuses = registry.focuses.filter(focus => focus.id !== 'react-best-practices');
+  const fileIds = Array.from({ length: 34 }, (_, index) => `file-${index}-${'f'.repeat(64)}`);
+  const hunkIds = Array.from({ length: 101 }, (_, index) => `hunk-${index}-${'h'.repeat(64)}`);
+  const launch = buildReviewerLaunch({ invocation: await parse([]), selectedFocuses,
+    packetRef: '/tmp/evidence.json', packetDigest: `sha256:${'a'.repeat(64)}`,
+    assignedIds: { files: fileIds, hunks: hunkIds },
+    focusTexts: Object.fromEntries(selectedFocuses.map(focus => [focus.id,
+      readFileSync(new URL(focus.file, skill), 'utf8')])),
+    schema: { type: 'object' }, cwd: '/tmp/repository' });
+  const serializedArgs = JSON.stringify(launch.subagentArgs.args);
+
+  assert.ok(Buffer.byteLength(serializedArgs) < 16 * 1024);
+  assert.equal(serializedArgs.includes(fileIds[0]), false);
+  assert.equal(serializedArgs.includes(hunkIds[0]), false);
+  for (const focus of selectedFocuses) {
+    assert.equal(serializedArgs.includes(readFileSync(new URL(focus.file, skill), 'utf8')), false);
+    assert.match(launch.subagentArgs.args.lanes.find(lane => lane.focusId === focus.id).task,
+      new RegExp(`focuses/${focus.id}\\.md`));
+  }
 });
 
 test('React focus requires verified global Vercel skill metadata and references its rule directory', async () => {

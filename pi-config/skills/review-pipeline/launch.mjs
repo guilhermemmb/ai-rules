@@ -26,12 +26,13 @@ export function buildReviewerLaunch({ invocation, selectedFocuses, packetRef, pa
   }
   const expected = ids.map(focusId => ({ focusId, invocationId: randomUUID(),
     ...(focusId === 'general' ? { applicableFocusIds: selectedFocuses.map(row => row.id) } : {}) }));
+  const focusFile = focusId => focusId === 'general' ? registry.general.file : registry.focuses.find(focus => focus.id === focusId).file;
   const lanes = expected.map(row => ({ focusId: row.focusId, invocationId: row.invocationId,
-    task: `Report-only AI review (${row.focusId}). ${focusTexts[row.focusId]}\n` +
+    task: `Report-only AI review (${row.focusId}). Read the review lens at ${fileURLToPath(new URL(focusFile(row.focusId), import.meta.url))}.\n` +
       (row.focusId === 'react-best-practices' ? `Read only relevant rules under ${reactSkill.skillRoot}/rules and ${reactSkill.skillRoot}/SKILL.md (pinned revision ${reactSkill.revision}); allowed rule IDs: ${JSON.stringify(reactSkill.ruleIds)}.\n` : '') +
       `Read ${fileURLToPath(new URL('contracts.md', import.meta.url))} and the complete frozen evidence at ${packetRef}.\n` +
       `Repository: ${cwd}. Scope: ${invocation.scope}${invocation.prUrl ? `, PR: ${invocation.prUrl}` : ''}.\n` +
-      `Assigned file IDs: ${JSON.stringify(assignedIds.files)}; hunk IDs: ${JSON.stringify(assignedIds.hunks)}.\n` +
+      'The frozen evidence packet is the complete assigned file/hunk ID inventory; review every ID it contains.\n' +
       `Return the structured report only. Use focus_id=${row.focusId}, invocation_id=${row.invocationId}, packet_digest=${packetDigest}.\n` +
       'Submit structured_output with {value: <schema-valid report>, acceptanceReport: <runtime evidence>}.' }));
   if (invocation.mode !== 'parallel') return { kind: 'direct', expected, subagentArgs: {

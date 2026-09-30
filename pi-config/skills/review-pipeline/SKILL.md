@@ -92,9 +92,9 @@ inventing a weaker policy or silently bypassing it.
 
 Read `contracts.md`, `report.schema.json`, and each selected focus's `file` from
 the registry. The shared contract is authoritative; focus files only define the
-review lens and categories. Each task contains: focus instructions, common report
+review lens and categories. Each task contains: an absolute reference to its focus instructions, common report
 contract/schema, repo/cwd/ref, evidence packet location or complete inline packet,
-assigned hunk/file IDs, invocation UUID, digest, and the report-only boundary.
+a statement that its complete assigned hunk/file ID inventory is in the packet, invocation UUID, digest, and the report-only boundary.
 Reviewers do not orchestrate this pipeline or launch further reviewers.
 
 Build the native launch with `buildReviewerLaunch` in `launch.mjs`, after
