@@ -20,14 +20,22 @@ function glob(pattern, path) {
   return new RegExp(`${source}$`).test(path.replaceAll('\\', '/'));
 }
 
-export function selectFocuses(catalog, files, filter = null) {
+export function selectFocuses(catalog, files, filter = null, framework = null) {
   if (!Array.isArray(files) || !Array.isArray(catalog.focuses)) throw new Error('Invalid focus selection inputs');
   if (filter !== null && !text(filter)) throw new Error('Invalid focus filter');
+  if (framework !== null && (!['resolved', 'incomplete'].includes(framework.status) || !Array.isArray(framework.applicableFileIds) ||
+    !Array.isArray(framework.unresolvedFileIds) || !Array.isArray(framework.limitations))) throw new Error('Invalid framework evidence');
   const selected = [];
+  const limitations = framework?.limitations ?? [];
   for (const focus of catalog.focuses) {
     const reasons = [];
-    if (filter !== null) {
-      if ([focus.id, focus.label].some(value => value.toLowerCase().includes(filter.toLowerCase()))) reasons.push(`explicit filter: ${filter}`);
+    const matchesFilter = filter !== null && [focus.id, focus.label, ...(focus.aliases ?? [])]
+      .some(value => value.toLowerCase().includes(filter.toLowerCase()));
+    if (focus.triggers.framework === 'react') {
+      if (framework?.applicableFileIds.length) reasons.push(...framework.applicableFileIds.map(id => `framework matched ${id}`));
+      if (matchesFilter && !reasons.length) throw new Error('React focus requires applicable frozen framework evidence');
+    } else if (filter !== null) {
+      if (matchesFilter) reasons.push(`explicit filter: ${filter}`);
     } else {
       if (focus.triggers.always) reasons.push('always');
       for (const file of files) {
@@ -44,7 +52,8 @@ export function selectFocuses(catalog, files, filter = null) {
     if (reasons.length) selected.push({ id: focus.id, reasons: [...new Set(reasons)] });
   }
   if (filter !== null && selected.length === 0) throw new Error('Focus filter matched no focus');
-  return { filtered: filter !== null, selected, excluded: catalog.focuses.filter(focus => !selected.some(row => row.id === focus.id)).map(focus => focus.id) };
+  return { filtered: filter !== null, selected, limitations,
+    excluded: catalog.focuses.filter(focus => !selected.some(row => row.id === focus.id)).map(focus => focus.id) };
 }
 
 const SUPPORTED_SCHEMA_KEYS = new Set(['$schema', 'title', 'type', 'additionalProperties', 'required',
@@ -239,6 +248,14 @@ export async function validateReviewBundle(input) {
     for (const [findingIndex, finding] of report.findings.entries()) {
       const error = locationError(finding, focus, files, hunks);
       if (error) { lane.errors.push(`Finding ${findingIndex}: ${error}`); continue; }
+      if (expected.focusId === 'react-best-practices') {
+        if (!Array.isArray(input.reactRuleIds) || !input.reactRuleIds.includes(finding.rule_id)) {
+          lane.errors.push(`Finding ${findingIndex}: missing or unvalidated Vercel rule_id`); continue;
+        }
+        if (finding.rule_id.split('-')[0] !== finding.category) {
+          lane.errors.push(`Finding ${findingIndex}: rule_id category family does not match finding category`); continue;
+        }
+      }
       candidates.push({ focusId: expected.focusId, invocationId: expected.invocationId, runId: row.runId,
         findingIndex, finding, partial });
     }

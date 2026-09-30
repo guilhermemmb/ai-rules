@@ -54,6 +54,24 @@ test('current captures staged, worktree and untracked layers without double-coun
   assert.equal((await verifyLocalSnapshot(packet)).valid, false);
 });
 
+test('current freezes React framework context and treats unresolved React candidates as incomplete', async t => {
+  const repo = fixture(t);
+  mkdirSync(join(repo, 'src'));
+  writeFileSync(join(repo, 'package.json'), JSON.stringify({ dependencies: { react: '19.0.0' } }));
+  writeFileSync(join(repo, 'src', 'useFeed.ts'), 'export const useFeed = () => null;\n');
+  const { captureLocalEvidence } = await api();
+  const packet = await captureLocalEvidence({ repo, scope: 'current' });
+  assert.equal(packet.framework_context.status, 'resolved');
+  assert.deepEqual(packet.framework_context.applicableFileIds, [packet.changed_files.find(file => file.new_path === 'src/useFeed.ts').id]);
+  assert.match(packet.framework_context.packages[0].sha256, /^sha256:/);
+  const missing = fixture(t);
+  mkdirSync(join(missing, 'src'));
+  writeFileSync(join(missing, 'src', 'Widget.tsx'), 'export const Widget = () => null;\n');
+  const incomplete = await captureLocalEvidence({ repo: missing, scope: 'current' });
+  assert.equal(incomplete.framework_context.status, 'incomplete');
+  assert.equal(incomplete.complete, false);
+});
+
 test('narrow scopes exclude other layers and detect index mutation', async t => {
   const repo = fixture(t);
   writeFileSync(join(repo, 'tracked.txt'), 'staged\n');

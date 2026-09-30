@@ -79,6 +79,14 @@
       ]}
     },
     {
+      "id": "react-best-practices",
+      "label": "Vercel React Best Practices",
+      "description": "React and Next.js performance review against a pinned Vercel rule inventory",
+      "file": "focuses/react-best-practices.md",
+      "categories": ["async", "bundle", "server", "client", "rerender", "rendering", "js", "advanced"],
+      "triggers": {"framework": "react"}
+    },
+    {
       "id": "git-safety",
       "label": "Git Safety",
       "description": "Sensitive files, secrets, binary metadata and Git hygiene",

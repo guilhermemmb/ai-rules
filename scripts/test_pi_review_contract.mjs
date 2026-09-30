@@ -92,6 +92,48 @@ function accept(data, index = 0) {
   data.evidenceDecisions.push({ runId: 'r1', findingIndex: index, decision: 'accept', reason: 'Parent traced empty input into the changed dereference.' });
 }
 
+test('React lens requires frozen framework applicability and never broadens non-React selection', async () => {
+  const { selectFocuses } = await validator();
+  const files = [file('packages/web/hooks/useFeed.ts')];
+  const selected = selectFocuses(registry, files, null, {
+    status: 'resolved', applicableFileIds: ['f1'], unresolvedFileIds: [], limitations: [],
+  });
+  assert.ok(selected.selected.some(row => row.id === 'react-best-practices'));
+  assert.equal(selected.selected.filter(row => row.id === 'react-best-practices').length, 1);
+  const plain = selectFocuses(registry, files, null, {
+    status: 'resolved', applicableFileIds: [], unresolvedFileIds: [], limitations: [],
+  });
+  assert.equal(plain.selected.some(row => row.id === 'react-best-practices'), false);
+  const unresolved = selectFocuses(registry, files, null, {
+    status: 'incomplete', applicableFileIds: [], unresolvedFileIds: ['f1'], limitations: ['f1: manifest unavailable'],
+  });
+  assert.deepEqual(unresolved.limitations, ['f1: manifest unavailable']);
+  assert.throws(() => selectFocuses(registry, files, 'react-best-practices', {
+    status: 'resolved', applicableFileIds: [], unresolvedFileIds: [], limitations: [],
+  }), /applicable|React/i);
+});
+
+test('React findings require a pinned Vercel rule ID that matches its category family', async () => {
+  const { validateReviewBundle } = await validator();
+  const input = bundle();
+  input.expected = [{ focusId: 'react-best-practices', invocationId: 'i-react' }];
+  input.results[0].key = 'react-best-practices';
+  input.results[0].focusId = 'react-best-practices';
+  input.results[0].invocationId = 'i-react';
+  input.results[0].structuredOutput.focus_id = 'react-best-practices';
+  input.results[0].structuredOutput.invocation_id = 'i-react';
+  input.results[0].structuredOutput.findings = [finding({ category: 'async' })];
+  input.reactRuleIds = ['async-parallel', 'bundle-barrel-imports'];
+  let output = await validateReviewBundle(input);
+  assert.match(output.lanes[0].errors.join('\n'), /rule_id/i);
+  input.results[0].structuredOutput.findings[0].rule_id = 'bundle-barrel-imports';
+  output = await validateReviewBundle(input);
+  assert.match(output.lanes[0].errors.join('\n'), /category/i);
+  input.results[0].structuredOutput.findings[0].rule_id = 'async-parallel';
+  output = await validateReviewBundle(input);
+  assert.equal(output.lanes[0].errors.some(error => /rule_id|category/i.test(error)), false);
+});
+
 test('complete matching reports pass while preserving AI review provenance', async () => {
   const result = await check(bundle());
   assert.equal(result.verdict, 'Passes Review');

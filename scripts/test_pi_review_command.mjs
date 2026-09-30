@@ -80,15 +80,36 @@ test('parallel launch binds one canonical native workflow with four reviewer slo
     packetRef: '/tmp/evidence.json', packetDigest: `sha256:${'a'.repeat(64)}`,
     assignedIds: { files: ['f1'], hunks: ['h1'] },
     focusTexts: Object.fromEntries(registry.focuses.map(focus => [focus.id, `Lens ${focus.id}`])),
+    reactSkill: { skillRoot: `${process.env.HOME}/.agents/skills/vercel-react-best-practices`,
+      revision: '063bee94c3f4df8453406c830b0a7df0f2860278', ruleIds: ['async-parallel'] },
     schema: { type: 'object' }, cwd: '/tmp/repository' });
   assert.equal(launch.kind, 'workflow');
   assert.equal(launch.subagentArgs.async, true);
   assert.equal(launch.subagentArgs.globalConcurrencyLimit, 4);
   assert.equal(launch.subagentArgs.args.maxConcurrency, 4);
-  assert.equal(launch.subagentArgs.args.lanes.length, 8);
+  assert.equal(launch.subagentArgs.args.lanes.length, 9);
   assert.match(launch.subagentArgs.workflowScriptPath, /review-pipeline\/dispatch\.js$/);
   for (const key of ['agent', 'model', 'thinking', 'tools']) assert.equal(Object.hasOwn(launch.subagentArgs, key), false);
   assert.equal(JSON.stringify(launch.subagentArgs).includes('raw sensitive packet'), false);
+});
+
+test('React focus requires verified global Vercel skill metadata and references its rule directory', async () => {
+  const { buildReviewerLaunch } = await import(new URL('launch.mjs', skill));
+  const react = registry.focuses.find(focus => focus.id === 'react-best-practices');
+  const common = { invocation: await parse(['react-best-practices']), selectedFocuses: [react],
+    packetRef: '/tmp/evidence.json', packetDigest: `sha256:${'a'.repeat(64)}`,
+    assignedIds: { files: ['f1'], hunks: ['h1'] }, focusTexts: { 'react-best-practices': 'React lens' },
+    schema: { type: 'object' }, cwd: '/tmp/repository' };
+  assert.throws(() => buildReviewerLaunch(common), /React skill/i);
+  const launch = buildReviewerLaunch({ ...common, reactSkill: {
+    skillRoot: `${process.env.HOME}/.agents/skills/vercel-react-best-practices`,
+    revision: '063bee94c3f4df8453406c830b0a7df0f2860278', ruleIds: ['async-parallel'],
+  } });
+  assert.equal(launch.kind, 'direct');
+  assert.match(launch.subagentArgs.task, /vercel-react-best-practices\/SKILL\.md/);
+  assert.match(launch.subagentArgs.task, /rules/);
+  assert.match(launch.subagentArgs.task, /063bee94c3f4df8453406c830b0a7df0f2860278/);
+  for (const key of ['model', 'thinking', 'tools', 'extensions']) assert.equal(Object.hasOwn(launch.subagentArgs, key), false);
 });
 
 test('the real Pi prompt template forwards the entire invocation as one command', {

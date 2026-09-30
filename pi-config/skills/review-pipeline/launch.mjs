@@ -8,7 +8,7 @@ const childOptions = schema => ({ outputSchema: schema, output: false, outputMod
   artifacts: true, acceptance: { level: 'attested', report: 'on' } });
 
 export function buildReviewerLaunch({ invocation, selectedFocuses, packetRef, packetDigest, assignedIds,
-  focusTexts, schema, cwd }) {
+  focusTexts, schema, cwd, reactSkill = null }) {
   if (!invocation || !['parallel', 'single', 'focus'].includes(invocation.mode) ||
     !Array.isArray(selectedFocuses) || !selectedFocuses.length ||
     !isAbsolute(packetRef ?? '') || !isAbsolute(cwd ?? '') || !/^sha256:[a-f0-9]{64}$/.test(packetDigest ?? '') ||
@@ -19,10 +19,16 @@ export function buildReviewerLaunch({ invocation, selectedFocuses, packetRef, pa
     ? [invocation.focusId] : selectedFocuses.map(row => row.id);
   if (new Set(ids).size !== ids.length || ids.some(id => id !== 'general' && !registry.focuses.some(f => f.id === id)) ||
     ids.some(id => typeof focusTexts?.[id] !== 'string' || !focusTexts[id].trim())) throw new Error('Invalid focus instructions');
+  if (ids.includes('react-best-practices') && (!reactSkill ||
+    reactSkill.skillRoot !== `${process.env.HOME}/.agents/skills/vercel-react-best-practices` ||
+    reactSkill.revision !== '063bee94c3f4df8453406c830b0a7df0f2860278' || !Array.isArray(reactSkill.ruleIds) || !reactSkill.ruleIds.length)) {
+    throw new Error('React skill is not verified from the pinned global installation');
+  }
   const expected = ids.map(focusId => ({ focusId, invocationId: randomUUID(),
     ...(focusId === 'general' ? { applicableFocusIds: selectedFocuses.map(row => row.id) } : {}) }));
   const lanes = expected.map(row => ({ focusId: row.focusId, invocationId: row.invocationId,
     task: `Report-only AI review (${row.focusId}). ${focusTexts[row.focusId]}\n` +
+      (row.focusId === 'react-best-practices' ? `Read only relevant rules under ${reactSkill.skillRoot}/rules and ${reactSkill.skillRoot}/SKILL.md (pinned revision ${reactSkill.revision}); allowed rule IDs: ${JSON.stringify(reactSkill.ruleIds)}.\n` : '') +
       `Read ${fileURLToPath(new URL('contracts.md', import.meta.url))} and the complete frozen evidence at ${packetRef}.\n` +
       `Repository: ${cwd}. Scope: ${invocation.scope}${invocation.prUrl ? `, PR: ${invocation.prUrl}` : ''}.\n` +
       `Assigned file IDs: ${JSON.stringify(assignedIds.files)}; hunk IDs: ${JSON.stringify(assignedIds.hunks)}.\n` +

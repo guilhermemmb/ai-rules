@@ -1,9 +1,10 @@
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
-import { lstat, open, realpath } from 'node:fs/promises';
+import { lstat, open, readFile, realpath } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { resolve, relative, sep } from 'node:path';
+import { collectFrameworkContext } from './framework.mjs';
 
 const exec = promisify(execFile);
 const sha = bytes => `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
@@ -125,10 +126,20 @@ export async function captureLocalEvidence({ repo, scope, maxUntrackedBytes = 10
     else if (item.binary) limitations.push(`${item.path}: binary content unavailable for text review`);
   }
   if (scope !== 'current' && raw.untracked.length) limitations.push('Untracked files excluded by explicit narrow scope');
+  const frameworkLayer = { name: scope === 'staged' ? 'index' : 'worktree' };
+  const framework_context = await collectFrameworkContext({ repoRoot: cwd, changedFiles: [...changed.values()], layers: [frameworkLayer],
+    readAt: async path => {
+      try {
+        const bytes = scope === 'staged' ? await git(cwd, 'show', `:${path}`) : await readFile(resolve(cwd, path));
+        return { bytes, ref: scope === 'staged' ? `index:${path}` : `worktree:${path}` };
+      } catch { return null; }
+    },
+  });
+  limitations.push(...framework_context.limitations);
   const fullDiff = patches.join('');
   const packet = { scope, scope_detail: null, filter: null, repo: cwd, cwd, base_ref: 'HEAD', base_sha: raw.head,
     head_sha: raw.head, snapshot_id: snapshotId, diff_sha256: sha(Buffer.from(fullDiff)),
-    layers: raw.layers, changed_files: [...changed.values()], hunks, full_diff_ref: fullDiff,
+    layers: raw.layers, changed_files: [...changed.values()], hunks, framework_context, full_diff_ref: fullDiff,
     complete: limitations.length === 0, limitations, max_untracked_bytes: maxUntrackedBytes };
   // The digest is over precisely these serialized bytes, before adding packet_digest.
   packet.packet_digest = sha(Buffer.from(JSON.stringify(packet)));

@@ -99,8 +99,12 @@ Reviewers do not orchestrate this pipeline or launch further reviewers.
 
 Build the native launch with `buildReviewerLaunch` in `launch.mjs`, after
 verifying an absolute policy-approved `packetRef`, a complete ID inventory, and
-the resolved focus instructions. The returned `expected` manifest is frozen
-**before** dispatch; use it for reconciliation even if launches fail.
+the resolved focus instructions. If `react-best-practices` is selected, first
+call `loadPinnedReactRules('~/.agents/skills/vercel-react-best-practices')` from
+`react-rules.mjs`; pass its returned object as `reactSkill` to the builder. Do
+not launch that lens if this strict integrity check fails. The returned `expected`
+manifest is frozen **before** dispatch; use it for reconciliation even if launches
+fail.
 
 For `single` or a named focus, call native `subagent` once with the returned
 `subagentArgs`: `agent:'reviewer'`, `async:true`, `context:'fresh'`, inline
@@ -124,7 +128,9 @@ sets each child to `output: false`, `outputMode: "inline"`, `artifacts: true` an
 `acceptanceReport` is a sibling of `value`, not a field in `report.schema.json`.
 Use the runtime's acceptance instructions for that sibling. Reviewers must not
 write report or log files. See [report delivery and logs](contracts.md#report-delivery-and-logs)
-for the complete launch shape and persistence/recovery rules.
+for the complete launch shape and persistence/recovery rules. When reconciling
+the React lens, pass the validated `reactSkill.ruleIds` as `reactRuleIds`; every
+React finding must cite one of those IDs.
 
 Yield for native async completion notifications. Do not poll or call `bg_wait`
 just to wait for these children. Inspect actual child runtime model/thinking
