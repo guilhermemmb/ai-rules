@@ -56,13 +56,13 @@ for (let start = 0; start < args.lanes.length; start += args.maxConcurrency) {
     if (!result || result.key !== lane.focusId) {
       throw new Error('runner result identity mismatch; inspect workflow receipts');
     }
-    completed.push({
+    completed.push(JSON.parse(JSON.stringify({
       focusId: lane.focusId, invocationId: lane.invocationId,
       packetDigest: args.packetDigest, ...result,
-    });
+    })));
   }
   // Progress is compact; return full reports once, or preserve them on failure.
-  emit({
+  emit(JSON.parse(JSON.stringify({
     settled: completed.length,
     total: args.lanes.length,
     lanes: completed.slice(start).map(row => ({
@@ -71,7 +71,7 @@ for (let start = 0; start < args.lanes.length; start += args.maxConcurrency) {
       outputReference: row.outputReference,
       outputPathMapping: row.outputPathMapping, artifactPaths: row.artifactPaths,
     })),
-  });
+  })));
   if (results.some(result => result.ok !== true)) {
     emit({ completed: completed.slice() });
     throw new Error('reviewer failed; stop, preserve receipts, and report the blocker without fallback');

@@ -20,7 +20,14 @@ function input() {
   };
 }
 
-async function execute(args, response, events = []) {
+function requireJsonValue(value, path = 'emit') {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
+  if (typeof value === 'number' && Number.isFinite(value)) return;
+  if (!value || typeof value !== 'object') throw new Error(`${path} must be a JSON value; received ${typeof value}`);
+  for (const [key, child] of Object.entries(value)) requireJsonValue(child, `${path}.${key}`);
+}
+
+async function execute(args, response, events = [], strictJson = false) {
   assert.ok(existsSync(recipe), 'Canonical dispatch recipe is not implemented');
   const batches = [];
   const runs = { all: async (lanes) => {
@@ -32,7 +39,11 @@ async function execute(args, response, events = []) {
     }));
   } };
   const run = new AsyncFunction('args', 'runs', 'emit', readFileSync(recipe, 'utf8'));
-  const result = await run(args, runs, event => events.push(event));
+  const result = await run(args, runs, event => {
+    if (strictJson) requireJsonValue(event);
+    events.push(event);
+  });
+  if (strictJson) requireJsonValue(result, 'return');
   return { result, batches, events };
 }
 
@@ -122,6 +133,34 @@ test('runs eight focuses in two settled waves of four using registry concurrency
   assert.deepEqual(beforeRelease, [4]);
   assert.deepEqual(sizes, [4, 4]);
   assert.equal(result.length, 8);
+});
+
+test('JSON-only runtime progress advances from four settled successes to the next wave', async () => {
+  const args = { ...input(), maxConcurrency: 4,
+    lanes: Array.from({ length: 8 }, (_, index) => ({ focusId: `focus-${index}`, invocationId: `inv-${index}`, task: 'Review.' })) };
+  const { batches, events, result } = await execute(args, lanes => lanes.map(lane => ({
+    key: lane.key, runId: `run-${lane.key}`, ok: true, structuredOutput: { findings: [] },
+  })), [], true);
+  assert.deepEqual(batches.map(batch => batch.length), [4, 4]);
+  assert.deepEqual(events.map(event => event.settled), [4, 8]);
+  assert.equal(result.length, 8);
+  assert.equal(Object.hasOwn(events[0].lanes[0], 'error'), false);
+});
+
+test('JSON-only failure emission preserves settled sibling reports without launching wave two', async () => {
+  const args = { ...input(), maxConcurrency: 2 };
+  const events = [];
+  let batches = 0;
+  await assert.rejects(execute(args, lanes => {
+    batches++;
+    return lanes.map((lane, index) => ({ key: lane.key, runId: `run-${lane.key}`,
+      ok: index === 0, error: index === 0 ? undefined : 'quota',
+      structuredOutput: { findings: ['partial evidence'] }, outputPathMapping: { file: undefined } }));
+  }, events, true), /reviewer failed/);
+  assert.equal(batches, 1);
+  assert.equal(events.at(-1).completed.length, 2);
+  assert.deepEqual(events.at(-1).completed[0].structuredOutput.findings, ['partial evidence']);
+  assert.equal(events.at(-1).completed[1].error, 'quota');
 });
 
 test('binds inline structured reports independently of inherited file-only defaults', async () => {
