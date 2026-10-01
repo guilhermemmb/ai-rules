@@ -1,15 +1,25 @@
 {
-  "lastChangelogVersion": "0.87.1",
+  "lastChangelogVersion": "0.99.2",
   "theme": "lunar-alchemy",
   "packages": [
     "npm:@langfuse/pi-observability-plugin",
     "npm:pi-web-access",
-    "npm:pi-mcp-adapter",
+    {
+      "source": "npm:pi-mcp-adapter",
+      "extensions": [
+        "+index.ts"
+      ]
+    },
     "npm:@juicesharp/rpiv-todo",
     "npm:@juicesharp/rpiv-ask-user-question",
     "npm:@bacnh85/pi-serena",
     "npm:pi-rtk-optimizer",
-    "npm:pi-subagents",
+    {
+      "source": "npm:pi-subagents",
+      "prompts": [
+        "-prompts/review-loop.md"
+      ]
+    },
     "npm:pi-open-tui",
     "npm:awesome-pi-themes",
     "git:github.com/obra/superpowers",
@@ -21,7 +31,8 @@
     "npm:pi-ext-clear",
     "npm:pi-blackhole",
     "npm:pi-agent-browser-native",
-    "npm:pi-simplify"
+    "npm:pi-simplify",
+    "npm:@quintinshaw/pi-dynamic-workflows@3.13.1"
   ],
   "subagents": {
     "agentExcludeDirs": [
@@ -141,5 +152,9 @@
   "tuiMode": "fullscreen",
   "experimental": {
     "mcp_timeout": 60000
-  }
+  },
+  "extensions": [
+    "-builtin:llama.cpp",
+    "-builtin:mcp"
+  ]
 }

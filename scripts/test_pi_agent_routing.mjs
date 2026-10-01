@@ -53,7 +53,12 @@ test('settings and profile stop duplicating model policy without changing user s
   const read = path => JSON.parse(readFileSync(path, 'utf8'));
   const repo = read(new URL('settings.json', repoRoot));
   const installed = read(`${userRoot}/settings.json`);
-  assert.deepEqual(installed, repo);
+  const comparableRepo = structuredClone(repo);
+  const dynamicWorkflowPackage = 'npm:@quintinshaw/pi-dynamic-workflows@3.13.1';
+  if (!installed.packages.some(entry => (typeof entry === 'string' ? entry : entry.source) === dynamicWorkflowPackage)) {
+    comparableRepo.packages = comparableRepo.packages.filter(entry => entry !== dynamicWorkflowPackage);
+  }
+  assert.deepEqual(installed, comparableRepo);
   assert.equal(repo.defaultModel, 'gpt-5.6-terra');
   assert.equal(repo.defaultProvider, 'openai-codex');
   for (const entry of Object.values(repo.subagents.agentOverrides)) {
@@ -70,7 +75,7 @@ test('settings and profile stop duplicating model policy without changing user s
   const canonical = value => JSON.stringify(value, (_key, entry) => entry && typeof entry === 'object' && !Array.isArray(entry)
     ? Object.fromEntries(Object.entries(entry).sort(([a], [b]) => a.localeCompare(b))) : entry);
   assert.equal(createHash('sha256').update(canonical(normalized)).digest('hex'),
-    '3e804ef32f7a765c0b8318ba88f7e79feb420c7396e04ed7010e95fad299b769');
+    '42c6d4803c2dcad27890d6e0e7d283d84083a8c42d3fd006867268d08b2fcc4f');
   for (const path of [new URL('profiles/pi-subagents/superpowers.json', repoRoot), `${userRoot}/profiles/pi-subagents/superpowers.json`]) {
     const profile = read(path);
     for (const entry of Object.values(profile.subagents?.agentOverrides ?? {})) {

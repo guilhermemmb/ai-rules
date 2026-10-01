@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 
 const globalRoot = `${process.env.HOME}/.agents/skills/vercel-react-best-practices`;
-const moduleUrl = new URL('../pi-config/skills/review-pipeline/react-rules.mjs', import.meta.url);
+const moduleUrl = new URL('../pi-config/review/react-rules.mjs', import.meta.url);
 
 async function rules(root = globalRoot) {
   assert.ok(existsSync(moduleUrl), 'Pinned React rule verifier is missing');
@@ -14,6 +14,7 @@ async function rules(root = globalRoot) {
 
 test('global Pi React skill is pinned and has a complete Vercel rule inventory', async () => {
   const result = await rules();
+  assert.equal(result.applicable, true);
   assert.equal(result.skillRoot, globalRoot);
   assert.equal(result.revision, '063bee94c3f4df8453406c830b0a7df0f2860278');
   assert.equal(result.metadataVersion, '1.0.0');
@@ -31,13 +32,23 @@ test('tampered, missing, and extra pinned React rule files fail closed', async t
   const reset = () => { rmSync(root, { recursive: true, force: true }); cpSync(globalRoot, root, { recursive: true }); };
   reset();
   writeFileSync(join(root, 'rules', 'async-parallel.md'), 'tampered');
-  await assert.rejects(rules(root), /hash|integrity/i);
+  assert.match((await rules(root)).integrityError, /hash|integrity/i);
   reset();
   rmSync(join(root, 'rules', 'async-parallel.md'));
-  await assert.rejects(rules(root), /missing|inventory/i);
+  assert.match((await rules(root)).integrityError, /missing|inventory/i);
   reset();
   writeFileSync(join(root, 'rules', 'extra-rule.md'), '# unexpected');
-  await assert.rejects(rules(root), /extra|inventory/i);
+  assert.match((await rules(root)).integrityError, /extra|inventory/i);
+});
+
+test('non-applicable framework evidence does not require the skill installation', async () => {
+  const { loadPinnedReactRules } = await import(moduleUrl);
+  assert.deepEqual(loadPinnedReactRules('/missing/skill', { applicable: false }), {
+    applicable: false,
+    skillRoot: '/missing/skill',
+    revision: '063bee94c3f4df8453406c830b0a7df0f2860278',
+    ruleIds: [],
+  });
 });
 
 test('repository mirror is byte-identical to the verified global installation', async () => {

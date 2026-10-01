@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 
-const evidenceModule = new URL('../pi-config/skills/review-pipeline/evidence.mjs', import.meta.url);
+const evidenceModule = new URL('../pi-config/review/evidence.mjs', import.meta.url);
 async function api() {
   const { existsSync } = await import('node:fs');
   assert.ok(existsSync(evidenceModule), 'Local evidence collector is missing');
@@ -119,6 +119,59 @@ test('an empty untracked file is file-level evidence, not a fabricated added lin
   assert.deepEqual(packet.changed_files.map(file => file.new_path), ['empty.txt']);
   assert.deepEqual(packet.hunks, []);
   assert.equal(packet.complete, true);
+});
+
+test('branch evidence pins the merge base and rejects a changed head', async t => {
+  const repo = fixture(t);
+  git(repo, 'branch', '-M', 'main');
+  git(repo, 'checkout', '-qb', 'feature');
+  writeFileSync(join(repo, 'tracked.txt'), 'feature\n');
+  git(repo, 'commit', '-qam', 'feature');
+  const { captureBranchEvidence, verifyBranchSnapshot } = await api();
+  const packet = await captureBranchEvidence({ repo, target: 'main' });
+  assert.equal(packet.scope, 'branch');
+  assert.equal(packet.base_ref, 'main');
+  assert.equal(packet.base_sha, git(repo, 'rev-parse', 'main').trim());
+  assert.equal(packet.head_sha, git(repo, 'rev-parse', 'HEAD').trim());
+  assert.match(packet.full_diff_ref, /\+feature/);
+  assert.equal((await verifyBranchSnapshot(packet)).valid, true);
+  writeFileSync(join(repo, 'later.txt'), 'later\n');
+  git(repo, 'add', 'later.txt');
+  git(repo, 'commit', '-qm', 'later');
+  assert.equal((await verifyBranchSnapshot(packet)).valid, false);
+});
+
+test('PR evidence freezes complete metadata and rechecks base/head identities', async () => {
+  const metadata = {
+    title: 'Fix review adapter',
+    body: 'Untrusted PR body',
+    url: 'https://github.com/example/repo/pull/42',
+    baseRefName: 'main',
+    baseRefOid: '1'.repeat(40),
+    headRefName: 'feature',
+    headRefOid: '2'.repeat(40),
+    files: [{ path: 'src/file.js', additions: 1, deletions: 1 }],
+  };
+  let current = metadata;
+  const calls = [];
+  const execute = async (command, args) => {
+    calls.push([command, ...args]);
+    if (args[1] === 'view') return { stdout: JSON.stringify(current) };
+    if (args[1] === 'diff') return { stdout: 'diff --git a/src/file.js b/src/file.js\n--- a/src/file.js\n+++ b/src/file.js\n@@ -1 +1 @@\n-old\n+new\n' };
+    throw new Error(`unexpected command: ${command} ${args.join(' ')}`);
+  };
+  const { capturePrEvidence, verifyPrSnapshot } = await api();
+  const packet = await capturePrEvidence({ repo: '/tmp/repo', url: metadata.url, execute });
+  assert.equal(packet.scope, 'pr');
+  assert.equal(packet.base_sha, metadata.baseRefOid);
+  assert.equal(packet.head_sha, metadata.headRefOid);
+  assert.equal(packet.changed_files[0].new_path, 'src/file.js');
+  assert.equal(packet.hunks.length, 1);
+  assert.match(packet.packet_digest, /^sha256:[a-f0-9]{64}$/);
+  assert.equal((await verifyPrSnapshot(packet, { execute })).valid, true);
+  current = { ...metadata, headRefOid: '3'.repeat(40) };
+  assert.equal((await verifyPrSnapshot(packet, { execute })).valid, false);
+  assert.ok(calls.every(([command]) => command === 'gh'));
 });
 
 test('untracked binary, oversized, symlink and unreadable data remain explicit limitations', async t => {

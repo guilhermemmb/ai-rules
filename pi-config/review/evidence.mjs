@@ -13,6 +13,13 @@ const git = async (repo, ...args) => (await exec('git', ['-c', 'core.quotePath=f
   env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1' },
 })).stdout;
 const diffFlags = ['--no-ext-diff', '--no-textconv', '--no-color', '--binary', '--find-renames'];
+const prUrlPattern = /^https?:\/\/[^/]+\/([^/]+)\/([^/]+)\/(?:pull|merge_requests)\/(\d+)\/?(?:[?#].*)?$/i;
+const executeCommand = async (command, args, options = {}) => exec(command, args, {
+  ...options,
+  encoding: 'utf8',
+  maxBuffer: 32 * 1024 * 1024,
+  env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1', ...(options.env ?? {}) },
+});
 const parseNames = bytes => {
   const parts = bytes.toString('utf8').split('\0').filter(Boolean);
   const entries = [];
@@ -156,4 +163,211 @@ export async function verifyLocalSnapshot(packet) {
   } catch (error) {
     return { valid: false, reason: `Cannot recheck local snapshot: ${error.message}` };
   }
+}
+
+function inventoryFromDiff(names, diff) {
+  const patches = splitPatches(diff);
+  if (patches.length !== names.length) throw new Error('Diff and changed-path inventory disagree');
+  const changedFiles = [];
+  const hunks = [];
+  for (const [index, row] of names.entries()) {
+    const path = row.new_path ?? row.old_path;
+    const identity = sha(Buffer.from(path)).slice(7, 23);
+    const patch = patches[index] ?? '';
+    const binary = /^Binary files |^GIT binary patch/m.test(patch);
+    const file = { id: `f-${identity}`, old_path: row.old_path, new_path: row.new_path,
+      status: row.status, binary };
+    changedFiles.push(file);
+    hunks.push(...extractHunks(patch, file.id, identity));
+  }
+  return { changedFiles, hunks };
+}
+
+function packetDigest(packet) {
+  packet.packet_digest = sha(Buffer.from(JSON.stringify(packet)));
+  return packet;
+}
+
+function validBranchTarget(target) {
+  return typeof target === 'string' && /^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(target) &&
+    !target.includes('..') && !target.endsWith('.lock');
+}
+
+async function resolveBranchTarget(repo) {
+  for (const candidate of ['@{upstream}', 'refs/remotes/origin/HEAD']) {
+    try {
+      await git(repo, 'rev-parse', '--verify', `${candidate}^{commit}`);
+      return candidate;
+    } catch { /* try the next repository-owned candidate */ }
+  }
+  throw new Error('Cannot resolve branch comparison base from repository metadata');
+}
+
+async function branchIdentity(repo, target) {
+  const [targetSha, baseSha, headSha] = await Promise.all([
+    git(repo, 'rev-parse', '--verify', `${target}^{commit}`),
+    git(repo, 'merge-base', target, 'HEAD'),
+    git(repo, 'rev-parse', 'HEAD'),
+  ]);
+  return {
+    targetSha: targetSha.toString().trim(),
+    baseSha: baseSha.toString().trim(),
+    headSha: headSha.toString().trim(),
+  };
+}
+
+export async function captureBranchEvidence({ repo, target } = {}) {
+  const cwd = await realpath(repo);
+  const baseRef = target ?? await resolveBranchTarget(cwd);
+  if (target !== undefined && !validBranchTarget(target)) throw new Error('Invalid branch comparison target');
+  const identity = await branchIdentity(cwd, baseRef);
+  const range = `${identity.baseSha}...${identity.headSha}`;
+  const diffBytes = await git(cwd, 'diff', ...diffFlags, range);
+  const names = parseNames(await git(cwd, 'diff', '--name-status', '-z', '--find-renames', range));
+  const diff = diffBytes.toString('utf8');
+  const { changedFiles, hunks } = inventoryFromDiff(names, diff);
+  const repeated = await branchIdentity(cwd, baseRef);
+  if (JSON.stringify(identity) !== JSON.stringify(repeated)) throw new Error('Branch refs mutated during evidence capture');
+  const layer = { name: 'branch', sha256: sha(diffBytes), paths: names.map((row) => row.new_path ?? row.old_path) };
+  const framework_context = await collectFrameworkContext({
+    repoRoot: cwd,
+    changedFiles,
+    layers: [layer],
+    readAt: async (path) => {
+      try {
+        const bytes = await git(cwd, 'show', `${identity.headSha}:${path}`);
+        return { bytes, ref: `${identity.headSha}:${path}` };
+      } catch { return null; }
+    },
+  });
+  const limitations = [...framework_context.limitations];
+  return packetDigest({
+    scope: 'branch',
+    scope_detail: { target: baseRef, target_sha: identity.targetSha },
+    filter: null,
+    repo: cwd,
+    cwd,
+    base_ref: baseRef,
+    base_sha: identity.baseSha,
+    head_sha: identity.headSha,
+    snapshot_id: sha(Buffer.from(JSON.stringify({ baseRef, ...identity }))),
+    diff_sha256: sha(diffBytes),
+    layers: [layer],
+    changed_files: changedFiles,
+    hunks,
+    framework_context,
+    full_diff_ref: diff,
+    complete: limitations.length === 0,
+    limitations,
+  });
+}
+
+export async function verifyBranchSnapshot(packet) {
+  if (!packet || packet.scope !== 'branch' || !packet.repo || !packet.base_ref) {
+    return { valid: false, reason: 'Invalid branch packet' };
+  }
+  try {
+    const identity = await branchIdentity(packet.repo, packet.base_ref);
+    const valid = identity.targetSha === packet.scope_detail?.target_sha &&
+      identity.baseSha === packet.base_sha && identity.headSha === packet.head_sha;
+    return valid ? { valid: true } : { valid: false, reason: 'Branch base/head identity changed' };
+  } catch (error) {
+    return { valid: false, reason: `Cannot recheck branch identity: ${error.message}` };
+  }
+}
+
+function prFileInventory(files, diff) {
+  const patches = splitPatches(diff);
+  if (patches.length !== files.length) throw new Error('PR diff and changed-path inventory disagree');
+  const names = files.map((file) => ({
+    status: file.previousFilename ? 'R' : 'M',
+    old_path: file.previousFilename ?? file.path,
+    new_path: file.path,
+  }));
+  return inventoryFromDiff(names, diff);
+}
+
+async function prMetadata(url, repo, execute) {
+  const result = await execute('gh', ['pr', 'view', url, '--json',
+    'files,title,body,url,baseRefName,baseRefOid,headRefName,headRefOid'], { cwd: repo });
+  return JSON.parse(String(result.stdout));
+}
+
+export async function capturePrEvidence({ repo, url, execute = executeCommand } = {}) {
+  const match = typeof url === 'string' && url.match(prUrlPattern);
+  if (!match) throw new Error('Invalid PR URL');
+  const before = await prMetadata(url, repo, execute);
+  const diffResult = await execute('gh', ['pr', 'diff', url, '--patch'], { cwd: repo });
+  const diff = String(diffResult.stdout);
+  const after = await prMetadata(url, repo, execute);
+  if (before.baseRefOid !== after.baseRefOid || before.headRefOid !== after.headRefOid) {
+    throw new Error('PR refs mutated during evidence capture');
+  }
+  if (!/^[a-f0-9]{40}$/i.test(before.baseRefOid) || !/^[a-f0-9]{40}$/i.test(before.headRefOid)) {
+    throw new Error('PR metadata is missing immutable base/head identities');
+  }
+  const files = Array.isArray(before.files) ? before.files : [];
+  const { changedFiles, hunks } = prFileInventory(files, diff);
+  const [owner, repository] = [match[1], match[2].replace(/\.git$/i, '')];
+  const layer = { name: 'pr', sha256: sha(Buffer.from(diff)), paths: changedFiles.map((file) => file.new_path ?? file.old_path) };
+  const framework_context = await collectFrameworkContext({
+    repoRoot: repo,
+    changedFiles,
+    layers: [layer],
+    readAt: async (path) => {
+      try {
+        const response = await execute('gh', ['api', '--method', 'GET',
+          `repos/${owner}/${repository}/contents/${path}?ref=${before.headRefOid}`], { cwd: repo });
+        const payload = JSON.parse(String(response.stdout));
+        if (payload.encoding !== 'base64' || typeof payload.content !== 'string') return null;
+        return { bytes: Buffer.from(payload.content.replace(/\s/g, ''), 'base64'),
+          ref: `${before.headRefOid}:${path}` };
+      } catch { return null; }
+    },
+  });
+  const limitations = [...framework_context.limitations];
+  return packetDigest({
+    scope: 'pr',
+    scope_detail: {
+      url: before.url ?? url,
+      title: before.title ?? '',
+      body: before.body ?? '',
+      base_ref: before.baseRefName ?? null,
+      head_ref: before.headRefName ?? null,
+    },
+    filter: null,
+    repo,
+    cwd: repo,
+    base_ref: before.baseRefName ?? null,
+    base_sha: before.baseRefOid,
+    head_sha: before.headRefOid,
+    snapshot_id: sha(Buffer.from(JSON.stringify({ url, base: before.baseRefOid, head: before.headRefOid }))),
+    diff_sha256: sha(Buffer.from(diff)),
+    layers: [layer],
+    changed_files: changedFiles,
+    hunks,
+    framework_context,
+    full_diff_ref: diff,
+    complete: limitations.length === 0,
+    limitations,
+  });
+}
+
+export async function verifyPrSnapshot(packet, { execute = executeCommand } = {}) {
+  if (!packet || packet.scope !== 'pr' || !packet.scope_detail?.url) {
+    return { valid: false, reason: 'Invalid PR packet' };
+  }
+  try {
+    const metadata = await prMetadata(packet.scope_detail.url, packet.repo, execute);
+    const valid = metadata.baseRefOid === packet.base_sha && metadata.headRefOid === packet.head_sha;
+    return valid ? { valid: true } : { valid: false, reason: 'PR base/head identity changed' };
+  } catch (error) {
+    return { valid: false, reason: `Cannot recheck PR identity: ${error.message}` };
+  }
+}
+
+export async function verifyEvidenceSnapshot(packet, options) {
+  if (packet?.scope === 'pr') return verifyPrSnapshot(packet, options);
+  if (packet?.scope === 'branch') return verifyBranchSnapshot(packet);
+  return verifyLocalSnapshot(packet);
 }

@@ -7,11 +7,20 @@ function prompt(path) {
 }
 
 const reviewer = prompt('../pi-config/agents/reviewer.md');
-const correctness = prompt('../pi-config/skills/review-pipeline/focuses/correctness.md');
-const security = prompt('../pi-config/skills/review-pipeline/focuses/security.md');
-const maintainability = prompt('../pi-config/skills/review-pipeline/focuses/maintainability.md');
-const simplicity = prompt('../pi-config/skills/review-pipeline/focuses/simplicity.md');
-const performance = prompt('../pi-config/skills/review-pipeline/focuses/performance.md');
+const workflow = prompt('../pi-config/workflows/pi-review.js');
+
+function focusPrompt(id) {
+  const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = workflow.match(new RegExp('id: "' + escaped + '",[\\s\\S]*?prompt: `([\\s\\S]*?)`,\\n'));
+  assert.ok(match, `missing workflow prompt for ${id}`);
+  return match[1];
+}
+
+const correctness = focusPrompt('correctness');
+const security = focusPrompt('security');
+const maintainability = focusPrompt('maintainability');
+const simplicity = focusPrompt('simplicity');
+const performance = focusPrompt('performance');
 
 function includesAll(text, expressions) {
   for (const expression of expressions) assert.match(text, expression);
@@ -19,7 +28,7 @@ function includesAll(text, expressions) {
 
 test('shared reviewer guidance requires Maia-style verified, high-signal findings', () => {
   includesAll(reviewer, [
-    /complete (?:supplied )?(?:diff|evidence)/i,
+    /complete supplied frozen packet/i,
     /(?:callers?|contracts?|input-to-impact)/i,
     /pre-existing/i,
     /intentional/i,
@@ -27,7 +36,7 @@ test('shared reviewer guidance requires Maia-style verified, high-signal finding
     /speculat(?:e|ion|ive)/i,
     /pedantry|pedantic/i,
     /report-only/i,
-    /parent .*verdict|parent computes the verdict/i,
+    /workflow\s+computes verdict/i,
   ]);
 });
 
@@ -75,4 +84,9 @@ test('simplicity and performance guidance require evidence-led alternatives', ()
     /I\/O|computation/i,
     /behavior-changing|subjective/i,
   ]);
+  includesAll(workflow, [
+    /pinned .*vercel-react-best-practices|rule_id/i,
+    /async|bundle|rendering|server/i,
+  ]);
+  assert.doesNotMatch(workflow, /id: "react-best-practices"/);
 });

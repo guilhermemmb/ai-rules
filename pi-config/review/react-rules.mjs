@@ -3,6 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
+const APPROVED_REVISION = '063bee94c3f4df8453406c830b0a7df0f2860278';
 
 function filesUnder(root, directory = root) {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
@@ -11,12 +12,12 @@ function filesUnder(root, directory = root) {
   }).sort();
 }
 
-export function loadPinnedReactRules(skillRoot) {
+function verifyPinnedReactRules(skillRoot) {
   let provenance;
   try { provenance = JSON.parse(readFileSync(join(skillRoot, 'provenance.json'), 'utf8')); }
   catch { throw new Error('Pinned React skill provenance is missing or invalid'); }
   if (provenance?.source?.repository !== 'https://github.com/vercel-labs/agent-skills' ||
-    provenance.source.revision !== '063bee94c3f4df8453406c830b0a7df0f2860278' ||
+    provenance.source.revision !== APPROVED_REVISION ||
     provenance?.skill?.name !== 'vercel-react-best-practices' || provenance?.skill?.metadataVersion !== '1.0.0' ||
     !provenance.files || typeof provenance.files !== 'object') {
     throw new Error('Pinned React skill provenance does not match the approved source');
@@ -38,6 +39,15 @@ export function loadPinnedReactRules(skillRoot) {
   const ruleIds = expected.filter(path => path.startsWith('rules/') && path.endsWith('.md'))
     .map(path => path.slice('rules/'.length, -'.md'.length)).filter(id => !id.startsWith('_')).sort();
   if (ruleIds.length !== 70 || new Set(ruleIds).size !== ruleIds.length) throw new Error('Pinned React rule inventory is invalid');
-  return { revision: provenance.source.revision, skillRoot, metadataVersion: provenance.skill.metadataVersion,
-    ruleIds, hashes: provenance.files };
+  return { applicable: true, revision: provenance.source.revision, skillRoot,
+    metadataVersion: provenance.skill.metadataVersion, ruleIds, hashes: provenance.files };
+}
+
+export function loadPinnedReactRules(skillRoot, { applicable = true } = {}) {
+  if (!applicable) return { applicable: false, skillRoot, revision: APPROVED_REVISION, ruleIds: [] };
+  try {
+    return verifyPinnedReactRules(skillRoot);
+  } catch (error) {
+    return { applicable: true, skillRoot, revision: APPROVED_REVISION, ruleIds: [], integrityError: error.message };
+  }
 }
