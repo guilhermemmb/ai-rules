@@ -75,7 +75,7 @@ test('settings and profile stop duplicating model policy without changing user s
   const canonical = value => JSON.stringify(value, (_key, entry) => entry && typeof entry === 'object' && !Array.isArray(entry)
     ? Object.fromEntries(Object.entries(entry).sort(([a], [b]) => a.localeCompare(b))) : entry);
   assert.equal(createHash('sha256').update(canonical(normalized)).digest('hex'),
-    '42c6d4803c2dcad27890d6e0e7d283d84083a8c42d3fd006867268d08b2fcc4f');
+    '5514df69d87c0725e7a0fc5c281cb4f1f5d43b275ba4a743af4ea4963b608ab2');
   for (const path of [new URL('profiles/pi-subagents/superpowers.json', repoRoot), `${userRoot}/profiles/pi-subagents/superpowers.json`]) {
     const profile = read(path);
     for (const entry of Object.values(profile.subagents?.agentOverrides ?? {})) {

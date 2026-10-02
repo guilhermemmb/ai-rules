@@ -1,5 +1,5 @@
 {
-  "lastChangelogVersion": "0.99.2",
+  "lastChangelogVersion": "1.0.0",
   "theme": "lunar-alchemy",
   "packages": [
     "npm:@langfuse/pi-observability-plugin",
@@ -28,11 +28,9 @@
     "npm:@juicesharp/rpiv-btw",
     "npm:pi-attention",
     "npm:pi-exit-cmd",
-    "npm:pi-ext-clear",
     "npm:pi-blackhole",
     "npm:pi-agent-browser-native",
-    "npm:pi-simplify",
-    "npm:@quintinshaw/pi-dynamic-workflows@3.13.1"
+    "npm:pi-simplify"
   ],
   "subagents": {
     "agentExcludeDirs": [
